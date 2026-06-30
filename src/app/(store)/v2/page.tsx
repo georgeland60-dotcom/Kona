@@ -66,7 +66,7 @@ export default function V2() {
       </section>
 
       {/* MARQUESINA */}
-      <div className="bg-foreground text-background py-4 overflow-hidden whitespace-nowrap">
+      <div className="bg-black text-white py-4 overflow-hidden whitespace-nowrap">
         <div className="inline-flex animate-marquee">
           {[0, 1].map((k) => (
             <span key={k} className="inline-flex">
