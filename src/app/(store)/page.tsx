@@ -4,6 +4,7 @@ import { getActiveBanners } from "@/lib/promos-data";
 import ProductGrid from "@/components/product/ProductGrid";
 import HeroSlider from "@/components/layout/HeroSlider";
 import TrackView from "@/components/TrackView";
+import { homeCollections, pickCollection } from "@/data/collections";
 
 export default async function Home() {
   const [products, banners] = await Promise.all([
@@ -11,6 +12,9 @@ export default async function Home() {
     getActiveBanners(),
   ]);
   const favoritos = products.filter((p) => p.featured);
+  const colecciones = homeCollections
+    .map((c) => ({ col: c, items: pickCollection(products, c) }))
+    .filter((c) => c.items.length > 0);
 
   return (
     <div>
@@ -34,6 +38,30 @@ export default async function Home() {
           </Link>
         </div>
       </section>
+
+      {/* COLECCIONES TEMÁTICAS */}
+      {colecciones.map(({ col, items }) => (
+        <section
+          key={col.slug}
+          className="max-w-6xl mx-auto px-4 py-12 border-t border-line"
+        >
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight">
+                {col.title}
+              </h2>
+              <p className="text-muted text-sm mt-1">{col.subtitle}</p>
+            </div>
+            <Link
+              href={`/tienda?cat=${col.slug}`}
+              className="text-sm text-accent hover:text-accent-dark whitespace-nowrap font-medium"
+            >
+              Ver todos →
+            </Link>
+          </div>
+          <ProductGrid products={items} />
+        </section>
+      ))}
 
       {/* FRANJA DE CONFIANZA */}
       <section className="bg-soft border-y border-line">

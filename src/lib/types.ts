@@ -24,6 +24,7 @@ export type Product = {
   description?: string;
   variants: Variant[]; // tallas con su SKU y stock (fuente de verdad del inventario)
   featured?: boolean; // true = aparece en "Favoritos" del inicio
+  collections?: string[]; // colecciones transversales, ej: ["nuevos-ingresos","sale"]
   onSale?: boolean; // true = aparece en seccion Sale
   oldPrice?: number; // precio anterior (tachado) si esta en oferta
   active?: boolean; // false = oculto en la tienda (borrador)

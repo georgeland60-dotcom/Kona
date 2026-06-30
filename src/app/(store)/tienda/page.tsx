@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
 import { categories } from "@/data/categories";
+import { homeCollections } from "@/data/collections";
 import ProductGrid from "@/components/product/ProductGrid";
 
 export default async function TiendaPage({
@@ -11,11 +12,20 @@ export default async function TiendaPage({
   const { cat } = await searchParams;
 
   const products = await getProducts();
+  // el filtro acepta tanto categorías como colecciones transversales
+  // (ej. "nuevos-ingresos", "sale"), que viven en el campo collections.
   const filtrados = cat
-    ? products.filter((p) => p.category === cat)
+    ? products.filter(
+        (p) => p.category === cat || (p.collections ?? []).includes(cat)
+      )
     : products;
 
-  const categoriaActual = categories.find((c) => c.slug === cat);
+  const coleccionActual = homeCollections.find((c) => c.slug === cat);
+  const categoriaActual =
+    categories.find((c) => c.slug === cat) ??
+    (coleccionActual
+      ? { slug: coleccionActual.slug, name: coleccionActual.title }
+      : undefined);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
