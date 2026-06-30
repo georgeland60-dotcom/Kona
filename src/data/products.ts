@@ -17,6 +17,7 @@ export const products: SeedProduct[] = [
     description: "Tejido punto intermedio Detalle de ondas en todos los bordes Fresco, no da calor Suave, ligeramente elástico Cómodo y fluido Tiene botones lo puedes usar abierto o cerrado",
     sizes: ["S", "M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "2",
@@ -28,6 +29,7 @@ export const products: SeedProduct[] = [
     description: "Tejido punto intermedio Detalle de ondas en todos los bordes Fresco, no da calor Suave, ligeramente elástico Cómodo y fluido Tiene botones lo puedes usar abierto o cerrado",
     sizes: ["S", "M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "3",
@@ -39,6 +41,7 @@ export const products: SeedProduct[] = [
     description: "Licra premium elaborada en Asia 100% flexibley suave costuras fexibles y copas integradas sin varillas Entalle da soporte y seguridad",
     sizes: ["M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "4",
@@ -50,6 +53,7 @@ export const products: SeedProduct[] = [
     description: "Tela Plisada, caída con movimiento Corte en A le permite dar vuelo y soltura Pretina elástico en la parte de atrás Aporta elegancia, versátil para todo look",
     sizes: ["M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "5",
@@ -61,6 +65,7 @@ export const products: SeedProduct[] = [
     description: "Tejido acrílico 100% ultra ligero Fresco, no da calor Suave y ligeramente elastico No rígido, cómodo y fluido Ideal para verano y climas cálidos",
     sizes: ["S", "M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "6",
@@ -72,6 +77,7 @@ export const products: SeedProduct[] = [
     description: "Tejido acrílico 100% ultra ligero Fresco, no da calor Suave y ligeramente elastico No rígido, cómodo y fluido Ideal para verano y climas cálidos",
     sizes: ["S", "M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "7",
@@ -83,6 +89,7 @@ export const products: SeedProduct[] = [
     description: "Tejido acrílico 100% ultra ligero Fresco, no da calor Suave y ligeramente elastico No rígido, cómodo y fluido Ideal para verano y climas cálidos",
     sizes: ["S", "M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "8",
@@ -94,6 +101,7 @@ export const products: SeedProduct[] = [
     description: "Tela Plisada, caída con movimiento Corte en A le permite dar vuelo y soltura Pretina elástico en la parte de atrás Aporta elegancia, versátil para todo look",
     sizes: ["M", "L", "XL", "XXL"],
     featured: true,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "9",
@@ -105,6 +113,7 @@ export const products: SeedProduct[] = [
     description: "Tela Plisada, caída con movimiento Corte en A le permite dar vuelo y soltura Pretina elástico en la parte de atrás Aporta elegancia, versátil para todo look",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "10",
@@ -116,6 +125,7 @@ export const products: SeedProduct[] = [
     description: "Licra premium elaborada en Asia 100% flexibley suave costuras fexibles y copas integradas sin varillas Entalle da soporte y seguridad",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "11",
@@ -127,6 +137,7 @@ export const products: SeedProduct[] = [
     description: "Licra premium elaborada en Asia 100% flexibley suave costuras fexibles y copas integradas sin varillas Entalle da soporte y seguridad",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "12",
@@ -138,6 +149,7 @@ export const products: SeedProduct[] = [
     description: "Licra premium elaborada en Asia 100% flexibley suave costuras fexibles y copas integradas sin varillas Entalle da soporte y seguridad",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "13",
@@ -149,6 +161,7 @@ export const products: SeedProduct[] = [
     description: "-Tela fresca, suave y cómoda. No se arruga -Blusa larga, manga corta, con cuello camisero -Fit Holgado con buena caída -Short pretina ancha y firme",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "14",
@@ -160,6 +173,7 @@ export const products: SeedProduct[] = [
     description: "-Tela fresca, suave y cómoda. No se arruga -Blusa larga, manga corta, con cuello camisero -Fit Holgado con buena caída -Short pretina ancha y firme",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "15",
@@ -171,6 +185,7 @@ export const products: SeedProduct[] = [
     description: "-Tela fresca, suave y cómoda . No se arruga -Blusa larga, manga corta, con cuello camisero -Fit Holgado con buena caída -Short pretina ancha y firme",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "16",
@@ -182,6 +197,7 @@ export const products: SeedProduct[] = [
     description: "Pretina estilo »Paper Bag» con elástico premium Fit holgado sin ser demasiado flojo Tela suave para mayor comodidad 4 tallas desde la S hasta la XL",
     sizes: ["S", "M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "17",
@@ -193,6 +209,7 @@ export const products: SeedProduct[] = [
     description: "Pretina estilo »Paper Bag» con elástico premium Fit holgado sin ser demasiado flojo Tela suave para mayor comodidad 4 tallas desde la S hasta la XL",
     sizes: ["S", "M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "18",
@@ -204,6 +221,7 @@ export const products: SeedProduct[] = [
     description: "-Conjunto dos piezas: short y capa -Efecto transparente -Tela estilo nylon resistente al agua -Tela favorece al secado",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "19",
@@ -226,6 +244,7 @@ export const products: SeedProduct[] = [
     description: "-Ropa de baño dos piezas -Licra Stretch, flexible, con diseño de olas -Copa Strapless -Resistente al cloro",
     sizes: ["L-XL", "S-M"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "21",
@@ -237,6 +256,7 @@ export const products: SeedProduct[] = [
     description: "-Conjunto dos piezas: short y capa -Efecto transparente -Tela estilo nylon resistente al agua -Tela favorece al secado",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "22",
@@ -248,6 +268,7 @@ export const products: SeedProduct[] = [
     description: "-Ropa de baño dos piezas -Licra Stretch, flexible, con diseño de olas -Con reguladores en las tiras -Resistente al cloro",
     sizes: ["M", "L", "XL", "XXL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "23",
@@ -259,6 +280,8 @@ export const products: SeedProduct[] = [
     description: "-Sombras Studio Look cyzone en dos tonos: dorado y rosa metálico -No necesitan aplicador -Color intenso no transfiere -Textura cremosa por 12h",
     sizes: ["S", "M", "L"],
     featured: false,
+    onSale: true,
+    collections: ["sale"],
   },
   {
     id: "24",
@@ -270,6 +293,8 @@ export const products: SeedProduct[] = [
     description: "-Labial Studio Look Cyzone en dos tonos rosa y violeta -Acabado Super Mate -larga Duración y máxima fijación -Hidratación Extrema -Alta Precisión",
     sizes: ["S", "M", "L"],
     featured: false,
+    onSale: true,
+    collections: ["sale"],
   },
   {
     id: "25",
@@ -281,6 +306,8 @@ export const products: SeedProduct[] = [
     description: "-ColorStickPro de Esika en dos Tonos Coral y Rosa -12 horas de Duración -Textura Ultra Ligera con Vitamina E -Facil Difuminación y Glow Natural",
     sizes: ["S", "M", "L"],
     featured: false,
+    onSale: true,
+    collections: ["sale"],
   },
   {
     id: "26",
@@ -369,6 +396,7 @@ export const products: SeedProduct[] = [
     description: "&#8211; Tela lino stretch estampada, suave y fresca -Manga corta con pliegues y vuelo al final -Falda de bobos en dos tiempos.",
     sizes: ["S", "M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "34",
@@ -380,6 +408,7 @@ export const products: SeedProduct[] = [
     description: "&#8211; Tela lino stretch estampada, suave y fresca -Manga corta con pliegues y vuelo al final -Falda de bobos en dos tiempos.",
     sizes: ["S", "M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "35",
@@ -402,6 +431,7 @@ export const products: SeedProduct[] = [
     description: "&#8211; Tela rib urban, textura suave y flexible &#8211; Manga corta con pinzas en las hombros, puños y pretina, da un efecto bombacho &#8211; Fit con tres botones, hasta la cin…",
     sizes: ["S", "M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "37",
@@ -413,6 +443,7 @@ export const products: SeedProduct[] = [
     description: "-Tela rib urban, textura suave y flexible &#8211; Manga corta con pinzas en las hombros, puños y pretina, da un efecto bombacho &#8211; Fit con tres botones, hasta la cintura baja",
     sizes: ["S", "M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "38",
@@ -424,6 +455,7 @@ export const products: SeedProduct[] = [
     description: "&#8211; Tela rib urban, textura suave y flexible &#8211; Manga corta con pinzas en las hombros, puños y pretina, da un efecto bombacho &#8211; Fit con tres botones, hasta la cin…",
     sizes: ["S", "M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "39",
@@ -435,6 +467,7 @@ export const products: SeedProduct[] = [
     description: "-Tela rib con un acabado ligeramente brillante -Tela Suave y versátil &#8211; Diseño estilo corset, manga cero &#8211; Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
     sizes: ["M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "40",
@@ -446,6 +479,7 @@ export const products: SeedProduct[] = [
     description: "-Tela rib con un acabado ligeramente brillante -Tela Suave y versátil &#8211; Diseño estilo corset, manga cero &#8211; Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
     sizes: ["M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "41",
@@ -457,6 +491,7 @@ export const products: SeedProduct[] = [
     description: "-Tela rib con un acabado ligeramente brillante -Tela Suave y versátil &#8211; Diseño estilo corset, manga cero &#8211; Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
     sizes: ["M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "42",
@@ -468,6 +503,7 @@ export const products: SeedProduct[] = [
     description: "-Tela rib con un acabado ligeramente brillante -Tela Suave y versátil &#8211; Diseño estilo corset, manga cero &#8211; Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
     sizes: ["M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "43",
@@ -479,6 +515,7 @@ export const products: SeedProduct[] = [
     description: "-Tela rib con un acabado ligeramente brillante -Tela Suave y versátil &#8211; Diseño estilo corset, manga cero &#8211; Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
     sizes: ["M", "L", "XL"],
     featured: false,
+    collections: ["nuevos-ingresos"],
   },
   {
     id: "44",
