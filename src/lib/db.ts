@@ -20,10 +20,7 @@ import fs from "fs";
 import path from "path";
 import { products as seedProducts } from "@/data/products";
 import { banners as seedBanners } from "@/data/banners";
-
-// Ruta del archivo de la base. En Render apuntará al disco persistente.
-const DB_PATH =
-  process.env.KONA_DB_PATH || path.join(process.cwd(), "data", "kona.db");
+import { DB_PATH } from "@/lib/paths";
 
 // Guardamos la conexión en una variable global para no abrir muchas
 // conexiones durante el "hot reload" de desarrollo.

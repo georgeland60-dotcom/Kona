@@ -1,0 +1,55 @@
+# =============================================================
+#  Configuración de despliegue en Render (Blueprint)
+#  Render lee este archivo y crea el servicio con todo listo:
+#  build, arranque, disco persistente y variables de entorno.
+#  Guía paso a paso: ver DEPLOY.md
+# =============================================================
+
+services:
+  - type: web
+    name: kona-moda
+    runtime: node
+    # Plan con disco persistente (~US$7/mes). El plan gratis NO permite
+    # disco persistente, por eso no sirve para guardar pedidos/fotos.
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+
+    # Disco persistente: aquí viven la base de datos (kona.db) y las fotos
+    # subidas (uploads/). NO se borra al actualizar la web.
+    disk:
+      name: kona-data
+      mountPath: /var/kona
+      sizeGB: 1
+
+    envVars:
+      # Fija la versión de Node (la misma con la que se desarrolló).
+      - key: NODE_VERSION
+        value: "22.22.2"
+
+      # Carpeta del disco persistente (de aquí se derivan la base de datos
+      # y las fotos subidas). Debe coincidir con disk.mountPath de arriba.
+      - key: KONA_DATA_DIR
+        value: /var/kona
+
+      # --- Variables que TÚ configuras en el panel de Render (sync:false) ---
+      # URL pública final de la tienda, ej: https://kona-moda.onrender.com
+      # o tu dominio propio https://konamoda.pe
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      # Token de Mercado Pago (producción: empieza con APP_USR-)
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      # Firma secreta del webhook de Mercado Pago
+      - key: MERCADOPAGO_WEBHOOK_SECRET
+        sync: false
+      # Contraseña del panel /admin (elige una fuerte)
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      # Clave para firmar la sesión del panel: Render la genera sola.
+      - key: ADMIN_SESSION_SECRET
+        generateValue: true

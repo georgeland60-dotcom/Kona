@@ -14,19 +14,21 @@ import {
   deleteRule,
   nextRuleId,
 } from "@/lib/promos-data";
+import { UPLOADS_DIR } from "@/lib/paths";
 import type { Banner, DiscountRule, DiscountKind, DiscountScope } from "@/lib/types";
 
-// Guarda una foto subida en /public/banners y devuelve su ruta pública.
+// Guarda una foto de banner en el disco persistente (UPLOADS_DIR) y devuelve
+// la ruta pública /media/<archivo> (servida por app/media). Sobrevive a los
+// redeploys, a diferencia de escribir dentro de /public.
 async function saveImage(file: File): Promise<string | null> {
   if (!file || file.size === 0) return null;
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const safeExt = /^(jpg|jpeg|png|webp|gif|avif)$/.test(ext) ? ext : "jpg";
   const filename = `banner-${Date.now()}.${safeExt}`;
-  const dir = path.join(process.cwd(), "public", "banners");
-  await fs.mkdir(dir, { recursive: true });
+  await fs.mkdir(UPLOADS_DIR, { recursive: true });
   const bytes = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(dir, filename), bytes);
-  return `/banners/${filename}`;
+  await fs.writeFile(path.join(UPLOADS_DIR, filename), bytes);
+  return `/media/${filename}`;
 }
 
 function revalidateStore() {

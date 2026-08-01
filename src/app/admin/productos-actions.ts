@@ -12,6 +12,7 @@ import {
   nextProductId,
   skuFor,
 } from "@/lib/store-data";
+import { UPLOADS_DIR } from "@/lib/paths";
 import type { Product, Variant } from "@/lib/types";
 
 // Texto -> slug en minúsculas (para URL del producto).
@@ -25,17 +26,19 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// Guarda la foto subida en /public/products y devuelve su ruta pública.
+// Guarda la foto subida en el disco persistente (UPLOADS_DIR) y devuelve la
+// ruta pública /media/<archivo>, que sirve la ruta app/media. Así las fotos
+// sobreviven a los redeploys (no se guardan dentro de /public, que se
+// regenera desde git en cada actualización).
 async function saveImage(file: File, slug: string): Promise<string | null> {
   if (!file || file.size === 0) return null;
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const safeExt = /^(jpg|jpeg|png|webp|gif|avif)$/.test(ext) ? ext : "jpg";
   const filename = `${slug || "producto"}-${Date.now()}.${safeExt}`;
-  const dir = path.join(process.cwd(), "public", "products");
-  await fs.mkdir(dir, { recursive: true });
+  await fs.mkdir(UPLOADS_DIR, { recursive: true });
   const bytes = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(dir, filename), bytes);
-  return `/products/${filename}`;
+  await fs.writeFile(path.join(UPLOADS_DIR, filename), bytes);
+  return `/media/${filename}`;
 }
 
 // Refresca las páginas públicas y del panel tras un cambio.

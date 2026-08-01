@@ -197,6 +197,13 @@ export default async function DashboardPage({
         >
           Gestionar productos
         </Link>
+        <a
+          href="/api/admin/backup"
+          className="border border-line text-muted px-5 py-2.5 rounded-lg text-sm font-medium hover:border-foreground hover:text-foreground transition"
+          title="Descarga una copia de seguridad de pedidos, productos y stock"
+        >
+          ⬇︎ Copia de seguridad
+        </a>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
