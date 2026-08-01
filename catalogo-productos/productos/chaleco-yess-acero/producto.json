@@ -1,0 +1,29 @@
+{
+  "id": 9823,
+  "nombre": "Chaleco Yess Acero",
+  "slug": "chaleco-yess-acero",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Chalecos"
+  ],
+  "precio_PEN": "99.00",
+  "precio_regular_PEN": "99.00",
+  "precio_oferta_PEN": "99.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela rib stretch tejido con diseño\n-Manga acero\n-Fit largo con dos botones pequeños",
+  "permalink": "https://konamoda.pe/product/chaleco-yess-acero/",
+  "imagenes": [
+    "01-CHALECO-YESS-ACERO.webp",
+    "02-CHALECO-YESS-ACERO-1.webp",
+    "03-CHALECO-YESS-ACERO-2.webp",
+    "04-CHALECO-YESS-ACERO-3.webp",
+    "05-CHALECO-YESS-TALLAS.webp"
+  ]
+}

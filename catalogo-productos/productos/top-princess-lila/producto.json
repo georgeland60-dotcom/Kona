@@ -1,0 +1,30 @@
+{
+  "id": 11149,
+  "nombre": "Top Princess Lila",
+  "slug": "top-princess-lila",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos",
+    "Blusas",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "65.00",
+  "precio_regular_PEN": "65.00",
+  "precio_oferta_PEN": "65.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL"
+  ],
+  "descripcion": "-Tela rib con un acabado ligeramente brillante\n -Tela Suave y versátil\n – Diseño estilo corset, manga cero\n – Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
+  "permalink": "https://konamoda.pe/product/top-princess-lila/",
+  "imagenes": [
+    "01-web13-top-lila.png",
+    "02-web-19-top-lila.png",
+    "03-web-top-lila-atras.png",
+    "04-web-foto-grupal.png",
+    "05-tallasprincesstop.png"
+  ]
+}

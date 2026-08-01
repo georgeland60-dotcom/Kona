@@ -1,0 +1,37 @@
+{
+  "id": 11831,
+  "nombre": "Set Luz Naranja",
+  "slug": "set-luz-naranja",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Set - Conjuntos"
+  ],
+  "precio_PEN": "139.00",
+  "precio_regular_PEN": "139.00",
+  "precio_oferta_PEN": "139.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "-Tela fresca, suave y cómoda. No se arruga\n -Blusa larga, manga corta, con cuello camisero\n -Fit Holgado con buena caída\n -Short pretina ancha y firme",
+  "permalink": "https://konamoda.pe/product/set-luz-naranja/",
+  "imagenes": [
+    "01-luz7.webp",
+    "02-luz4.webp",
+    "03-luz5.webp",
+    "04-luz6.webp",
+    "05-luz7.webp",
+    "06-luz8.webp",
+    "07-luz10.webp",
+    "08-luz13.webp",
+    "09-luz9.webp",
+    "10-luz16.webp",
+    "11-luz21.webp",
+    "12-LuzTallas.webp"
+  ]
+}

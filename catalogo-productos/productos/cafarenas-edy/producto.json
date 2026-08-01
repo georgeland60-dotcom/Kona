@@ -1,0 +1,26 @@
+{
+  "id": 8231,
+  "nombre": "Cafarenas Edy Palo Rosa",
+  "slug": "cafarenas-edy",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cafarenas"
+  ],
+  "precio_PEN": "59.00",
+  "precio_regular_PEN": "59.00",
+  "precio_oferta_PEN": "59.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Cafarena de cuello bajo\n-Tela rib ligera y de textura suave\n-Detalles de bobos encarrujados en las mangas",
+  "permalink": "https://konamoda.pe/product/cafarenas-edy/",
+  "imagenes": [
+    "01-CAFARENAS-EDY-PALO-ROSA.webp",
+    "02-CAFARENAS-EDY-PALO-ROSA-1.webp"
+  ]
+}

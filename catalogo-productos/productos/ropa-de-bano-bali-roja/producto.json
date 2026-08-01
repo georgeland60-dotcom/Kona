@@ -1,0 +1,26 @@
+{
+  "id": 12410,
+  "nombre": "Ropa de baño Bali Roja",
+  "slug": "ropa-de-bano-bali-roja",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Ropa de Baño"
+  ],
+  "precio_PEN": "329.00",
+  "precio_regular_PEN": "329.00",
+  "precio_oferta_PEN": "329.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Licra premium elaborada en Asia\n 100% flexibley suave\n costuras fexibles y copas integradas sin varillas\n Entalle da soporte y seguridad",
+  "permalink": "https://konamoda.pe/product/ropa-de-bano-bali-roja/",
+  "imagenes": [
+    "01-balir1.webp"
+  ]
+}

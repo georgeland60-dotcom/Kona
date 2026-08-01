@@ -1,0 +1,36 @@
+{
+  "id": 11826,
+  "nombre": "Set  Luz Pistacho",
+  "slug": "set-luz-pistacho",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Set - Conjuntos"
+  ],
+  "precio_PEN": "139.00",
+  "precio_regular_PEN": "139.00",
+  "precio_oferta_PEN": "139.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "-Tela fresca, suave y cómoda. No se arruga\n -Blusa larga, manga corta, con cuello camisero\n -Fit Holgado con buena caída\n -Short pretina ancha y firme",
+  "permalink": "https://konamoda.pe/product/set-luz-pistacho/",
+  "imagenes": [
+    "01-setluzv.webp",
+    "02-luz20.webp",
+    "03-luz17.webp",
+    "04-luz18.webp",
+    "05-luz19.webp",
+    "06-luzv3.webp",
+    "07-luz11.webp",
+    "08-luz14.webp",
+    "09-luz15.webp",
+    "10-luz16.webp",
+    "11-LuzTallas.webp"
+  ]
+}

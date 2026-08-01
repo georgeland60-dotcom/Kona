@@ -1,0 +1,29 @@
+{
+  "id": 12385,
+  "nombre": "Set Luz Negro",
+  "slug": "set-luz-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Set - Conjuntos"
+  ],
+  "precio_PEN": "139.00",
+  "precio_regular_PEN": "139.00",
+  "precio_oferta_PEN": "139.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "-Tela fresca, suave y cómoda. No se arruga\n -Blusa larga, manga corta, con cuello camisero\n -Fit Holgado con buena caída\n -Short pretina ancha y firme",
+  "permalink": "https://konamoda.pe/product/set-luz-negro/",
+  "imagenes": [
+    "01-setluz5.webp",
+    "02-setluz3.webp",
+    "03-setluz1.webp",
+    "04-LuzTallas.webp"
+  ]
+}

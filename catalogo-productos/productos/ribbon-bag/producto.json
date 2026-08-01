@@ -1,0 +1,20 @@
+{
+  "id": 10361,
+  "nombre": "Ribbon Bag Verde",
+  "slug": "ribbon-bag",
+  "sku": "",
+  "tipo": "simple",
+  "categorias": [
+    "Carteras"
+  ],
+  "precio_PEN": "85.00",
+  "precio_regular_PEN": "85.00",
+  "precio_oferta_PEN": "85.00",
+  "en_oferta": false,
+  "tallas": [],
+  "descripcion": "Material cuero PU\nAsa de mano corrugada\nAsa superior de cuero regulable\nAccesorio en forma de Lazo dorado en la parte de adelante",
+  "permalink": "https://konamoda.pe/product/ribbon-bag/",
+  "imagenes": [
+    "01-RIBBON-BAG-VERDE.webp"
+  ]
+}

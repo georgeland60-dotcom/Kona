@@ -1,0 +1,33 @@
+{
+  "id": 12820,
+  "nombre": "Chaleco Lazos",
+  "slug": "chaleco-lazos-denim",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Chalecos",
+    "Full Denim",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "139.00",
+  "precio_regular_PEN": "139.00",
+  "precio_oferta_PEN": "139.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL",
+    "xxxl"
+  ],
+  "descripcion": "-Tela Denim 70% algodón.\n -Dos lazos para amarrar\n -Ligero desflecado en la basta\n -tela ligera, rigida",
+  "permalink": "https://konamoda.pe/product/chaleco-lazos-denim/",
+  "imagenes": [
+    "01-denim5portada-producto9.webp",
+    "02-denim15.webp",
+    "03-denim19.webp",
+    "04-denim1.webp",
+    "05-denim8.webp",
+    "06-denim14.webp"
+  ]
+}

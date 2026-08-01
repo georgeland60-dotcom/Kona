@@ -1,0 +1,27 @@
+{
+  "id": 8501,
+  "nombre": "Pantalon Dril Sami",
+  "slug": "pantalon-dril-sami",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Pantalones"
+  ],
+  "precio_PEN": "109.00",
+  "precio_regular_PEN": "109.00",
+  "precio_oferta_PEN": "109.00",
+  "en_oferta": false,
+  "tallas": [
+    "28",
+    "30",
+    "32",
+    "34"
+  ],
+  "descripcion": "-Tela dril stretch de alta calidad.\n-Composición 96% algodón y 4% spandex\n-Corte semicintura y entalle alto\n-Pretina ancha con tres botones dorados especiales que le dan un toque de elegancia al pantalón",
+  "permalink": "https://konamoda.pe/product/pantalon-dril-sami/",
+  "imagenes": [
+    "01-PANTALON-DRIL-SAMI.webp",
+    "02-PANTALON-DRIL-SAMI-BLANCO.webp",
+    "03-PANTALON-DRIL-SAMI-BEIGE.webp"
+  ]
+}

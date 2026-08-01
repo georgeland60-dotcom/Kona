@@ -1,0 +1,31 @@
+{
+  "id": 11721,
+  "nombre": "Set Arena Negro",
+  "slug": "set-arena-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Ropa de Baño",
+    "Set - Conjuntos"
+  ],
+  "precio_PEN": "139.00",
+  "precio_regular_PEN": "139.00",
+  "precio_oferta_PEN": "139.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "-Conjunto dos piezas: short y capa\n -Efecto transparente\n -Tela estilo nylon resistente al agua\n -Tela favorece al secado",
+  "permalink": "https://konamoda.pe/product/set-arena-negro/",
+  "imagenes": [
+    "01-anegro7.webp",
+    "02-arenanegro6.webp",
+    "03-arenanegro4.webp",
+    "04-arenanegro5.webp",
+    "05-arenanegro3.webp"
+  ]
+}

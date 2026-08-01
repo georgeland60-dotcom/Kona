@@ -1,0 +1,31 @@
+{
+  "id": 9414,
+  "nombre": "Paper bag Leti Golden B.",
+  "slug": "paper-bag-leti-golden-beige",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Full Denim",
+    "Pantalones"
+  ],
+  "precio_PEN": "129.00",
+  "precio_regular_PEN": "129.00",
+  "precio_oferta_PEN": "129.00",
+  "en_oferta": false,
+  "tallas": [
+    "30",
+    "32",
+    "34",
+    "36",
+    "38",
+    "40"
+  ],
+  "descripcion": "-Tela denim 97% algodón y 3% spandex\n-Elástico en todo el contorno de la cintura, con dos botones\n-Tiene un cinturón de la misma tela\n-Diseño cómodo, para toda ocasión",
+  "permalink": "https://konamoda.pe/product/paper-bag-leti-golden-beige/",
+  "imagenes": [
+    "01-PAPER-BAG-LETI-GOLDEN-B_png.webp",
+    "02-PAPER-BAG-LETI-GOLDEN-B.webp",
+    "03-PAPER-BAG-LETI-GOLDEN-B.-3.webp",
+    "04-PAPER-BAG-LETI-TALLAS.webp"
+  ]
+}

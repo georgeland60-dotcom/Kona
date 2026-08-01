@@ -1,0 +1,23 @@
+{
+  "id": 8676,
+  "nombre": "Chompa Ani Negro",
+  "slug": "chompa-ani-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Chompas"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M"
+  ],
+  "descripcion": "-Chompa tejida de hilo de algodón\n-Cuello alto holgado, super cómodo",
+  "permalink": "https://konamoda.pe/product/chompa-ani-negro/",
+  "imagenes": [
+    "01-CHOMPA-ANI-NEGRO.webp"
+  ]
+}

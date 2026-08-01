@@ -1,0 +1,27 @@
+{
+  "id": 10054,
+  "nombre": "Básico Feel Calm Beige",
+  "slug": "basico-feel-beige",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela viscosa nacional, suave y versátil\n-Manga larga, con un detalle de ondas al final de la manga\n-En el hombro tiene un detalle de bobos en tres tiempos.",
+  "permalink": "https://konamoda.pe/product/basico-feel-beige/",
+  "imagenes": [
+    "01-BasicoFeelCalm.webp",
+    "02-BASICO-FEEL-CALM.webp",
+    "03-BASICO-FEEL-CALM-Tallas.webp"
+  ]
+}

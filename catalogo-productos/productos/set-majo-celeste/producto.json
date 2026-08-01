@@ -1,0 +1,34 @@
+{
+  "id": 11430,
+  "nombre": "Set Majo Celeste",
+  "slug": "set-majo-celeste",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Set - Conjuntos"
+  ],
+  "precio_PEN": "149.00",
+  "precio_regular_PEN": "149.00",
+  "precio_oferta_PEN": "149.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela algodón rib chompero\n -Las mangas son estilo murciélago con una abertura en la parte final de la manga y del sweater\n -Pantalón palazo estilo campana\n -Pretina ancha\n -Fit holgado, textura suave y abrigadora",
+  "permalink": "https://konamoda.pe/product/set-majo-celeste/",
+  "imagenes": [
+    "01-conjuntoc5.webp",
+    "02-conjuntoc1.webp",
+    "03-conjuntonyc3.webp",
+    "04-conjuntoportadaweb.webp",
+    "05-conjuntoc4_1.webp",
+    "06-conjuntoc6.webp",
+    "07-conjuntocyn5.webp",
+    "08-conjuntoc2.webp",
+    "09-setmajoweb2.webp",
+    "10-setmajoweb1.webp"
+  ]
+}

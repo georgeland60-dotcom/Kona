@@ -1,0 +1,33 @@
+{
+  "id": 9785,
+  "nombre": "Slouchy Jean Cris Azul",
+  "slug": "slouchy-jean-cris",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Full Denim",
+    "Pantalones"
+  ],
+  "precio_PEN": "149.00",
+  "precio_regular_PEN": "149.00",
+  "precio_oferta_PEN": "149.00",
+  "en_oferta": false,
+  "tallas": [
+    "30",
+    "32",
+    "34",
+    "36",
+    "38",
+    "40"
+  ],
+  "descripcion": "-Tela denim 97% algodón y 3% spandex\n-Elástico en la parte de atrás en la cintura con un botón adelante\n-Pliegue en ambos lados debajo de la pretina y en la parte del tobillo\n-Fit Baggy en las piernas",
+  "permalink": "https://konamoda.pe/product/slouchy-jean-cris/",
+  "imagenes": [
+    "01-SLOUCHY-JEAN-CRIS-AZUL.webp",
+    "02-SLOUCHY-JEAN-CRIS-AZUL-1.webp",
+    "03-SLOUCHY-JEAN-CRIS-AZUL-2.webp",
+    "04-SLOUCHY-JEAN-CRIS-AZUL-3.webp",
+    "05-SLOUCHY-JEAN-CRIS-AZUL-4.webp",
+    "06-SLOUCHY-JEAN-CRIS-TALLAS.webp"
+  ]
+}

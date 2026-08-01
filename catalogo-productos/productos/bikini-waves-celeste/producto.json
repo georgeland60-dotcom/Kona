@@ -1,0 +1,35 @@
+{
+  "id": 11668,
+  "nombre": "Bikini Waves Celeste",
+  "slug": "bikini-waves-celeste",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Ropa de Baño"
+  ],
+  "precio_PEN": "169.00",
+  "precio_regular_PEN": "169.00",
+  "precio_oferta_PEN": "169.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "-Ropa de baño dos piezas\n -Licra Stretch, flexible, con diseño de olas\n -Con reguladores en las tiras\n -Resistente al cloro\n –",
+  "permalink": "https://konamoda.pe/product/bikini-waves-celeste/",
+  "imagenes": [
+    "01-Bwaves18.webp",
+    "02-Bwaves16.webp",
+    "03-Bwaves23.webp",
+    "04-Bwaves20.webp",
+    "05-Bwaves7.webp",
+    "06-wavestallas.webp",
+    "07-Bwaves15.webp",
+    "08-Bwaves5.webp",
+    "09-Bwaves9.webp",
+    "10-bwaves24.webp"
+  ]
+}

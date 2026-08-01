@@ -1,0 +1,29 @@
+{
+  "id": 10935,
+  "nombre": "Vestido Dreams Verde",
+  "slug": "vestido-dreams-verde",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Vestidos"
+  ],
+  "precio_PEN": "145.00",
+  "precio_regular_PEN": "145.00",
+  "precio_oferta_PEN": "145.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela seda francesa stretch print de flores\n -Fit largo con escote oval\n -Plisado en la parte de adelante\n -Manga larga con recogido en el puño",
+  "permalink": "https://konamoda.pe/product/vestido-dreams-verde/",
+  "imagenes": [
+    "01-dreams6-1.webp",
+    "02-DreamsGreen.webp",
+    "03-DreamsGroup.webp",
+    "04-dreams10.webp",
+    "05-vestidodreams-1.webp"
+  ]
+}

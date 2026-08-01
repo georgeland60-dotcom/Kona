@@ -1,0 +1,30 @@
+{
+  "id": 11239,
+  "nombre": "Cárdigan Ceci Beige",
+  "slug": "cardigan-ceci-beige",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "85.00",
+  "precio_regular_PEN": "85.00",
+  "precio_oferta_PEN": "85.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "– Tela rib urban, textura suave y flexible\n – Manga corta con pinzas en las hombros, puños y pretina, da un efecto bombacho\n – Fit con tres botones, hasta la cintura baja",
+  "permalink": "https://konamoda.pe/product/cardigan-ceci-beige/",
+  "imagenes": [
+    "01-cceci5.png",
+    "02-cceci11.png",
+    "03-cceci10_1.png",
+    "04-cceci9.png",
+    "05-tallasceciweb.png"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": 11425,
+  "nombre": "Cafarena Woolly Fucsia",
+  "slug": "cafarena-woolly-fucsia",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cafarenas"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela rib cashmere , textura suave y abrigadora\n -Cuello alto con detalle de ondas en el borde del cuello\n -Manda larga, detalle de ondas final de la manga",
+  "permalink": "https://konamoda.pe/product/cafarena-woolly-fucsia/",
+  "imagenes": [
+    "01-WoollyFuc5.webp",
+    "02-WoollyFuc8.webp",
+    "03-WoollYFucGrupo1.webp",
+    "04-woollyfuc6.webp",
+    "05-WoollyFucDet1.webp",
+    "06-WoollyF4.webp",
+    "07-guiatallaswoolly.png"
+  ]
+}

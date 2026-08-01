@@ -1,0 +1,27 @@
+{
+  "id": 11392,
+  "nombre": "Sweater Gaby Plomo",
+  "slug": "sweater-perla",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cafarenas"
+  ],
+  "precio_PEN": "89.00",
+  "precio_regular_PEN": "89.00",
+  "precio_oferta_PEN": "89.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Sweater con cuello redondo\n -Tela angora, mis de hilos, textura suave y ligeramente abrigadora\n -Manga larga, encarrujadas, estilo princesa, con un detalle de perlas",
+  "permalink": "https://konamoda.pe/product/sweater-perla/",
+  "imagenes": [
+    "01-sgab10.png",
+    "02-gabytallaweb.png",
+    "03-sgab3.png"
+  ]
+}

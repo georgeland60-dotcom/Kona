@@ -1,0 +1,27 @@
+{
+  "id": 9698,
+  "nombre": "Básico Ketzy Rosa",
+  "slug": "basico-ketzy-rosa",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Mix de telas (gasa y viscosa)\n-Manga corta de gasa con pinzas y doble bobo\n-Cuerpo de tela viscosa nacional\n-Textura suave y fresca",
+  "permalink": "https://konamoda.pe/product/basico-ketzy-rosa/",
+  "imagenes": [
+    "01-BASICO-KETZY-ROSA.webp",
+    "02-BASICO-KETZY-ROSA-1.webp",
+    "03-BASICO-KETZY-tallas.webp"
+  ]
+}

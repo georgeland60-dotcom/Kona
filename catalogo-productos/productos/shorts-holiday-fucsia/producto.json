@@ -1,0 +1,32 @@
+{
+  "id": 12494,
+  "nombre": "Shorts Holiday Vainilla",
+  "slug": "shorts-holiday-fucsia",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Shorts"
+  ],
+  "precio_PEN": "129.00",
+  "precio_regular_PEN": "129.00",
+  "precio_oferta_PEN": "129.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tela Plisada, caída con movimiento\n Corte en A le permite dar vuelo y soltura\n Pretina elástico en la parte de atrás\n Aporta elegancia, versátil para todo look",
+  "permalink": "https://konamoda.pe/product/shorts-holiday-fucsia/",
+  "imagenes": [
+    "01-SH5.webp",
+    "02-SH11.webp",
+    "03-SHGT.webp",
+    "04-shv.webp",
+    "05-SH9.webp",
+    "06-SH8.webp",
+    "07-SH7.webp"
+  ]
+}

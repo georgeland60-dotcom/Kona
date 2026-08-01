@@ -1,0 +1,30 @@
+{
+  "id": 11726,
+  "nombre": "Strapless Waves Negro",
+  "slug": "strapless-waves-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Ropa de Baño"
+  ],
+  "precio_PEN": "169.00",
+  "precio_regular_PEN": "169.00",
+  "precio_oferta_PEN": "169.00",
+  "en_oferta": false,
+  "tallas": [
+    "L-XL",
+    "S-M"
+  ],
+  "descripcion": "-Ropa de baño dos piezas\n -Licra Stretch, flexible, con diseño de olas\n -Copa Strapless\n -Resistente al cloro\n –",
+  "permalink": "https://konamoda.pe/product/strapless-waves-negro/",
+  "imagenes": [
+    "01-Bstrap6.webp",
+    "02-bstrap7.webp",
+    "03-Grupal2.webp",
+    "04-arenanegro5.webp",
+    "05-Bstrap2.webp",
+    "06-bgrupal5.webp",
+    "07-strapwavestalla-1.webp"
+  ]
+}

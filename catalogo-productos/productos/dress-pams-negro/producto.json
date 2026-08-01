@@ -1,0 +1,32 @@
+{
+  "id": 11268,
+  "nombre": "Dress Pams Negro",
+  "slug": "dress-pams-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Vestidos"
+  ],
+  "precio_PEN": "115.00",
+  "precio_regular_PEN": "115.00",
+  "precio_oferta_PEN": "115.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "– Tela lino stretch estampada, suave y fresca\n-Manga corta con pliegues y vuelo al final\n-Falda de bobos en dos tiempos.",
+  "permalink": "https://konamoda.pe/product/dress-pams-negro/",
+  "imagenes": [
+    "01-v13.png",
+    "02-v15.png",
+    "03-v17.png",
+    "04-v18.png",
+    "05-tallaspamsdress.png",
+    "06-v14.png",
+    "07-v12.png"
+  ]
+}

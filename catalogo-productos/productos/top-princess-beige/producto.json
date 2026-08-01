@@ -1,0 +1,29 @@
+{
+  "id": 11145,
+  "nombre": "Top Princess Beige",
+  "slug": "top-princess-beige",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos",
+    "Blusas",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "65.00",
+  "precio_regular_PEN": "65.00",
+  "precio_oferta_PEN": "65.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL"
+  ],
+  "descripcion": "-Tela rib con un acabado ligeramente brillante\n -Tela Suave y versátil\n – Diseño estilo corset, manga cero\n – Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
+  "permalink": "https://konamoda.pe/product/top-princess-beige/",
+  "imagenes": [
+    "01-web21-top-beige.png",
+    "02-web10-top-beige-1.png",
+    "03-web27-top-beige-x.png",
+    "04-tallasprincesstop.png"
+  ]
+}

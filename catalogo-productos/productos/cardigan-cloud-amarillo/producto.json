@@ -1,0 +1,32 @@
+{
+  "id": 12675,
+  "nombre": "Cárdigan Cloud Amarillo",
+  "slug": "cardigan-cloud-amarillo",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "119.00",
+  "precio_regular_PEN": "119.00",
+  "precio_oferta_PEN": "119.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tejido punto intermedio \n Detalle de ondas en todos los bordes \n Fresco, no da calor \n Suave, ligeramente elástico \n Cómodo y fluido \n Tiene botones lo puedes usar abierto o cerrado",
+  "permalink": "https://konamoda.pe/product/cardigan-cloud-amarillo/",
+  "imagenes": [
+    "01-Artboard-64_2.webp",
+    "02-SL2.webp",
+    "03-SL16.webp",
+    "04-celestecostadoweb.webp",
+    "05-Artboard-64_2.webp",
+    "06-Bstrap1.webp"
+  ]
+}

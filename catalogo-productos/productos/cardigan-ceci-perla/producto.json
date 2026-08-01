@@ -1,0 +1,30 @@
+{
+  "id": 11227,
+  "nombre": "Cárdigan Ceci Perla",
+  "slug": "cardigan-ceci-perla",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "85.00",
+  "precio_regular_PEN": "85.00",
+  "precio_oferta_PEN": "85.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "– Tela rib urban, textura suave y flexible\n – Manga corta con pinzas en las hombros, puños y pretina, da un efecto bombacho\n – Fit con tres botones, hasta la cintura baja",
+  "permalink": "https://konamoda.pe/product/cardigan-ceci-perla/",
+  "imagenes": [
+    "01-cceci6.png",
+    "02-cardiganCeci1.png",
+    "03-cceci3.png",
+    "04-cardiganceci2.png",
+    "05-tallasceciweb.png"
+  ]
+}

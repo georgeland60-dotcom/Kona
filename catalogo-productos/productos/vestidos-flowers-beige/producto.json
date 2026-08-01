@@ -1,0 +1,29 @@
+{
+  "id": 10263,
+  "nombre": "Vestidos Flowers Beige",
+  "slug": "vestidos-flowers-beige",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Vestidos"
+  ],
+  "precio_PEN": "115.00",
+  "precio_regular_PEN": "115.00",
+  "precio_oferta_PEN": "115.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela lino stretch estampada, suave y fresca\n-Manga corta con pliegues y vuelo al final\n-Falda de bobos en dos tiempos.",
+  "permalink": "https://konamoda.pe/product/vestidos-flowers-beige/",
+  "imagenes": [
+    "01-VESTIDOS-FLOWERS-BEIGE.webp",
+    "02-VESTIDOS-FLOWERS-BEIGE-2.webp",
+    "03-VESTIDOS-FLOWERS-BEIGE-3.webp",
+    "04-VESTIDOS-FLOWERS-BEIGE-1.webp",
+    "05-VESTIDO-FLOWERS-TALLAS.webp"
+  ]
+}

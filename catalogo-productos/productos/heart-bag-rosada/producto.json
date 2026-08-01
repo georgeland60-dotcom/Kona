@@ -1,0 +1,20 @@
+{
+  "id": 11050,
+  "nombre": "Heart bag Verde",
+  "slug": "heart-bag-rosada",
+  "sku": "",
+  "tipo": "simple",
+  "categorias": [
+    "Carteras"
+  ],
+  "precio_PEN": "85.00",
+  "precio_regular_PEN": "85.00",
+  "precio_oferta_PEN": "85.00",
+  "en_oferta": false,
+  "tallas": [],
+  "descripcion": "Material cuero PU\n Asa de mano y asa superior\n Accesorio en forma de corazón en la parte del broche imantado\n Bordado de corazones encima del cuero",
+  "permalink": "https://konamoda.pe/product/heart-bag-rosada/",
+  "imagenes": [
+    "01-HEART-BAG-VERDE.webp"
+  ]
+}

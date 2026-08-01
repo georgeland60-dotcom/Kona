@@ -1,0 +1,32 @@
+{
+  "id": 10181,
+  "nombre": "Paper Bag Jean Lu Azul",
+  "slug": "paper-bag-jean-lu",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Full Denim",
+    "Pantalones"
+  ],
+  "precio_PEN": "155.00",
+  "precio_regular_PEN": "155.00",
+  "precio_oferta_PEN": "155.00",
+  "en_oferta": false,
+  "tallas": [
+    "30",
+    "32",
+    "34",
+    "36",
+    "38",
+    "40"
+  ],
+  "descripcion": "-Tela denim 98% algodón y 2% spandex\n-Elástico en todo el contorno de la cintura, con dos botones\n-Tiene un cinturón de la misma tela\n-Diseño cómodo y versátil",
+  "permalink": "https://konamoda.pe/product/paper-bag-jean-lu/",
+  "imagenes": [
+    "01-PAPER-BAG-JEAN-LU.webp",
+    "02-PAPER-BAG-JEAN-LU-3.webp",
+    "03-PAPER-BAG-JEAN-LU-2.webp",
+    "04-PAPER-BAG-JEAN-LU-1.webp",
+    "05-PAPER-BAG-JEAN-TALLAS.webp"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": 12610,
+  "nombre": "Shorts Holiday Moca",
+  "slug": "shorts-holiday-marron",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Shorts"
+  ],
+  "precio_PEN": "129.00",
+  "precio_regular_PEN": "129.00",
+  "precio_oferta_PEN": "129.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tela Plisada, caída con movimiento\n Corte en A le permite dar vuelo y soltura\n Pretina elástico en la parte de atrás\n Aporta elegancia, versátil para todo look",
+  "permalink": "https://konamoda.pe/product/shorts-holiday-marron/",
+  "imagenes": [
+    "01-HM5.png",
+    "02-HMoca3.png",
+    "03-HMoca.png",
+    "04-hm7.png",
+    "05-hm6.png",
+    "06-HM5.png"
+  ]
+}

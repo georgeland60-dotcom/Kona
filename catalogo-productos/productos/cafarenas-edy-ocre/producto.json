@@ -1,0 +1,26 @@
+{
+  "id": 8660,
+  "nombre": "Cafarena Jess Ocre",
+  "slug": "cafarenas-edy-ocre",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cafarenas"
+  ],
+  "precio_PEN": "59.00",
+  "precio_regular_PEN": "59.00",
+  "precio_oferta_PEN": "59.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Cafarena con cuello alto\n-Tela rib ligera y de textura suave\n-Disponible en color ocre",
+  "permalink": "https://konamoda.pe/product/cafarenas-edy-ocre/",
+  "imagenes": [
+    "01-CAFARENA-JESS.webp",
+    "02-CAFARENA-JESS-1.webp"
+  ]
+}

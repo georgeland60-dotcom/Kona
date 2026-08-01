@@ -1,0 +1,29 @@
+{
+  "id": 11731,
+  "nombre": "Strapless Waves Lila",
+  "slug": "strapless-waves-lila",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Ropa de Baño"
+  ],
+  "precio_PEN": "169.00",
+  "precio_regular_PEN": "169.00",
+  "precio_oferta_PEN": "169.00",
+  "en_oferta": false,
+  "tallas": [
+    "L-XL",
+    "S-M"
+  ],
+  "descripcion": "-Ropa de baño dos piezas\n -Licra Stretch, flexible, con diseño de olas\n -Copa Strapless\n -Resistente al cloro",
+  "permalink": "https://konamoda.pe/product/strapless-waves-lila/",
+  "imagenes": [
+    "01-Bstrap1.webp",
+    "02-bstraplila2.webp",
+    "03-bstraplila3.webp",
+    "04-bgrupal5.webp",
+    "05-bstraplila4.webp",
+    "06-telabikini.webp",
+    "07-strapwavestalla-1.webp"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": 9959,
+  "nombre": "Cárdigan Pia Plomo",
+  "slug": "cardigan-pia-plomo",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans"
+  ],
+  "precio_PEN": "85.00",
+  "precio_regular_PEN": "85.00",
+  "precio_oferta_PEN": "85.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela chompero waffle , textura suave y versátil\n-Manga corta con pinzas en las hombros, puños y pretina, da un efecto bombacho\n-Fit con tres botones, hasta la cintura baja",
+  "permalink": "https://konamoda.pe/product/cardigan-pia-plomo/",
+  "imagenes": [
+    "01-CARDIGAN-PIA-PLOMO.webp",
+    "02-CARDIGAN-PIA-PLOMO-1.webp",
+    "03-CARDIGAN-PIA-PLOMO-2.webp",
+    "04-CARDIGAN-PIA-tallas.webp"
+  ]
+}

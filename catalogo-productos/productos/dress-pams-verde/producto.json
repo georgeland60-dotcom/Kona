@@ -1,0 +1,32 @@
+{
+  "id": 11314,
+  "nombre": "Dress Pams Verde pastel",
+  "slug": "dress-pams-verde",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Vestidos"
+  ],
+  "precio_PEN": "115.00",
+  "precio_regular_PEN": "115.00",
+  "precio_oferta_PEN": "115.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "– Tela lino stretch estampada, suave y fresca\n-Manga corta con pliegues y vuelo al final\n-Falda de bobos en dos tiempos.",
+  "permalink": "https://konamoda.pe/product/dress-pams-verde/",
+  "imagenes": [
+    "01-v2.png",
+    "02-v4.png",
+    "03-v1.png",
+    "04-v7.png",
+    "05-v10.png",
+    "06-v8-1.png",
+    "07-tallaspamsdress.png"
+  ]
+}

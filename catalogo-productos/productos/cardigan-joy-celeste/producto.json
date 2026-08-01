@@ -1,0 +1,35 @@
+{
+  "id": 12564,
+  "nombre": "Cárdigan Joy Celeste",
+  "slug": "cardigan-joy-celeste",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "119.00",
+  "precio_regular_PEN": "119.00",
+  "precio_oferta_PEN": "119.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tejido acrílico 100% ultra ligero\n Fresco, no da calor\n Suave y ligeramente elastico\n No rígido, cómodo y fluido\n Ideal para verano y climas cálidos",
+  "permalink": "https://konamoda.pe/product/cardigan-joy-celeste/",
+  "imagenes": [
+    "01-cceleste4.webp",
+    "02-closeupceleste.webp",
+    "03-Joy.webp",
+    "04-cceleste3.webp",
+    "05-cceleste4.webp",
+    "06-closecelsee.webp",
+    "07-joyc6.webp",
+    "08-guiajoy.webp",
+    "09-cceleste2.webp"
+  ]
+}

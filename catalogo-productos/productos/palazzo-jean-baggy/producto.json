@@ -1,0 +1,34 @@
+{
+  "id": 12827,
+  "nombre": "Palazzo Baggy",
+  "slug": "palazzo-jean-baggy",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Full Denim",
+    "Nuevos Ingresos",
+    "Pantalones"
+  ],
+  "precio_PEN": "159.00",
+  "precio_regular_PEN": "159.00",
+  "precio_oferta_PEN": "159.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL",
+    "xxxl"
+  ],
+  "descripcion": "-Tela Denim 70% algodón, tela ligera y rigida\n -Elastico toda la pretina\n -Bolsillos a los costados\n -prenda corte holgado y parejo desde la cadera hasta\n el tobillo",
+  "permalink": "https://konamoda.pe/product/palazzo-jean-baggy/",
+  "imagenes": [
+    "01-deni20.webp",
+    "02-denim21.webp",
+    "03-denim17.webp",
+    "04-denim22.webp",
+    "05-denim23.webp",
+    "06-denim8.webp",
+    "07-denim3.webp"
+  ]
+}

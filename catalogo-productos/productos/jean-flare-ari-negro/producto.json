@@ -1,0 +1,30 @@
+{
+  "id": 10153,
+  "nombre": "Flare Jean Ari negro",
+  "slug": "jean-flare-ari-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Full Denim",
+    "Pantalones"
+  ],
+  "precio_PEN": "155.00",
+  "precio_regular_PEN": "155.00",
+  "precio_oferta_PEN": "155.00",
+  "en_oferta": false,
+  "tallas": [
+    "30",
+    "32",
+    "34",
+    "36",
+    "38",
+    "40"
+  ],
+  "descripcion": "-Tela denim 95% algodón y 5% spandex\n-Bota acampanada\n-Pretina cómoda con un botón\n-Diseño versátil y casual",
+  "permalink": "https://konamoda.pe/product/jean-flare-ari-negro/",
+  "imagenes": [
+    "01-FLARE-JEAN-ARI-NEGRO.webp",
+    "02-FLARE-JEAN-ARI-NEGRO-1.webp",
+    "03-FLARE-JEAN-ARI-TALLAS.webp"
+  ]
+}

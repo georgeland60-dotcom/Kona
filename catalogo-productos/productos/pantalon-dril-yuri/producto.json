@@ -1,0 +1,27 @@
+{
+  "id": 8515,
+  "nombre": "Pantalon Dril Yuri",
+  "slug": "pantalon-dril-yuri",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Pantalones"
+  ],
+  "precio_PEN": "109.00",
+  "precio_regular_PEN": "109.00",
+  "precio_oferta_PEN": "109.00",
+  "en_oferta": false,
+  "tallas": [
+    "28",
+    "30",
+    "32",
+    "34"
+  ],
+  "descripcion": "-Tela dril stretch de alta calidad.\n-Composición 96% algodón y 4% spandex\n-Corte semicintura y entalle alto.\n-Pretina ancha con elástico firme y suave\n-Los Yuri Pants son la comodidad hecha pantalón. Diseñado cuidadosamente para brindar el ajuste perfecto con la mayor comodidad posible.",
+  "permalink": "https://konamoda.pe/product/pantalon-dril-yuri/",
+  "imagenes": [
+    "01-PANTALON-DRIL-YURI.webp",
+    "02-PANTALON-DRIL-YURI-NEGRO.webp",
+    "03-PANTALON-DRIL-YURI-AZUL.webp"
+  ]
+}

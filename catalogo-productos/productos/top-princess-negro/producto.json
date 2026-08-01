@@ -1,0 +1,31 @@
+{
+  "id": 11144,
+  "nombre": "Top Princess Negro",
+  "slug": "top-princess-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos",
+    "Blusas",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "65.00",
+  "precio_regular_PEN": "65.00",
+  "precio_oferta_PEN": "65.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL"
+  ],
+  "descripcion": "-Tela rib con un acabado ligeramente brillante\n -Tela Suave y versátil\n – Diseño estilo corset, manga cero\n – Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
+  "permalink": "https://konamoda.pe/product/top-princess-negro/",
+  "imagenes": [
+    "01-web7-1-top-negro.png",
+    "02-web22-top-negro.png",
+    "03-web8-top-negro.png",
+    "04-web9-top-negro.png",
+    "05-web2-tops-grupal-x.png",
+    "06-tallasprincesstop.png"
+  ]
+}

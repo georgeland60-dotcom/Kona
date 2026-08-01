@@ -1,0 +1,29 @@
+{
+  "id": 9793,
+  "nombre": "Casaca Jean Love Azul",
+  "slug": "casaca-jean-love-azul",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Full Denim"
+  ],
+  "precio_PEN": "159.00",
+  "precio_regular_PEN": "159.00",
+  "precio_oferta_PEN": "159.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "-Tela denim 97% algodón y 3% spandex\n-Mangas globo con pliegues en el puño\n-Fit holgado en el cuerpo con entalle en la pretina",
+  "permalink": "https://konamoda.pe/product/casaca-jean-love-azul/",
+  "imagenes": [
+    "01-CASACA-JEAN-LOVE-AZUL.webp",
+    "02-CASACA-JEAN-LOVE-AZUL-1.webp",
+    "03-CASACA-JEAN-LOVE-AZUL-2.webp",
+    "04-CASACA-LOVE-tallas.webp"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": 9272,
+  "nombre": "Set Lau Rosa",
+  "slug": "set-lau",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Set - Conjuntos"
+  ],
+  "precio_PEN": "139.00",
+  "precio_regular_PEN": "139.00",
+  "precio_oferta_PEN": "139.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela algodón rib\n-Estilo holgado, textura suave\n-Polo con las mangas a la altura del codo con un detalle de ondas al final de la manga\n-Pantalón palazzo con el detalle de ondas en la parte final de la bota\n-Pretina ancha",
+  "permalink": "https://konamoda.pe/product/set-lau/",
+  "imagenes": [
+    "01-SET-LAU-ROSA.webp",
+    "02-SET-LAU-ROSA-1.webp",
+    "03-SET-LAU-ROSA-2.webp",
+    "04-SET-LAU-ROSA-3.webp",
+    "05-SET-LAU-TOP-TALLAS.webp",
+    "06-SET-LAU-PANTALON-TALLAS.webp"
+  ]
+}

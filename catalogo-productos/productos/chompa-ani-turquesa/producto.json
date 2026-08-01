@@ -1,0 +1,23 @@
+{
+  "id": 8683,
+  "nombre": "Chompa Ani Turquesa",
+  "slug": "chompa-ani-turquesa",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Chompas"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "M",
+    "S"
+  ],
+  "descripcion": "-Chompa tejida de hilo de algodón\n-Cuello alto holgado, super cómodo",
+  "permalink": "https://konamoda.pe/product/chompa-ani-turquesa/",
+  "imagenes": [
+    "01-CHOMPA-ANI-TURQUESA.webp"
+  ]
+}

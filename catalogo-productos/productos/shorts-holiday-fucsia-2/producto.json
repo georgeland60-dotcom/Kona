@@ -1,0 +1,32 @@
+{
+  "id": 12489,
+  "nombre": "Shorts Holiday Fucsia",
+  "slug": "shorts-holiday-fucsia-2",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Shorts"
+  ],
+  "precio_PEN": "129.00",
+  "precio_regular_PEN": "129.00",
+  "precio_oferta_PEN": "129.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tela Plisada, caída con movimiento\n Corte en A le permite dar vuelo y soltura\n Pretina elástico en la parte de atrás\n Aporta elegancia, versátil para todo look",
+  "permalink": "https://konamoda.pe/product/shorts-holiday-fucsia-2/",
+  "imagenes": [
+    "01-sh2i.webp",
+    "02-sh2i.webp",
+    "03-crosa2.webp",
+    "04-sh1.webp",
+    "05-sh4.webp",
+    "06-SH2.webp",
+    "07-SHGT.webp"
+  ]
+}

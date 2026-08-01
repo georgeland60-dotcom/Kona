@@ -1,0 +1,27 @@
+{
+  "id": 8259,
+  "nombre": "Blusas de Gasa Tie Dye",
+  "slug": "blusas-de-gasa",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos",
+    "Blusas"
+  ],
+  "precio_PEN": "69.00",
+  "precio_regular_PEN": "69.00",
+  "precio_oferta_PEN": "69.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Blusa de gasa importada\n-Súper suave, estilizada y elegante.\n-Perfecta para un día de oficina o una reunión.",
+  "permalink": "https://konamoda.pe/product/blusas-de-gasa/",
+  "imagenes": [
+    "01-BLUSAS-DE-GASA-TIE-DYE.webp",
+    "02-BLUSAS-DE-GASA-TIE-DYE-1.webp"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": 11007,
+  "nombre": "Palazzo Tefa Lila",
+  "slug": "palazzo-tefa-lila",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Joggers"
+  ],
+  "precio_PEN": "89.00",
+  "precio_regular_PEN": "89.00",
+  "precio_oferta_PEN": "89.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL"
+  ],
+  "descripcion": "-Tela algodón rib\n -Pantalón palazzo con el detalle de ondas y abertura en la parte final de la bota\n -Pretina ancha y firme\n -Fit holgado, textura suave",
+  "permalink": "https://konamoda.pe/product/palazzo-tefa-lila/",
+  "imagenes": [
+    "01-PalazzoTefa4.webp",
+    "02-PalazzoTefa1.webp",
+    "03-PalazzoTefa2.webp",
+    "04-PalazzoTefa5.webp",
+    "05-PretinaPalazzoTefa.webp",
+    "06-PalazzoTefa3.webp",
+    "07-guiapalazzo2.webp"
+  ]
+}

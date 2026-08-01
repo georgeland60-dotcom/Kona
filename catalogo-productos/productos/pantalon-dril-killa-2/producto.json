@@ -1,0 +1,26 @@
+{
+  "id": 8229,
+  "nombre": "Pantalon Dril Killa",
+  "slug": "pantalon-dril-killa-2",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Pantalones"
+  ],
+  "precio_PEN": "109.00",
+  "precio_regular_PEN": "109.00",
+  "precio_oferta_PEN": "109.00",
+  "en_oferta": false,
+  "tallas": [
+    "30",
+    "32",
+    "34"
+  ],
+  "descripcion": "-Tela dril stretch de alta calidad.\n-Composición 96% algodón y 4% spandex\n-Corte semicintura y entalle alto.\n-Pitillo clásico, pretina ancha con tres botones que actúa como fajín.",
+  "permalink": "https://konamoda.pe/product/pantalon-dril-killa-2/",
+  "imagenes": [
+    "01-PANTALON-DRIL-KILLA.webp",
+    "02-PANTALON-DRIL-KILLA-NARANJA.webp",
+    "03-PANTALON-DRIL-KILLA-1.webp"
+  ]
+}

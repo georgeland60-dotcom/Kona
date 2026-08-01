@@ -1,0 +1,31 @@
+{
+  "id": 11034,
+  "nombre": "Palazzo Tefa Beige",
+  "slug": "palazzo-tefa-beige",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Joggers"
+  ],
+  "precio_PEN": "89.00",
+  "precio_regular_PEN": "89.00",
+  "precio_oferta_PEN": "89.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL"
+  ],
+  "descripcion": "-Tela algodón rib\n -Pantalón palazzo con el detalle de ondas y abertura en la parte final de la bota\n -Pretina ancha y firme\n -Fit holgado, textura suave",
+  "permalink": "https://konamoda.pe/product/palazzo-tefa-beige/",
+  "imagenes": [
+    "01-TefaBeige5.webp",
+    "02-TefaBeige1.webp",
+    "03-TefaBeige4.webp",
+    "04-TefaBeige2.webp",
+    "05-TefaBeige3.webp",
+    "06-TefaBeige6.webp",
+    "07-PackPalazzoTefa.webp",
+    "08-guiapalazzo2.webp"
+  ]
+}

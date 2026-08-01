@@ -1,0 +1,32 @@
+{
+  "id": 11788,
+  "nombre": "Shorts Libertad Rosa",
+  "slug": "shorts-libertad-rosa",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Shorts"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "Pretina estilo »Paper Bag» con elástico premium \n Fit holgado sin ser demasiado flojo \n Tela suave para mayor comodidad \n 4 tallas desde la S hasta la XL",
+  "permalink": "https://konamoda.pe/product/shorts-libertad-rosa/",
+  "imagenes": [
+    "01-SL14.webp",
+    "02-SL9.webp",
+    "03-SL6.webp",
+    "04-SL14.webp",
+    "05-SL19.webp",
+    "06-SL18.webp",
+    "07-SLGTalla.webp"
+  ]
+}

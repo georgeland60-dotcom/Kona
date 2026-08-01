@@ -1,0 +1,34 @@
+{
+  "id": 9742,
+  "nombre": "Slouchy Jean Cris Celeste",
+  "slug": "slouchy-jean-cris-2",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Full Denim",
+    "Pantalones"
+  ],
+  "precio_PEN": "149.00",
+  "precio_regular_PEN": "149.00",
+  "precio_oferta_PEN": "149.00",
+  "en_oferta": false,
+  "tallas": [
+    "30",
+    "32",
+    "34",
+    "36",
+    "38",
+    "40"
+  ],
+  "descripcion": "-Tela denim 97% algodón y 3% spandex\n-Elástico en la parte de atrás en la cintura con un botón adelante\n-Pliegue en ambos lados debajo de la pretina y en la parte del tobill\n-Fit Baggy en las piernas",
+  "permalink": "https://konamoda.pe/product/slouchy-jean-cris-2/",
+  "imagenes": [
+    "01-SLOUCHY-JEAN-CRIS-CELESTE.webp",
+    "02-SLOUCHY-JEAN-CRIS-CELESTE-1.webp",
+    "03-SLOUCHY-JEAN-CRIS-CELESTE-4.webp",
+    "04-SLOUCHY-JEAN-CRIS-CELESTE-5.webp",
+    "05-SLOUCHY-JEAN-CRIS-CELESTE-3.webp",
+    "06-SLOUCHY-JEAN-CRIS-CELESTE-2.webp",
+    "07-SLOUCHY-JEAN-CRIS-TALLAS.webp"
+  ]
+}

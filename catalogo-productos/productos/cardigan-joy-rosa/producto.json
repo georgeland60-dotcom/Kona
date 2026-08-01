@@ -1,0 +1,32 @@
+{
+  "id": 12545,
+  "nombre": "Cárdigan Joy Rosa",
+  "slug": "cardigan-joy-rosa",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "119.00",
+  "precio_regular_PEN": "119.00",
+  "precio_oferta_PEN": "119.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tejido acrílico 100% ultra ligero\n Fresco, no da calor\n Suave y ligeramente elastico\n No rígido, cómodo y fluido\n Ideal para verano y climas cálidos",
+  "permalink": "https://konamoda.pe/product/cardigan-joy-rosa/",
+  "imagenes": [
+    "01-crosa3.webp",
+    "02-crosa2.webp",
+    "03-crosa3.webp",
+    "04-crosa1.webp",
+    "05-sh4.webp",
+    "06-guiajoy.webp"
+  ]
+}

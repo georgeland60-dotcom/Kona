@@ -1,0 +1,26 @@
+{
+  "id": 11631,
+  "nombre": "Blush Stick Rubor en barra",
+  "slug": "blush-stick",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Sale"
+  ],
+  "precio_PEN": "53.00",
+  "precio_regular_PEN": "89.00",
+  "precio_oferta_PEN": "53.00",
+  "en_oferta": true,
+  "tallas": [],
+  "descripcion": "-ColorStickPro de Esika en dos Tonos Coral y Rosa\n -12 horas de Duración\n -Textura Ultra Ligera con Vitamina E\n -Facil Difuminación y Glow Natural",
+  "permalink": "https://konamoda.pe/product/blush-stick/",
+  "imagenes": [
+    "01-B3_1.png",
+    "02-B4.png",
+    "03-B6.png",
+    "04-B13.png",
+    "05-B2.png",
+    "06-KS6.png",
+    "07-B3.png"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": 9631,
+  "nombre": "Jogger Kia Beige",
+  "slug": "jogger-kia-beige",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Joggers"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Pantalones de french terry (95% algodón y 5% licra)\n-Tela con reactivo (no destiñe)\n-Textura suave y fresca\n-Pretina cómoda, no ajusta",
+  "permalink": "https://konamoda.pe/product/jogger-kia-beige/",
+  "imagenes": [
+    "01-JOGGER-KIA-BEIGE.webp",
+    "02-JOGGER-KIA-BEIGE-1.webp",
+    "03-JOGGER-KIA-BEIGE-COLORES.webp",
+    "04-JOGGER-KIA-TALLAS.webp"
+  ]
+}

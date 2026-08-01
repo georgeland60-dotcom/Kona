@@ -1,0 +1,30 @@
+{
+  "id": 11140,
+  "nombre": "Top Princess Fuccia",
+  "slug": "top-princess-fuccia",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos",
+    "Blusas",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "65.00",
+  "precio_regular_PEN": "65.00",
+  "precio_oferta_PEN": "65.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "XL"
+  ],
+  "descripcion": "-Tela rib con un acabado ligeramente brillante\n -Tela Suave y versátil\n – Diseño estilo corset, manga cero\n – Cuello cuadrado con esquinas redondeadas (adelante y atrás)",
+  "permalink": "https://konamoda.pe/product/top-princess-fuccia/",
+  "imagenes": [
+    "01-web6-top-fuccia.png",
+    "02-web-top-fuccia.png",
+    "03-web14-top-fuccia.png",
+    "04-web12-top-fuccia.png",
+    "05-tallasprincesstop.png"
+  ]
+}

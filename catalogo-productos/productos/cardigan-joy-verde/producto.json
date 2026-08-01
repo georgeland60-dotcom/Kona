@@ -1,0 +1,33 @@
+{
+  "id": 12571,
+  "nombre": "Cárdigan Joy verde",
+  "slug": "cardigan-joy-verde",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "119.00",
+  "precio_regular_PEN": "119.00",
+  "precio_oferta_PEN": "119.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tejido acrílico 100% ultra ligero\n Fresco, no da calor\n Suave y ligeramente elastico\n No rígido, cómodo y fluido\n Ideal para verano y climas cálidos",
+  "permalink": "https://konamoda.pe/product/cardigan-joy-verde/",
+  "imagenes": [
+    "01-cverde2.webp",
+    "02-cverde2.webp",
+    "03-cverde4.webp",
+    "04-guiajoy.webp",
+    "05-cverde3.webp",
+    "06-joyv3.webp",
+    "07-Joy.webp"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": 9623,
+  "nombre": "Jogger Kia Lila",
+  "slug": "jogger-kia-lila",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Joggers"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Pantalones de french terry (95% algodón y 5% licra)\n-Tela con reactivo (no destiñe)\n-Textura suave y fresca\n-Pretina cómoda, no ajusta",
+  "permalink": "https://konamoda.pe/product/jogger-kia-lila/",
+  "imagenes": [
+    "01-JOGGER-KIA-LILA.webp",
+    "02-JOGGER-KIA-LILA-1.webp",
+    "03-JOGGER-KIA-LILA-2.webp",
+    "04-JOGGER-KIA-TALLAS-1.webp"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": 12683,
+  "nombre": "Cárdigan Cloud Verde",
+  "slug": "cardigan-cloud-verde",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Cardigans",
+    "Nuevos Ingresos"
+  ],
+  "precio_PEN": "119.00",
+  "precio_regular_PEN": "119.00",
+  "precio_oferta_PEN": "119.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL",
+    "XXL"
+  ],
+  "descripcion": "Tejido punto intermedio \n Detalle de ondas en todos los bordes \n Fresco, no da calor \n Suave, ligeramente elástico \n Cómodo y fluido \n Tiene botones lo puedes usar abierto o cerrado",
+  "permalink": "https://konamoda.pe/product/cardigan-cloud-verde/",
+  "imagenes": [
+    "01-Artboard-64_5.webp",
+    "02-tallascloud.webp",
+    "03-SL4.webp",
+    "04-SL8.webp",
+    "05-Artboard-64_5.webp"
+  ]
+}

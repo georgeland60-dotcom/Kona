@@ -1,0 +1,29 @@
+{
+  "id": 9828,
+  "nombre": "Chaleco Yess Perla",
+  "slug": "chaleco-yess",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Chalecos"
+  ],
+  "precio_PEN": "99.00",
+  "precio_regular_PEN": "99.00",
+  "precio_oferta_PEN": "99.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Tela rib stretch tejido con diseño\n-Manga acero\n-Fit largo con dos botones pequeños",
+  "permalink": "https://konamoda.pe/product/chaleco-yess/",
+  "imagenes": [
+    "01-CHALECO-YESS-PERLA.webp",
+    "02-CHALECO-YESS-PERLA-1.webp",
+    "03-CHALECO-YESS-PERLA-2.webp",
+    "04-CHALECO-YESS-PERLA-3.webp",
+    "05-CHALECO-YESS-TALLAS.webp"
+  ]
+}

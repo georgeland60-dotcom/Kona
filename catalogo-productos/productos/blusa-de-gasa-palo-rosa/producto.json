@@ -1,0 +1,27 @@
+{
+  "id": 8651,
+  "nombre": "Blusa de Gasa Palo Rosa",
+  "slug": "blusa-de-gasa-palo-rosa",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Basicos",
+    "Blusas"
+  ],
+  "precio_PEN": "69.00",
+  "precio_regular_PEN": "69.00",
+  "precio_oferta_PEN": "69.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "-Blusa de gasa importada\n-Súper suave, estilizada y elegante.\n-Perfecta para un día de oficina o una reunión.\n-Disponible en Tie dye, palo rosa y negro",
+  "permalink": "https://konamoda.pe/product/blusa-de-gasa-palo-rosa/",
+  "imagenes": [
+    "01-BLUSA-DE-GASA-PALO-ROSA.webp",
+    "02-BLUSA-DE-GASA-PALO-ROSA-1.webp"
+  ]
+}

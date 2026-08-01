@@ -1,0 +1,30 @@
+{
+  "id": 11793,
+  "nombre": "Shorts Libertad Negro",
+  "slug": "shorts-libertad-negro",
+  "sku": "",
+  "tipo": "variable",
+  "categorias": [
+    "Nuevos Ingresos",
+    "Shorts"
+  ],
+  "precio_PEN": "79.00",
+  "precio_regular_PEN": "79.00",
+  "precio_oferta_PEN": "79.00",
+  "en_oferta": false,
+  "tallas": [
+    "L",
+    "M",
+    "S",
+    "XL"
+  ],
+  "descripcion": "Pretina estilo »Paper Bag» con elástico premium \n Fit holgado sin ser demasiado flojo \n Tela suave para mayor comodidad \n 4 tallas desde la S hasta la XL",
+  "permalink": "https://konamoda.pe/product/shorts-libertad-negro/",
+  "imagenes": [
+    "01-SL11.webp",
+    "02-SLGTalla.webp",
+    "03-SL13.webp",
+    "04-SL5.webp",
+    "05-SL4.webp"
+  ]
+}
