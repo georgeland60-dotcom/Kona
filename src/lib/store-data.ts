@@ -1,84 +1,112 @@
 // =============================================================
-//  CAPA DE DATOS DE LA TIENDA
-//  Guarda los productos, tallas, SKU y stock en un archivo JSON
-//  (data/store.json). No usa base de datos externa: así funciona
-//  en cualquier PC sin instalar nada. El día que publiquemos la
-//  tienda, solo se cambia este archivo por una base real.
-//
-//  La PRIMERA vez se crea solo, copiando los productos de
-//  data/products.ts (la "semilla") y generando SKU + stock.
+//  CAPA DE DATOS DE LA TIENDA (productos, tallas, SKU y stock)
+//  Ahora usa SQLite (ver src/lib/db.ts) en vez de un archivo JSON.
+//  Las funciones exportadas mantienen la MISMA forma que antes, así
+//  el resto de la tienda (páginas y panel) no necesita cambios.
 // =============================================================
 
-import { promises as fs } from "fs";
-import path from "path";
-import { products as seedProducts } from "@/data/products";
-import type { Product, SeedProduct, Variant } from "@/lib/types";
+import type { Product, Variant } from "@/lib/types";
 import { applyDiscounts, getLiveRules, withDiscount } from "@/lib/promos-data";
+import { getDb, getMeta, setMeta, skuFor } from "@/lib/db";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const STORE_FILE = path.join(DATA_DIR, "store.json");
+// Re-exportamos skuFor para no romper a quien lo importaba desde aquí.
+export { skuFor };
 
 type StoreData = {
   products: Product[];
   updatedAt: string;
 };
 
-// ---- Helpers de SKU --------------------------------------------------
+// ---- Filas de la base -> objetos Product ----------------------------
 
-// Convierte texto a mayúsculas sin acentos ni símbolos raros.
-function slugUpper(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // quita acentos
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+type ProductRow = {
+  id: string;
+  ord: number;
+  slug: string;
+  name: string;
+  price: number;
+  category: string;
+  image: string | null;
+  images: string | null;
+  description: string | null;
+  featured: number;
+  collections: string | null;
+  onSale: number;
+  oldPrice: number | null;
+  active: number;
+};
 
-// Genera un SKU legible: KONA-<SLUG>-<TALLA>
-export function skuFor(slug: string, size: string): string {
-  return `KONA-${slugUpper(slug)}-${slugUpper(size)}`;
-}
+type VariantRow = {
+  sku: string;
+  product_id: string;
+  ord: number;
+  size: string;
+  stock: number;
+};
 
-// Convierte un producto "semilla" (con sizes) a Product (con variants).
-function seedToProduct(seed: SeedProduct): Product {
-  const sizes = seed.sizes && seed.sizes.length > 0 ? seed.sizes : ["Única"];
-  const stock = seed.stock ?? 10;
-  const variants: Variant[] = sizes.map((size) => ({
-    size,
-    sku: skuFor(seed.slug, size),
-    stock,
-  }));
-  const { sizes: _omit, stock: _omit2, ...rest } = seed;
-  return { ...rest, variants, active: rest.active ?? true };
-}
-
-// ---- Lectura / escritura del archivo --------------------------------
-
-async function ensureSeed(): Promise<StoreData> {
-  const data: StoreData = {
-    products: seedProducts.map(seedToProduct),
-    updatedAt: new Date().toISOString(),
+function rowToProduct(row: ProductRow, variants: Variant[]): Product {
+  const product: Product = {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    price: row.price,
+    category: row.category,
+    variants,
+    active: row.active === 1,
   };
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(STORE_FILE, JSON.stringify(data, null, 2), "utf8");
-  return data;
+  if (row.image) product.image = row.image;
+  if (row.images) product.images = JSON.parse(row.images) as string[];
+  if (row.description) product.description = row.description;
+  if (row.featured === 1) product.featured = true;
+  if (row.collections)
+    product.collections = JSON.parse(row.collections) as string[];
+  if (row.onSale === 1) product.onSale = true;
+  if (row.oldPrice != null) product.oldPrice = row.oldPrice;
+  return product;
 }
+
+// Carga todos los productos (con sus variantes) ordenados como la semilla.
+function loadAllProducts(): Product[] {
+  const db = getDb();
+  const prows = db
+    .prepare("SELECT * FROM products ORDER BY ord, id")
+    .all() as ProductRow[];
+  const vrows = db
+    .prepare("SELECT * FROM variants ORDER BY product_id, ord")
+    .all() as VariantRow[];
+
+  const byProduct = new Map<string, Variant[]>();
+  for (const v of vrows) {
+    const list = byProduct.get(v.product_id) ?? [];
+    list.push({ size: v.size, sku: v.sku, stock: v.stock });
+    byProduct.set(v.product_id, list);
+  }
+  return prows.map((r) => rowToProduct(r, byProduct.get(r.id) ?? []));
+}
+
+function loadProductBy(field: "slug" | "id", value: string): Product | undefined {
+  const db = getDb();
+  const prow = db
+    .prepare(`SELECT * FROM products WHERE ${field} = ?`)
+    .get(value) as ProductRow | undefined;
+  if (!prow) return undefined;
+  const vrows = db
+    .prepare("SELECT * FROM variants WHERE product_id = ? ORDER BY ord")
+    .all(prow.id) as VariantRow[];
+  const variants = vrows.map((v) => ({ size: v.size, sku: v.sku, stock: v.stock }));
+  return rowToProduct(prow, variants);
+}
+
+// ---- Compatibilidad: readStore --------------------------------------
 
 export async function readStore(): Promise<StoreData> {
-  try {
-    const raw = await fs.readFile(STORE_FILE, "utf8");
-    return JSON.parse(raw) as StoreData;
-  } catch {
-    // Si no existe (o está corrupto), lo creamos desde la semilla.
-    return ensureSeed();
-  }
+  const products = loadAllProducts();
+  const updatedAt = getMeta(getDb(), "store_updatedAt") ?? new Date().toISOString();
+  return { products, updatedAt };
 }
 
-async function writeStore(data: StoreData): Promise<void> {
-  data.updatedAt = new Date().toISOString();
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(STORE_FILE, JSON.stringify(data, null, 2), "utf8");
+function touchStore(): void {
+  setMeta(getDb(), "store_updatedAt", new Date().toISOString());
 }
 
 // ---- Lectura de productos -------------------------------------------
@@ -90,10 +118,10 @@ export async function getProducts(opts?: {
   includeInactive?: boolean;
   raw?: boolean;
 }): Promise<Product[]> {
-  const { products } = await readStore();
+  const all = loadAllProducts();
   const list = opts?.includeInactive
-    ? products
-    : products.filter((p) => p.active !== false);
+    ? all
+    : all.filter((p) => p.active !== false);
   if (opts?.raw) return list;
   return applyDiscounts(list);
 }
@@ -102,8 +130,7 @@ export async function getProductBySlug(
   slug: string,
   opts?: { raw?: boolean }
 ): Promise<Product | undefined> {
-  const { products } = await readStore();
-  const product = products.find((p) => p.slug === slug);
+  const product = loadProductBy("slug", slug);
   if (!product || opts?.raw) return product;
   return withDiscount(product, await getLiveRules());
 }
@@ -112,8 +139,7 @@ export async function getProductById(
   id: string,
   opts?: { raw?: boolean }
 ): Promise<Product | undefined> {
-  const { products } = await readStore();
-  const product = products.find((p) => p.id === id);
+  const product = loadProductBy("id", id);
   if (!product || opts?.raw) return product;
   return withDiscount(product, await getLiveRules());
 }
@@ -122,28 +148,86 @@ export async function getProductById(
 
 // Crea o actualiza un producto (según si el id ya existe).
 export async function upsertProduct(product: Product): Promise<Product> {
-  const data = await readStore();
-  const idx = data.products.findIndex((p) => p.id === product.id);
-  if (idx >= 0) {
-    data.products[idx] = product;
-  } else {
-    data.products.push(product);
-  }
-  await writeStore(data);
+  const db = getDb();
+
+  const existing = db
+    .prepare("SELECT ord FROM products WHERE id = ?")
+    .get(product.id) as { ord: number } | undefined;
+
+  const ord =
+    existing?.ord ??
+    ((
+      db.prepare("SELECT COALESCE(MAX(ord), -1) + 1 AS next FROM products").get() as {
+        next: number;
+      }
+    ).next);
+
+  const upsert = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO products
+        (id, ord, slug, name, price, category, image, images, description,
+         featured, collections, onSale, oldPrice, active)
+       VALUES
+        (@id, @ord, @slug, @name, @price, @category, @image, @images, @description,
+         @featured, @collections, @onSale, @oldPrice, @active)
+       ON CONFLICT(id) DO UPDATE SET
+         slug=excluded.slug, name=excluded.name, price=excluded.price,
+         category=excluded.category, image=excluded.image, images=excluded.images,
+         description=excluded.description, featured=excluded.featured,
+         collections=excluded.collections, onSale=excluded.onSale,
+         oldPrice=excluded.oldPrice, active=excluded.active`
+    ).run({
+      id: product.id,
+      ord,
+      slug: product.slug,
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      image: product.image ?? null,
+      images: product.images ? JSON.stringify(product.images) : null,
+      description: product.description ?? null,
+      featured: product.featured ? 1 : 0,
+      collections: product.collections ? JSON.stringify(product.collections) : null,
+      onSale: product.onSale ? 1 : 0,
+      oldPrice: product.oldPrice ?? null,
+      active: product.active === false ? 0 : 1,
+    });
+
+    // Reemplazamos las variantes por las nuevas (conservando el stock que
+    // venga en el objeto). Borramos e insertamos dentro de la transacción.
+    db.prepare("DELETE FROM variants WHERE product_id = ?").run(product.id);
+    const insVariant = db.prepare(
+      `INSERT INTO variants (sku, product_id, ord, size, stock)
+       VALUES (@sku, @product_id, @ord, @size, @stock)`
+    );
+    product.variants.forEach((v, i) => {
+      insVariant.run({
+        sku: v.sku,
+        product_id: product.id,
+        ord: i,
+        size: v.size,
+        stock: Math.max(0, Math.floor(v.stock)),
+      });
+    });
+    touchStore();
+  });
+  upsert();
+
   return product;
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  const data = await readStore();
-  data.products = data.products.filter((p) => p.id !== id);
-  await writeStore(data);
+  const db = getDb();
+  db.prepare("DELETE FROM products WHERE id = ?").run(id); // variantes: ON DELETE CASCADE
+  touchStore();
 }
 
 // Devuelve un id nuevo (el mayor numérico + 1).
 export async function nextProductId(): Promise<string> {
-  const { products } = await readStore();
-  const max = products.reduce((m, p) => {
-    const n = parseInt(p.id, 10);
+  const db = getDb();
+  const rows = db.prepare("SELECT id FROM products").all() as { id: string }[];
+  const max = rows.reduce((m, r) => {
+    const n = parseInt(r.id, 10);
     return Number.isFinite(n) && n > m ? n : m;
   }, 0);
   return String(max + 1);
@@ -151,19 +235,18 @@ export async function nextProductId(): Promise<string> {
 
 // ---- Inventario / stock ---------------------------------------------
 
-// Ajusta el stock de una variante (delta puede ser negativo).
+// Ajusta el stock de una variante (delta puede ser negativo). Atómico:
+// una sola instrucción SQL, no puede "chocar" con otra compra.
 export async function adjustStock(
   productId: string,
   sku: string,
   delta: number
 ): Promise<void> {
-  const data = await readStore();
-  const product = data.products.find((p) => p.id === productId);
-  const variant = product?.variants.find((v) => v.sku === sku);
-  if (variant) {
-    variant.stock = Math.max(0, variant.stock + delta);
-    await writeStore(data);
-  }
+  const db = getDb();
+  db.prepare(
+    "UPDATE variants SET stock = MAX(0, stock + ?) WHERE sku = ? AND product_id = ?"
+  ).run(delta, sku, productId);
+  touchStore();
 }
 
 // Fija el stock de una variante a un valor exacto.
@@ -172,13 +255,11 @@ export async function setStock(
   sku: string,
   value: number
 ): Promise<void> {
-  const data = await readStore();
-  const product = data.products.find((p) => p.id === productId);
-  const variant = product?.variants.find((v) => v.sku === sku);
-  if (variant) {
-    variant.stock = Math.max(0, Math.floor(value));
-    await writeStore(data);
-  }
+  const db = getDb();
+  db.prepare(
+    "UPDATE variants SET stock = MAX(0, ?) WHERE sku = ? AND product_id = ?"
+  ).run(Math.floor(value), sku, productId);
+  touchStore();
 }
 
 // Lista plana de todas las variantes (para la tabla de inventario).
@@ -193,20 +274,15 @@ export type InventoryRow = {
 };
 
 export async function getInventory(): Promise<InventoryRow[]> {
-  const { products } = await readStore();
-  const rows: InventoryRow[] = [];
-  for (const p of products) {
-    for (const v of p.variants) {
-      rows.push({
-        productId: p.id,
-        productName: p.name,
-        slug: p.slug,
-        size: v.size,
-        sku: v.sku,
-        stock: v.stock,
-        active: p.active !== false,
-      });
-    }
-  }
-  return rows;
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT p.id AS productId, p.name AS productName, p.slug AS slug,
+              v.size AS size, v.sku AS sku, v.stock AS stock, p.active AS active
+       FROM variants v
+       JOIN products p ON p.id = v.product_id
+       ORDER BY p.ord, p.id, v.ord`
+    )
+    .all() as (Omit<InventoryRow, "active"> & { active: number })[];
+  return rows.map((r) => ({ ...r, active: r.active === 1 }));
 }

@@ -1,14 +1,12 @@
 // =============================================================
 //  MÉTRICAS DE VISITAS / VISTAS
 //  Cuenta cuántas veces se ve cada producto y cuántas visitas
-//  recibe la tienda. Se guarda en data/metrics.json.
+//  recibe la tienda. Ahora se guarda en SQLite (ver src/lib/db.ts):
+//   - visitas totales -> tabla meta (clave "visits")
+//   - vistas por producto -> tabla product_views
 // =============================================================
 
-import { promises as fs } from "fs";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const METRICS_FILE = path.join(DATA_DIR, "metrics.json");
+import { getDb, getMeta, setMeta } from "@/lib/db";
 
 export type Metrics = {
   visits: number; // visitas a la tienda (home)
@@ -16,40 +14,43 @@ export type Metrics = {
   updatedAt: string;
 };
 
-async function readMetrics(): Promise<Metrics> {
-  try {
-    const raw = await fs.readFile(METRICS_FILE, "utf8");
-    return JSON.parse(raw) as Metrics;
-  } catch {
-    return { visits: 0, productViews: {}, updatedAt: new Date().toISOString() };
-  }
-}
-
-async function writeMetrics(m: Metrics): Promise<void> {
-  m.updatedAt = new Date().toISOString();
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(METRICS_FILE, JSON.stringify(m, null, 2), "utf8");
+function touch(): void {
+  setMeta(getDb(), "metrics_updatedAt", new Date().toISOString());
 }
 
 export async function recordProductView(productId: string): Promise<void> {
   if (!productId) return;
-  const m = await readMetrics();
-  m.productViews[productId] = (m.productViews[productId] || 0) + 1;
-  await writeMetrics(m);
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO product_views (product_id, views) VALUES (?, 1)
+     ON CONFLICT(product_id) DO UPDATE SET views = views + 1`
+  ).run(productId);
+  touch();
 }
 
 export async function recordVisit(): Promise<void> {
-  const m = await readMetrics();
-  m.visits += 1;
-  await writeMetrics(m);
+  const db = getDb();
+  const current = Number(getMeta(db, "visits") ?? "0");
+  setMeta(db, "visits", String(current + 1));
+  touch();
 }
 
 export async function getMetrics(): Promise<Metrics> {
-  return readMetrics();
+  const db = getDb();
+  const visits = Number(getMeta(db, "visits") ?? "0");
+  const rows = db
+    .prepare("SELECT product_id, views FROM product_views")
+    .all() as { product_id: string; views: number }[];
+  const productViews: Record<string, number> = {};
+  for (const r of rows) productViews[r.product_id] = r.views;
+  const updatedAt = getMeta(db, "metrics_updatedAt") ?? new Date().toISOString();
+  return { visits, productViews, updatedAt };
 }
 
 // Total de vistas de producto (suma de todas).
 export async function getTotalProductViews(): Promise<number> {
-  const m = await readMetrics();
-  return Object.values(m.productViews).reduce((s, n) => s + n, 0);
+  const row = getDb()
+    .prepare("SELECT COALESCE(SUM(views), 0) AS total FROM product_views")
+    .get() as { total: number };
+  return row.total;
 }
