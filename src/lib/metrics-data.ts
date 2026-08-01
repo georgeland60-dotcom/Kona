@@ -27,8 +27,12 @@ async function readMetrics(): Promise<Metrics> {
 
 async function writeMetrics(m: Metrics): Promise<void> {
   m.updatedAt = new Date().toISOString();
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(METRICS_FILE, JSON.stringify(m, null, 2), "utf8");
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(METRICS_FILE, JSON.stringify(m, null, 2), "utf8");
+  } catch {
+    // Filesystem de solo lectura (Vercel): las métricas no se persisten.
+  }
 }
 
 export async function recordProductView(productId: string): Promise<void> {

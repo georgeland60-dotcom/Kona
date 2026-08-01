@@ -21,17 +21,17 @@ export default function HeroSlider({ banners }: { banners: Banner[] }) {
 
   return (
     <section className="relative overflow-hidden bg-soft">
-      <div className="relative">
+      <div className="relative min-h-[26rem] md:min-h-[32rem]">
         {banners.map((b, idx) => (
           <div
             key={b.id}
-            className={`transition-opacity duration-700 ${
+            className={`absolute inset-0 transition-opacity duration-700 ${
               idx === i
                 ? "opacity-100"
-                : "opacity-0 pointer-events-none absolute inset-0"
+                : "opacity-0 pointer-events-none"
             }`}
           >
-            <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 items-center gap-8 min-h-[26rem] md:min-h-[32rem]">
+            <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 items-center gap-8 h-full min-h-[26rem] md:min-h-[32rem]">
               {/* Texto */}
               <div className="order-2 md:order-1 text-center md:text-left py-8 md:py-0">
                 <p className="uppercase tracking-[0.3em] text-xs text-accent mb-3">

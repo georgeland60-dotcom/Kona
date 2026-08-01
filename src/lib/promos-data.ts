@@ -23,8 +23,11 @@ type PromosData = {
 
 // ---- Lectura / escritura --------------------------------------------
 
-async function ensureSeed(): Promise<PromosData> {
-  const data: PromosData = {
+// Datos "en fábrica" desde la semilla (banners.ts). Se usan cuando aún no
+// existe data/promos.json, SIN escribir a disco (para no fallar en Vercel,
+// cuyo filesystem es de solo lectura).
+function seedData(): PromosData {
+  return {
     banners: seedBanners.map((b, i) => ({
       id: `BAN-${i + 1}`,
       eyebrow: b.eyebrow,
@@ -38,9 +41,6 @@ async function ensureSeed(): Promise<PromosData> {
     rules: [],
     updatedAt: new Date().toISOString(),
   };
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(PROMOS_FILE, JSON.stringify(data, null, 2), "utf8");
-  return data;
 }
 
 async function readPromos(): Promise<PromosData> {
@@ -53,14 +53,20 @@ async function readPromos(): Promise<PromosData> {
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
     };
   } catch {
-    return ensureSeed();
+    // No existe: devolvemos la semilla sin escribir (compatible con Vercel).
+    return seedData();
   }
 }
 
 async function writePromos(data: PromosData): Promise<void> {
   data.updatedAt = new Date().toISOString();
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(PROMOS_FILE, JSON.stringify(data, null, 2), "utf8");
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(PROMOS_FILE, JSON.stringify(data, null, 2), "utf8");
+  } catch {
+    // Filesystem de solo lectura (Vercel serverless): los cambios del panel
+    // no se persisten. La tienda sigue funcionando en modo lectura.
+  }
 }
 
 // ---- BANNERS ---------------------------------------------------------

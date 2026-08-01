@@ -28,8 +28,13 @@ async function readOrders(): Promise<OrdersData> {
 }
 
 async function writeOrders(data: OrdersData): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(ORDERS_FILE, JSON.stringify(data, null, 2), "utf8");
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(ORDERS_FILE, JSON.stringify(data, null, 2), "utf8");
+  } catch {
+    // Filesystem de solo lectura (Vercel): no se persiste. Para pedidos
+    // reales en producción se debería usar una base de datos.
+  }
 }
 
 function makeId(seq: number): string {

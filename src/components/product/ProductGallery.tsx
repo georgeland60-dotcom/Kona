@@ -25,7 +25,7 @@ export default function ProductGallery({
     <div className="flex gap-3">
       {/* Miniaturas */}
       {gallery.length > 1 && (
-        <div className="flex flex-col gap-3 w-16 md:w-20 shrink-0">
+        <div className="flex flex-col gap-3 w-16 md:w-20 shrink-0 max-h-[640px] overflow-y-auto pr-1">
           {gallery.map((src, i) => (
             <button
               key={src}
@@ -42,13 +42,13 @@ export default function ProductGallery({
         </div>
       )}
 
-      {/* Imagen principal */}
-      <div className="flex-1 aspect-[3/4] placeholder-box rounded-xl overflow-hidden">
+      {/* Imagen principal (proporción natural, sin recorte) */}
+      <div className="flex-1 placeholder-box rounded-xl overflow-hidden self-start">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={gallery[active]}
           alt={name}
-          className="w-full h-full object-cover"
+          className="w-full h-auto object-contain"
         />
       </div>
     </div>
