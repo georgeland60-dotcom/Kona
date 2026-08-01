@@ -55,14 +55,14 @@ function seedToProduct(seed: SeedProduct): Product {
 
 // ---- Lectura / escritura del archivo --------------------------------
 
-async function ensureSeed(): Promise<StoreData> {
-  const data: StoreData = {
+// Datos "en fábrica" a partir de la semilla (data/products.ts). Se usan
+// cuando aún no existe data/store.json (p.ej. en producción/Vercel, cuyo
+// filesystem es de solo lectura y no se puede sembrar en disco).
+function seedData(): StoreData {
+  return {
     products: seedProducts.map(seedToProduct),
     updatedAt: new Date().toISOString(),
   };
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(STORE_FILE, JSON.stringify(data, null, 2), "utf8");
-  return data;
 }
 
 export async function readStore(): Promise<StoreData> {
@@ -70,15 +70,22 @@ export async function readStore(): Promise<StoreData> {
     const raw = await fs.readFile(STORE_FILE, "utf8");
     return JSON.parse(raw) as StoreData;
   } catch {
-    // Si no existe (o está corrupto), lo creamos desde la semilla.
-    return ensureSeed();
+    // No existe (o está corrupto): devolvemos la semilla SIN escribir a
+    // disco, para no fallar en entornos de solo lectura (Vercel).
+    return seedData();
   }
 }
 
 async function writeStore(data: StoreData): Promise<void> {
   data.updatedAt = new Date().toISOString();
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(STORE_FILE, JSON.stringify(data, null, 2), "utf8");
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(STORE_FILE, JSON.stringify(data, null, 2), "utf8");
+  } catch {
+    // Filesystem de solo lectura (p.ej. Vercel serverless): las ediciones
+    // del panel no se persisten aquí. La tienda sigue funcionando en modo
+    // lectura desde la semilla. Para persistir en producción se usaría una BD.
+  }
 }
 
 // ---- Lectura de productos -------------------------------------------

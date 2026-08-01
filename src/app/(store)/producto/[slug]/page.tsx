@@ -4,8 +4,18 @@ import { getProducts, getProductBySlug } from "@/lib/store-data";
 import { categories } from "@/data/categories";
 import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/product/AddToCartButton";
+import ProductGallery from "@/components/product/ProductGallery";
 import ProductGrid from "@/components/product/ProductGrid";
 import TrackView from "@/components/TrackView";
+
+// Separa la descripción en viñetas (los textos vienen con guiones "-" como
+// puntos). Si no hay guiones, devuelve un solo bloque.
+function toBullets(desc: string): string[] {
+  return desc
+    .split(/(?:^|\s)[-–•]\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 // Genera las paginas de cada producto de antemano (mas rapido)
 export async function generateStaticParams() {
@@ -44,23 +54,17 @@ export default async function ProductPage({
       </nav>
 
       <div className="grid md:grid-cols-2 gap-10">
-        {/* Foto */}
-        <div className="aspect-[3/4] placeholder-box rounded-xl overflow-hidden">
-          {product.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.image}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center p-6 text-center">
-              <span className="font-script text-4xl text-accent/70">
-                {product.name}
-              </span>
-            </div>
-          )}
-        </div>
+        {/* Galería de fotos */}
+        <ProductGallery
+          images={
+            product.images && product.images.length > 0
+              ? product.images
+              : product.image
+              ? [product.image]
+              : []
+          }
+          name={product.name}
+        />
 
         {/* Info */}
         <div>
@@ -83,11 +87,21 @@ export default async function ProductPage({
             )}
           </div>
 
-          {product.description && (
-            <p className="text-muted leading-relaxed mb-8">
-              {product.description}
-            </p>
-          )}
+          {product.description &&
+            (() => {
+              const bullets = toBullets(product.description);
+              return bullets.length > 1 ? (
+                <ul className="text-muted leading-relaxed mb-8 space-y-1.5 list-disc pl-5">
+                  {bullets.map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted leading-relaxed mb-8">
+                  {product.description}
+                </p>
+              );
+            })()}
 
           <AddToCartButton product={product} />
 
