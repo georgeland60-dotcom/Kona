@@ -71,6 +71,11 @@ export async function POST(req: Request) {
           pending: `${site}/pago/pendiente`,
         },
         auto_return: "approved",
+        // Webhook (fuente de verdad del pago). Mercado Pago exige una URL
+        // pública HTTPS, así que solo la enviamos en producción.
+        ...(site.startsWith("https://")
+          ? { notification_url: `${site}/api/orders/webhook` }
+          : {}),
       },
     });
 
