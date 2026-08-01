@@ -21,10 +21,7 @@ export default async function Home() {
     <div className="bg-background">
       <TrackView type="visit" />
 
-      {/* HERO SLIDER (banner Ropa de baño) */}
-      <HeroSlider banners={banners} />
-
-      {/* MARQUESINA (estilo v2) */}
+      {/* MARQUESINA (estilo v2) — justo debajo del menú, encima del banner */}
       <div className="bg-black text-white py-4 overflow-hidden whitespace-nowrap">
         <div className="inline-flex animate-marquee">
           {[0, 1].map((k) => (
@@ -47,6 +44,9 @@ export default async function Home() {
           ))}
         </div>
       </div>
+
+      {/* HERO SLIDER (banner Ropa de baño) */}
+      <HeroSlider banners={banners} />
 
       {/* GRILLA EDITORIAL "LO QUE AMAMOS" (estilo v2) */}
       <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
