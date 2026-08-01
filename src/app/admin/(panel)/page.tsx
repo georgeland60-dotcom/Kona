@@ -2,14 +2,19 @@ import Link from "next/link";
 import { getProducts, getInventory } from "@/lib/store-data";
 import {
   getSalesSummary,
+  getSalesByDay,
   getTopProducts,
   getOrders,
 } from "@/lib/orders-data";
 import { getTotalProductViews } from "@/lib/metrics-data";
 import { totalStock } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
+import AutoRefresh from "@/components/admin/AutoRefresh";
 
 const LOW_STOCK = 3;
+
+// El panel muestra siempre datos frescos (se re-renderiza en cada petición).
+export const dynamic = "force-dynamic";
 
 function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-PE", {
@@ -18,24 +23,65 @@ function fecha(iso: string) {
   });
 }
 
-export default async function DashboardPage() {
-  const [products, inventory, sales, top, recientes, vistas] = await Promise.all([
-    getProducts({ includeInactive: true, raw: true }),
-    getInventory(),
-    getSalesSummary(),
-    getTopProducts(5),
-    getOrders(),
-    getTotalProductViews(),
-  ]);
+// Rangos de fecha para los filtros del dashboard.
+const RANGOS = [
+  { key: "hoy", label: "Hoy" },
+  { key: "7d", label: "7 días" },
+  { key: "30d", label: "30 días" },
+  { key: "todo", label: "Todo" },
+] as const;
+
+function sinceFor(range: string | undefined): { since?: string; label: string } {
+  const now = new Date();
+  if (range === "hoy") {
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    return { since: d.toISOString(), label: "hoy" };
+  }
+  if (range === "7d") {
+    const d = new Date(now);
+    d.setDate(now.getDate() - 7);
+    return { since: d.toISOString(), label: "últimos 7 días" };
+  }
+  if (range === "30d") {
+    const d = new Date(now);
+    d.setDate(now.getDate() - 30);
+    return { since: d.toISOString(), label: "últimos 30 días" };
+  }
+  return { label: "desde el inicio" };
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range } = await searchParams;
+  const { since, label: rangeLabel } = sinceFor(range);
+
+  const [products, inventory, sales, serie, top, recientes, vistas] =
+    await Promise.all([
+      getProducts({ includeInactive: true, raw: true }),
+      getInventory(),
+      getSalesSummary({ since }),
+      getSalesByDay(14),
+      getTopProducts(5),
+      getOrders(),
+      getTotalProductViews(),
+    ]);
 
   const bajos = inventory.filter((r) => r.stock > 0 && r.stock <= LOW_STOCK);
   const ultimosPedidos = recientes.slice(0, 5);
+  const maxSerie = Math.max(1, ...serie.map((d) => d.ingresos));
 
   const kpis = [
     {
       label: "Ingresos (pagados)",
       value: formatPrice(sales.ingresos),
-      sub: `${formatPrice(sales.ingresosMes)} este mes`,
+      sub:
+        range && range !== "todo"
+          ? rangeLabel
+          : `${formatPrice(sales.ingresosMes)} este mes`,
     },
     {
       label: "Ventas",
@@ -56,8 +102,46 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-1">Hola 👋</h1>
-      <p className="text-muted mb-8">Resumen de tu tienda Kona.</p>
+      <div className="flex items-start justify-between mb-1">
+        <h1 className="text-2xl font-semibold">Hola 👋</h1>
+        <AutoRefresh seconds={25} />
+      </div>
+      <p className="text-muted mb-6">Resumen de tu tienda Kona.</p>
+
+      {/* Aviso de pedidos pendientes por cobrar */}
+      {sales.pendientes > 0 && (
+        <Link
+          href="/admin/pedidos?estado=pendiente"
+          className="flex items-center justify-between bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-5 py-3 mb-6 hover:bg-amber-100 transition"
+        >
+          <span className="text-sm font-medium">
+            🔔 Tienes {sales.pendientes} pedido
+            {sales.pendientes === 1 ? "" : "s"} pendiente
+            {sales.pendientes === 1 ? "" : "s"} por cobrar
+          </span>
+          <span className="text-xs underline">Ver pedidos →</span>
+        </Link>
+      )}
+
+      {/* Filtro por rango de fecha */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {RANGOS.map((r) => {
+          const active = (range ?? "todo") === r.key;
+          return (
+            <Link
+              key={r.key}
+              href={r.key === "todo" ? "/admin" : `/admin?range=${r.key}`}
+              className={`px-3 py-1.5 rounded-lg text-sm border transition ${
+                active
+                  ? "bg-foreground text-background border-foreground"
+                  : "border-line hover:border-foreground"
+              }`}
+            >
+              {r.label}
+            </Link>
+          );
+        })}
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -68,6 +152,36 @@ export default async function DashboardPage() {
             <p className="text-xs text-muted mt-0.5">{c.sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Mini-gráfico: ingresos por día (últimos 14 días) */}
+      <div className="bg-background border border-line rounded-xl p-5 mb-8">
+        <h2 className="font-medium mb-4">Ventas por día (últimos 14 días)</h2>
+        {maxSerie <= 1 && serie.every((d) => d.ingresos === 0) ? (
+          <p className="text-sm text-muted py-4">
+            Cuando tengas ventas pagadas, aquí verás la tendencia diaria.
+          </p>
+        ) : (
+          <div className="flex items-end gap-1.5 h-32">
+            {serie.map((d) => {
+              const pct = Math.round((d.ingresos / maxSerie) * 100);
+              const dia = d.day.slice(8, 10);
+              return (
+                <div
+                  key={d.day}
+                  className="flex-1 flex flex-col items-center justify-end h-full gap-1"
+                  title={`${d.day}: ${formatPrice(d.ingresos)} · ${d.ventas} venta(s)`}
+                >
+                  <div
+                    className="w-full rounded-t bg-accent/80 hover:bg-accent transition-all"
+                    style={{ height: `${Math.max(d.ingresos > 0 ? 4 : 0, pct)}%` }}
+                  />
+                  <span className="text-[10px] text-muted">{dia}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 mb-10">

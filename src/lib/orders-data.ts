@@ -226,16 +226,24 @@ export type SalesSummary = {
   ingresosMes: number; // ingresos del mes actual
 };
 
-export async function getSalesSummary(): Promise<SalesSummary> {
+// Resumen de ventas. Con opts.since (fecha ISO) filtra ingresos/ventas/
+// unidades a los pedidos creados desde esa fecha (para los filtros
+// Hoy / 7 días / 30 días del dashboard). Los pendientes son siempre el
+// total actual "por cobrar" (no dependen del rango).
+export async function getSalesSummary(opts?: {
+  since?: string;
+}): Promise<SalesSummary> {
   const db = getDb();
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const since = opts?.since;
 
   const paid = db
     .prepare(
-      "SELECT COUNT(*) AS ventas, COALESCE(SUM(total), 0) AS ingresos FROM orders WHERE status = 'pagado'"
+      `SELECT COUNT(*) AS ventas, COALESCE(SUM(total), 0) AS ingresos
+       FROM orders WHERE status = 'pagado' AND (@since IS NULL OR createdAt >= @since)`
     )
-    .get() as { ventas: number; ingresos: number };
+    .get({ since: since ?? null }) as { ventas: number; ingresos: number };
 
   const pend = db
     .prepare("SELECT COUNT(*) AS pendientes FROM orders WHERE status = 'pendiente'")
@@ -246,9 +254,9 @@ export async function getSalesSummary(): Promise<SalesSummary> {
       `SELECT COALESCE(SUM(oi.qty), 0) AS unidades
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
-       WHERE o.status = 'pagado'`
+       WHERE o.status = 'pagado' AND (@since IS NULL OR o.createdAt >= @since)`
     )
-    .get() as { unidades: number };
+    .get({ since: since ?? null }) as { unidades: number };
 
   const mes = db
     .prepare(
@@ -263,6 +271,35 @@ export async function getSalesSummary(): Promise<SalesSummary> {
     pendientes: pend.pendientes,
     ingresosMes: mes.ingresosMes,
   };
+}
+
+// Serie de ingresos/ventas por día (últimos `days` días) para el mini-gráfico.
+// Rellena con ceros los días sin ventas para que la barra siempre tenga el
+// mismo número de columnas.
+export async function getSalesByDay(
+  days = 14
+): Promise<{ day: string; ingresos: number; ventas: number }[]> {
+  const rows = getDb()
+    .prepare(
+      `SELECT substr(createdAt, 1, 10) AS day,
+              COALESCE(SUM(total), 0) AS ingresos,
+              COUNT(*) AS ventas
+       FROM orders WHERE status = 'pagado'
+       GROUP BY day`
+    )
+    .all() as { day: string; ingresos: number; ventas: number }[];
+  const map = new Map(rows.map((r) => [r.day, r]));
+
+  const out: { day: string; ingresos: number; ventas: number }[] = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const r = map.get(key);
+    out.push({ day: key, ingresos: r?.ingresos ?? 0, ventas: r?.ventas ?? 0 });
+  }
+  return out;
 }
 
 // Productos más vendidos (por unidades pagadas).
