@@ -22,16 +22,20 @@ export default function ProductGallery({
   }
 
   return (
-    <div className="flex gap-3">
+    // Móvil: foto grande arriba, miniaturas en fila debajo.
+    // Desktop (md+): miniaturas en columna a la izquierda.
+    <div className="flex flex-col-reverse gap-3 md:flex-row">
       {/* Miniaturas */}
       {gallery.length > 1 && (
-        <div className="flex flex-col gap-3 w-16 md:w-20 shrink-0 max-h-[640px] overflow-y-auto pr-1">
+        <div className="flex flex-row gap-3 overflow-x-auto md:flex-col md:w-20 md:max-h-[640px] md:overflow-y-auto md:overflow-x-visible shrink-0 pb-1 md:pb-0 md:pr-1">
           {gallery.map((src, i) => (
             <button
               key={src}
               onClick={() => setActive(i)}
-              className={`aspect-[3/4] rounded-lg overflow-hidden border-2 transition ${
-                i === active ? "border-accent" : "border-transparent opacity-70 hover:opacity-100"
+              className={`w-16 md:w-full shrink-0 aspect-[3/4] rounded-lg overflow-hidden border-2 transition ${
+                i === active
+                  ? "border-accent"
+                  : "border-transparent opacity-70 hover:opacity-100"
               }`}
               aria-label={`Ver foto ${i + 1} de ${name}`}
             >
