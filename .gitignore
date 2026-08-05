@@ -38,6 +38,9 @@ yarn-error.log*
 # precios). Son estado en vivo, no código. Se regeneran solos al arrancar.
 /data
 
+# carpeta temporal de base de datos usada solo durante el build (Render)
+/.data-build
+
 # vercel
 .vercel
 

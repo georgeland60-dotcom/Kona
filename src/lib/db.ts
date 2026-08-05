@@ -28,11 +28,33 @@ const globalForDb = globalThis as unknown as {
   __konaDb?: Database.Database;
 };
 
+// Devuelve una ruta de base de datos utilizable.
+// Durante el BUILD en Render el disco persistente (p.ej. /var/kona) TODAVÍA
+// no está montado, así que crear/escribir ahí falla. En ese caso caemos a una
+// carpeta local temporal solo para esa fase (sirve para prerenderizar las
+// páginas con los datos de la semilla). En producción (runtime) el disco sí
+// está montado y se usa normalmente, por lo que los datos persisten.
+function resolveDbPath(): string {
+  const dir = path.dirname(DB_PATH);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.accessSync(dir, fs.constants.W_OK);
+    return DB_PATH;
+  } catch {
+    const fallbackDir = path.join(process.cwd(), ".data-build");
+    fs.mkdirSync(fallbackDir, { recursive: true });
+    console.warn(
+      `[db] "${dir}" no disponible o sin permisos de escritura ` +
+        `(normal durante el build). Usando carpeta temporal: ${fallbackDir}`
+    );
+    return path.join(fallbackDir, "kona.db");
+  }
+}
+
 export function getDb(): Database.Database {
   if (globalForDb.__konaDb) return globalForDb.__konaDb;
 
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const db = new Database(DB_PATH);
+  const db = new Database(resolveDbPath());
   // WAL: mejor rendimiento y lecturas concurrentes sin bloquear escrituras.
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
