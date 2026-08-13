@@ -2,6 +2,7 @@ import { CartProvider } from "@/components/cart/CartContext";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import CartDrawer from "@/components/cart/CartDrawer";
+import WhatsAppFloat from "@/components/layout/WhatsAppFloat";
 
 export default function StoreLayout({
   children,
@@ -14,6 +15,7 @@ export default function StoreLayout({
       <main className="flex-1">{children}</main>
       <Footer />
       <CartDrawer />
+      <WhatsAppFloat />
     </CartProvider>
   );
 }
