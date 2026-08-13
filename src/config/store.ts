@@ -12,7 +12,7 @@ export const store = {
   // ⚠️ IMPORTANTE: tu numero de WhatsApp para recibir pedidos.
   // Formato: codigo de pais + numero, SIN el signo "+", SIN espacios.
   // Peru = 51. Ejemplo: 51987654321
-  whatsapp: "51987654321",
+  whatsapp: "51975400087",
 
   // Moneda
   currency: "PEN",
