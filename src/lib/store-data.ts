@@ -1,22 +1,17 @@
 // =============================================================
 //  CAPA DE DATOS DE LA TIENDA
-//  Guarda los productos, tallas, SKU y stock en un archivo JSON
-//  (data/store.json). No usa base de datos externa: así funciona
-//  en cualquier PC sin instalar nada. El día que publiquemos la
-//  tienda, solo se cambia este archivo por una base real.
+//  Guarda los productos, tallas, SKU y stock en un documento JSON
+//  llamado "store". Dónde se guarda (disco local o base KV) lo
+//  decide lib/kv.ts; aquí solo pedimos leer y escribir.
 //
 //  La PRIMERA vez se crea solo, copiando los productos de
 //  data/products.ts (la "semilla") y generando SKU + stock.
 // =============================================================
 
-import { promises as fs } from "fs";
-import path from "path";
 import { products as seedProducts } from "@/data/products";
 import type { Product, SeedProduct, Variant } from "@/lib/types";
 import { applyDiscounts, getLiveRules, withDiscount } from "@/lib/promos-data";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const STORE_FILE = path.join(DATA_DIR, "store.json");
+import { readDoc, writeDoc } from "@/lib/kv";
 
 type StoreData = {
   products: Product[];
@@ -56,8 +51,7 @@ function seedToProduct(seed: SeedProduct): Product {
 // ---- Lectura / escritura del archivo --------------------------------
 
 // Datos "en fábrica" a partir de la semilla (data/products.ts). Se usan
-// cuando aún no existe data/store.json (p.ej. en producción/Vercel, cuyo
-// filesystem es de solo lectura y no se puede sembrar en disco).
+// mientras no se haya guardado nada todavía.
 function seedData(): StoreData {
   return {
     products: seedProducts.map(seedToProduct),
@@ -66,26 +60,13 @@ function seedData(): StoreData {
 }
 
 export async function readStore(): Promise<StoreData> {
-  try {
-    const raw = await fs.readFile(STORE_FILE, "utf8");
-    return JSON.parse(raw) as StoreData;
-  } catch {
-    // No existe (o está corrupto): devolvemos la semilla SIN escribir a
-    // disco, para no fallar en entornos de solo lectura (Vercel).
-    return seedData();
-  }
+  return readDoc<StoreData>("store", seedData);
 }
 
-async function writeStore(data: StoreData): Promise<void> {
+// Devuelve false si no se pudo guardar (disco de solo lectura y sin KV).
+async function writeStore(data: StoreData): Promise<boolean> {
   data.updatedAt = new Date().toISOString();
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(STORE_FILE, JSON.stringify(data, null, 2), "utf8");
-  } catch {
-    // Filesystem de solo lectura (p.ej. Vercel serverless): las ediciones
-    // del panel no se persisten aquí. La tienda sigue funcionando en modo
-    // lectura desde la semilla. Para persistir en producción se usaría una BD.
-  }
+  return writeDoc("store", data);
 }
 
 // ---- Lectura de productos -------------------------------------------
