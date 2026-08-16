@@ -206,6 +206,20 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
 
   // Hay cambios que proponer: los mostramos y esperamos confirmación.
   const codigo = await guardarPlan(chatId, resultado.acciones, quien);
+
+  // Si el plan no se pudo guardar, el botón "Confirmar" fallaría al
+  // apretarlo. Preferimos decirlo ahora y no ofrecer un botón inútil.
+  if (!codigo) {
+    await enviarMensaje(
+      chatId,
+      "⚠️ Entendí lo que quieres, pero <b>no puedo guardarlo</b>: falta conectar la base de datos.\n\n" +
+        "Hay que agregar Upstash Redis (gratis) desde Vercel → Storage. Está explicado en AGENTE.md.",
+      undefined,
+      { responderA: enGrupo ? mensaje.message_id : undefined }
+    );
+    return;
+  }
+
   await enviarMensaje(
     chatId,
     textoDelPlan(resultado.texto, resultado.acciones, enGrupo ? quien : undefined),

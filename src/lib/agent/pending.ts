@@ -39,11 +39,14 @@ function limpiar(almacen: Almacen): Almacen {
 }
 
 // Guarda un plan y devuelve el código corto que va en los botones.
+// Devuelve null si NO se pudo guardar: sin base de datos configurada el
+// plan se perdería y el botón "Confirmar" fallaría al apretarlo. Es mejor
+// decirlo de frente que mostrar un botón que no va a funcionar.
 export async function guardarPlan(
   chatId: number,
   acciones: AccionPlan[],
   pedidoPor?: string
-): Promise<string> {
+): Promise<string | null> {
   const almacen = limpiar(await readDoc<Almacen>("agente-pendientes", vacio));
   // 8 caracteres: los botones de Telegram admiten poco texto.
   const codigo = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
@@ -53,8 +56,8 @@ export async function guardarPlan(
     creadoEn: Date.now(),
     pedidoPor,
   };
-  await writeDoc("agente-pendientes", almacen);
-  return codigo;
+  const guardado = await writeDoc("agente-pendientes", almacen);
+  return guardado ? codigo : null;
 }
 
 // Recupera un plan y lo borra (para que no se pueda aplicar dos veces).
