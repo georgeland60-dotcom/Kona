@@ -20,11 +20,15 @@ export async function GET(req: Request) {
     return Response.json({ error: "clave incorrecta" }, { status: 401 });
   }
 
-  const faltantes = [
-    "TELEGRAM_BOT_TOKEN",
-    "GEMINI_API_KEY",
-    "TELEGRAM_ALLOWED_CHAT_IDS",
-  ].filter((v) => !process.env[v]);
+  // Solo exigimos lo que hace falta para CONECTAR el bot. Ojo:
+  // TELEGRAM_ALLOWED_CHAT_IDS no se pide aquí a propósito. El número del
+  // chat solo se puede averiguar escribiéndole /start al bot, y para eso
+  // el webhook tiene que estar conectado antes. Pedirla aquí sería un
+  // círculo vicioso: no podrías conectar sin el número, ni obtener el
+  // número sin conectar.
+  const faltantes = ["TELEGRAM_BOT_TOKEN", "GEMINI_API_KEY"].filter(
+    (v) => !process.env[v]
+  );
 
   if (faltantes.length > 0) {
     return Response.json(
@@ -35,6 +39,8 @@ export async function GET(req: Request) {
       { status: 400 }
     );
   }
+
+  const hayAutorizados = !!process.env.TELEGRAM_ALLOWED_CHAT_IDS?.trim();
 
   // La dirección pública a la que Telegram debe avisar.
   const base = (
@@ -48,11 +54,14 @@ export async function GET(req: Request) {
     ok: listo,
     webhook: destino,
     guardado_permanente: isPersistent(),
+    hay_autorizados: hayAutorizados,
     aviso: isPersistent()
       ? undefined
       : "No hay base de datos KV configurada: los cambios que haga el agente no se guardarán. Revisa AGENTE.md.",
-    siguiente: listo
-      ? "Listo. Escríbele /start a tu bot en Telegram."
-      : "No se pudo conectar. Revisa que TELEGRAM_BOT_TOKEN sea correcto.",
+    siguiente: !listo
+      ? "No se pudo conectar. Revisa que TELEGRAM_BOT_TOKEN sea correcto."
+      : hayAutorizados
+        ? "Listo. Escríbele /start a tu bot en Telegram."
+        : "Conectado. Ahora escribe /start en tu chat o grupo: el bot te dirá que no estás autorizado y te dará el número que hay que poner en TELEGRAM_ALLOWED_CHAT_IDS.",
   });
 }
