@@ -64,10 +64,27 @@ herramientas, así que no puede hacerlas ni equivocándose.
 
 ### 1. Crear el bot de Telegram
 
-1. En Telegram, busca **@BotFather** y escríbele `/newbot`.
-2. Ponle un nombre (ej. `Kona Asistente`) y un usuario que termine en `bot`.
+1. En Telegram, busca **@BotFather** (el que tiene el check azul) y escríbele
+   `/newbot`.
+2. Te pide dos cosas:
+   - **Nombre**: el que se ve en el chat. Ej. `Kona Asistente`.
+   - **Usuario**: tiene que ser único en todo Telegram y **terminar en `bot`**.
+     Ej. `kona_moda_bot`. Si está ocupado, prueba otro.
 3. Te va a dar un **token** tipo `8123456789:AAF...`. Guárdalo → es
    `TELEGRAM_BOT_TOKEN`.
+
+> ⚠️ Ese token es como la contraseña del bot: quien lo tenga puede controlarlo.
+> No lo mandes por chat ni lo subas a GitHub.
+
+**Si vas a usarlo en grupo, falta un paso obligatorio.** Sigue en BotFather:
+
+4. Escribe `/setprivacy`.
+5. Elige tu bot.
+6. Elige **Disable**.
+
+Sin esto, Telegram le esconde al bot los mensajes normales del grupo: solo
+vería los que empiezan con `/`. Es decir, **las notas de voz nunca le
+llegarían** y parecería que el bot está roto. Ver "Modo privacidad" más abajo.
 
 ### 2. Sacar la clave de la IA (gratis)
 
@@ -126,15 +143,96 @@ https://TU-TIENDA.vercel.app/api/agent/setup?clave=TU_TELEGRAM_WEBHOOK_SECRET
 
 Si todo está bien responde `{"ok": true, ...}`.
 
-### 7. Autorizarte a ti misma
+### 7. Autorizar quién puede darle órdenes
+
+**Opción A — tú sola, chat directo:**
 
 1. En Telegram, escríbele `/start` a tu bot.
-2. Te va a contestar que no tienes permiso **y te va a decir tu número de chat**.
-3. Copia ese número a la variable `TELEGRAM_ALLOWED_CHAT_IDS` en Vercel
-   (si son varias personas, sepáralas con coma: `123456,789012`).
+2. Te contesta que no tienes permiso **y te dice tu número de chat**.
+3. Copia ese número a `TELEGRAM_ALLOWED_CHAT_IDS` en Vercel.
 4. Vuelve a desplegar.
 
+**Opción B — un grupo con varias personas** (ver la sección siguiente).
+
 Listo. Escríbele `/start` otra vez y ya te responde con el menú de ayuda.
+
+---
+
+## Usarlo desde un grupo (varias personas)
+
+Es la forma recomendada cuando más de una persona maneja la tienda: las dos ven
+lo que pide la otra, y queda escrito quién pidió y quién confirmó cada cambio.
+
+### Cómo armar el grupo
+
+1. En Telegram: menú **☰ → Nuevo grupo**.
+2. Elige a la **otra persona** que va a manejar la tienda.
+3. Ponle nombre al grupo, ej. `Kona · Cambios web`, y créalo.
+4. Ya dentro del grupo: toca el **nombre del grupo arriba → Agregar miembros**
+   → busca tu bot por su usuario (ej. `kona_moda_bot`) → agrégalo.
+
+> Telegram no deja crear un grupo con el bot solo: primero agregas a la
+> persona, y después al bot.
+
+### Autorizar el grupo
+
+5. En el grupo, escribe `/start`.
+6. El bot responde que el grupo no está autorizado **y te da el número del
+   grupo**. Es un número **negativo**, tipo `-1001234567890`.
+7. Copia ese número **completo, con el signo menos**, a
+   `TELEGRAM_ALLOWED_CHAT_IDS` en Vercel.
+8. Vuelve a desplegar y escribe `/start` otra vez en el grupo.
+
+### Cómo se usa en el grupo
+
+Igual que en privado: escriben o mandan un audio, y el bot responde colgando su
+mensaje del de ustedes, para que se vea a quién le está contestando:
+
+```
+María:  pon el Dress Pams Malva en oferta a 89
+
+Bot (respondiendo a María):
+  María pidió esto:
+  1. Poner en oferta "Dress Pams Malva" a S/ 89 (antes S/ 115)
+
+  ¿Lo aplico?          [ ✅ Confirmar ]   [ ✖️ Cancelar ]
+
+  → ✅ Listo (confirmado por Jose)
+     • "Dress Pams Malva" en oferta a S/ 89.
+```
+
+**Cualquiera de los dos puede confirmar**, incluso lo que pidió el otro. Es a
+propósito: sirve para que una revise lo que pidió la otra. Y como queda escrito
+quién hizo qué, siempre se puede rastrear.
+
+### Modo privacidad (la causa nº1 de "no me responde")
+
+Por seguridad, Telegram no deja que los bots lean los mensajes de los grupos.
+Con el modo privacidad **activado** (el de fábrica), tu bot solo recibiría:
+
+- mensajes que empiezan con `/`
+- mensajes que lo mencionan con `@tu_bot`
+- respuestas directas a un mensaje suyo
+
+O sea: escribes "ponle 20% a los vestidos" y **no pasa nada**, y las notas de
+voz tampoco le llegan nunca.
+
+**La solución** es el paso 4 del inicio: en BotFather, `/setprivacy` → tu bot →
+**Disable**. Después de cambiarlo, **saca el bot del grupo y vuelve a
+agregarlo**, porque si no el cambio no toma efecto.
+
+### Cosas a tener en cuenta
+
+- **Quien esté en el grupo, manda.** El permiso es del grupo, no de la persona.
+  Si agregan a alguien más, esa persona también podrá cambiar precios. Manténlo
+  en las personas de confianza.
+- **Si Telegram convierte el grupo en "supergrupo"** (pasa solo al hacerlo
+  público o al pasar de cierto tamaño), **el número del grupo cambia** y el bot
+  deja de responder. Si pasa: escribe `/start`, te da el número nuevo, y lo
+  actualizas en Vercel.
+- **Puedes tener las dos cosas a la vez**: el grupo y tu chat privado. Solo
+  pon los dos números separados por coma:
+  `TELEGRAM_ALLOWED_CHAT_IDS=-1001234567890,123456789`
 
 ---
 

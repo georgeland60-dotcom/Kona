@@ -30,10 +30,15 @@ export const maxDuration = 60;
 
 // ---- Forma de lo que manda Telegram ---------------------------------
 
+type Usuario = { id: number; first_name?: string; username?: string };
+
 type TelegramUpdate = {
   message?: {
     message_id: number;
-    chat: { id: number };
+    // En un grupo el id es NEGATIVO (ej -1001234567890); en un chat
+    // uno a uno es positivo. Los dos sirven igual.
+    chat: { id: number; type?: string; title?: string };
+    from?: Usuario;
     text?: string;
     caption?: string;
     voice?: { file_id: string };
@@ -42,9 +47,16 @@ type TelegramUpdate = {
   callback_query?: {
     id: string;
     data?: string;
-    message?: { message_id: number; chat: { id: number } };
+    from?: Usuario;
+    message?: { message_id: number; chat: { id: number; type?: string } };
   };
 };
+
+// Cómo llamamos a quien escribió, para dejar constancia de quién pidió
+// y quién aprobó cada cambio (importante cuando el grupo tiene 2 personas).
+function nombreDe(usuario?: Usuario): string {
+  return usuario?.first_name || usuario?.username || "alguien";
+}
 
 // ---- Permisos --------------------------------------------------------
 
@@ -75,7 +87,10 @@ const AYUDA = `
 <b>Lo que NO puedo hacer</b>
 Cambiar el diseño de la página, ver pedidos o datos de clientes, ni subir fotos (esas van por el panel /admin).
 
-Siempre te muestro los cambios antes de aplicarlos: nada se toca sin tu confirmación.
+<b>Si estamos en un grupo</b>
+Cualquiera del grupo me puede pedir cambios, y cualquiera puede confirmarlos. Siempre dejo escrito quién pidió y quién confirmó cada cambio.
+
+Siempre muestro los cambios antes de aplicarlos: nada se toca sin confirmación.
 `.trim();
 
 // ---- Entrada ---------------------------------------------------------
@@ -124,16 +139,25 @@ export async function POST(req: Request) {
 async function atenderMensaje(update: TelegramUpdate): Promise<void> {
   const mensaje = update.message!;
   const chatId = mensaje.chat.id;
+  const enGrupo = mensaje.chat.type === "group" || mensaje.chat.type === "supergroup";
+  const quien = nombreDe(mensaje.from);
 
   if (!autorizado(chatId)) {
     await enviarMensaje(
       chatId,
-      `No tienes permiso para usar este asistente.\n\nSi eres la dueña de la tienda, agrega este número a la variable <code>TELEGRAM_ALLOWED_CHAT_IDS</code>:\n<code>${chatId}</code>`
+      enGrupo
+        ? `Este grupo todavía no está autorizado.\n\nAgrega este número (con el signo menos incluido) a la variable <code>TELEGRAM_ALLOWED_CHAT_IDS</code>:\n<code>${chatId}</code>`
+        : `No tienes permiso para usar este asistente.\n\nSi eres la dueña de la tienda, agrega este número a la variable <code>TELEGRAM_ALLOWED_CHAT_IDS</code>:\n<code>${chatId}</code>`
     );
     return;
   }
 
-  const texto = (mensaje.text || mensaje.caption || "").trim();
+  // En un grupo, Telegram manda los comandos como "/ayuda@nombre_del_bot",
+  // y la gente suele escribir "@nombre_del_bot ponle 20%". Le quitamos la
+  // mención para que la IA lea la orden limpia.
+  const texto = (mensaje.text || mensaje.caption || "")
+    .replace(/^(@\w+\s+)+/, "")
+    .trim();
 
   if (/^\/(start|ayuda|help)/i.test(texto)) {
     await enviarMensaje(chatId, AYUDA);
@@ -172,24 +196,40 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
   const resultado = await ejecutarAgente(partes);
 
   if (resultado.tipo === "respuesta") {
-    await enviarMensaje(chatId, escapar(resultado.texto));
+    // En un grupo colgamos la respuesta del mensaje original, para que se
+    // vea a cuál de las dos personas le estamos contestando.
+    await enviarMensaje(chatId, escapar(resultado.texto), undefined, {
+      responderA: enGrupo ? mensaje.message_id : undefined,
+    });
     return;
   }
 
   // Hay cambios que proponer: los mostramos y esperamos confirmación.
-  const codigo = await guardarPlan(chatId, resultado.acciones);
-  await enviarMensaje(chatId, textoDelPlan(resultado.texto, resultado.acciones), [
-    { texto: "✅ Confirmar", dato: `ok:${codigo}` },
-    { texto: "✖️ Cancelar", dato: `no:${codigo}` },
-  ]);
+  const codigo = await guardarPlan(chatId, resultado.acciones, quien);
+  await enviarMensaje(
+    chatId,
+    textoDelPlan(resultado.texto, resultado.acciones, enGrupo ? quien : undefined),
+    [
+      { texto: "✅ Confirmar", dato: `ok:${codigo}` },
+      { texto: "✖️ Cancelar", dato: `no:${codigo}` },
+    ],
+    { responderA: enGrupo ? mensaje.message_id : undefined }
+  );
 }
 
-function textoDelPlan(comentario: string, acciones: AccionPlan[]): string {
+function textoDelPlan(
+  comentario: string,
+  acciones: AccionPlan[],
+  pedidoPor?: string
+): string {
   const lista = acciones
     .map((a, i) => `${i + 1}. ${escapar(a.resumen)}`)
     .join("\n");
 
-  const partes = [`<b>Voy a hacer esto:</b>\n${lista}`];
+  const encabezado = pedidoPor
+    ? `<b>${escapar(pedidoPor)} pidió esto:</b>`
+    : "<b>Voy a hacer esto:</b>";
+  const partes = [`${encabezado}\n${lista}`];
 
   if (comentario) partes.push(escapar(comentario));
 
@@ -213,6 +253,13 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
   const messageId = consulta.message?.message_id;
   if (!chatId || !messageId) return;
 
+  const enGrupo =
+    consulta.message?.chat.type === "group" ||
+    consulta.message?.chat.type === "supergroup";
+  // En un grupo cualquiera de los dos puede apretar el botón, así que
+  // dejamos escrito quién fue.
+  const quien = nombreDe(consulta.from);
+
   if (!autorizado(chatId)) {
     await responderBoton(consulta.id, "Sin permiso");
     return;
@@ -223,7 +270,13 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
   if (accion === "no") {
     await descartarPlan(codigo);
     await responderBoton(consulta.id, "Cancelado");
-    await editarMensaje(chatId, messageId, "✖️ Cancelado. No cambié nada.");
+    await editarMensaje(
+      chatId,
+      messageId,
+      enGrupo
+        ? `✖️ ${escapar(quien)} canceló. No cambié nada.`
+        : "✖️ Cancelado. No cambié nada."
+    );
     return;
   }
 
@@ -252,9 +305,10 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
 
   const lineas: string[] = [];
   if (hechos.length > 0) {
-    lineas.push(
-      `✅ <b>Listo</b>\n${hechos.map((h) => `• ${escapar(h)}`).join("\n")}`
-    );
+    const titulo = enGrupo
+      ? `✅ <b>Listo</b> (confirmado por ${escapar(quien)})`
+      : "✅ <b>Listo</b>";
+    lineas.push(`${titulo}\n${hechos.map((h) => `• ${escapar(h)}`).join("\n")}`);
   }
   if (fallos.length > 0) {
     lineas.push(

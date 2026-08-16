@@ -19,6 +19,7 @@ type Pendiente = {
   chatId: number;
   acciones: AccionPlan[];
   creadoEn: number;
+  pedidoPor?: string; // quién lo pidió (útil cuando el grupo tiene 2 personas)
 };
 
 type Almacen = { pendientes: Record<string, Pendiente> };
@@ -40,12 +41,18 @@ function limpiar(almacen: Almacen): Almacen {
 // Guarda un plan y devuelve el código corto que va en los botones.
 export async function guardarPlan(
   chatId: number,
-  acciones: AccionPlan[]
+  acciones: AccionPlan[],
+  pedidoPor?: string
 ): Promise<string> {
   const almacen = limpiar(await readDoc<Almacen>("agente-pendientes", vacio));
   // 8 caracteres: los botones de Telegram admiten poco texto.
   const codigo = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-  almacen.pendientes[codigo] = { chatId, acciones, creadoEn: Date.now() };
+  almacen.pendientes[codigo] = {
+    chatId,
+    acciones,
+    creadoEn: Date.now(),
+    pedidoPor,
+  };
   await writeDoc("agente-pendientes", almacen);
   return codigo;
 }

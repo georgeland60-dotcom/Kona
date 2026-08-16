@@ -44,12 +44,23 @@ export type Boton = { texto: string; dato: string };
 export async function enviarMensaje(
   chatId: number,
   texto: string,
-  botones?: Boton[]
+  botones?: Boton[],
+  opciones?: { responderA?: number }
 ): Promise<void> {
   await llamar("sendMessage", {
     chat_id: chatId,
     text: texto,
     parse_mode: "HTML",
+    // En un grupo conviene "colgar" la respuesta del mensaje original,
+    // para que se vea a quién le estamos contestando.
+    ...(opciones?.responderA
+      ? {
+          reply_parameters: {
+            message_id: opciones.responderA,
+            allow_sending_without_reply: true,
+          },
+        }
+      : {}),
     ...(botones && botones.length > 0
       ? {
           reply_markup: {
