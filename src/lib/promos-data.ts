@@ -1,31 +1,28 @@
 // =============================================================
 //  CAPA DE DATOS DE PROMOCIONES
-//  Guarda en data/promos.json:
+//  Guarda en el documento "promos":
 //   - banners: las diapositivas del slider del inicio
 //   - rules:   reglas de descuento que se aplican solas a los precios
+//   - seasons: bloques de temporada extra para el inicio (ej "Verano")
 //  La primera vez se crea solo, copiando los banners de
 //  data/banners.ts (la "semilla").
 // =============================================================
 
-import { promises as fs } from "fs";
-import path from "path";
 import { banners as seedBanners } from "@/data/banners";
-import type { Banner, DiscountRule, Product } from "@/lib/types";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const PROMOS_FILE = path.join(DATA_DIR, "promos.json");
+import type { Banner, DiscountRule, Product, SeasonBlock } from "@/lib/types";
+import { readDoc, writeDoc } from "@/lib/kv";
 
 type PromosData = {
   banners: Banner[];
   rules: DiscountRule[];
+  seasons: SeasonBlock[];
   updatedAt: string;
 };
 
 // ---- Lectura / escritura --------------------------------------------
 
-// Datos "en fábrica" desde la semilla (banners.ts). Se usan cuando aún no
-// existe data/promos.json, SIN escribir a disco (para no fallar en Vercel,
-// cuyo filesystem es de solo lectura).
+// Datos "en fábrica" desde la semilla (banners.ts). Se usan mientras no se
+// haya guardado nada todavía.
 function seedData(): PromosData {
   return {
     banners: seedBanners.map((b, i) => ({
@@ -39,34 +36,25 @@ function seedData(): PromosData {
       active: true,
     })),
     rules: [],
+    seasons: [],
     updatedAt: new Date().toISOString(),
   };
 }
 
 async function readPromos(): Promise<PromosData> {
-  try {
-    const raw = await fs.readFile(PROMOS_FILE, "utf8");
-    const parsed = JSON.parse(raw) as Partial<PromosData>;
-    return {
-      banners: parsed.banners ?? [],
-      rules: parsed.rules ?? [],
-      updatedAt: parsed.updatedAt ?? new Date().toISOString(),
-    };
-  } catch {
-    // No existe: devolvemos la semilla sin escribir (compatible con Vercel).
-    return seedData();
-  }
+  const parsed = await readDoc<Partial<PromosData>>("promos", seedData);
+  return {
+    banners: parsed.banners ?? [],
+    rules: parsed.rules ?? [],
+    seasons: parsed.seasons ?? [],
+    updatedAt: parsed.updatedAt ?? new Date().toISOString(),
+  };
 }
 
-async function writePromos(data: PromosData): Promise<void> {
+// Devuelve false si no se pudo guardar (disco de solo lectura y sin KV).
+async function writePromos(data: PromosData): Promise<boolean> {
   data.updatedAt = new Date().toISOString();
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(PROMOS_FILE, JSON.stringify(data, null, 2), "utf8");
-  } catch {
-    // Filesystem de solo lectura (Vercel serverless): los cambios del panel
-    // no se persisten. La tienda sigue funcionando en modo lectura.
-  }
+  return writeDoc("promos", data);
 }
 
 // ---- BANNERS ---------------------------------------------------------
@@ -110,6 +98,50 @@ export async function nextBannerId(): Promise<string> {
     return Number.isFinite(n) && n > m ? n : m;
   }, 0);
   return `BAN-${max + 1}`;
+}
+
+// ---- TEMPORADAS ------------------------------------------------------
+//  Un bloque de temporada agrupa productos por etiqueta de colección y
+//  se muestra como una sección más del inicio.
+
+export async function getSeasons(): Promise<SeasonBlock[]> {
+  const { seasons } = await readPromos();
+  return seasons;
+}
+
+export async function getActiveSeasons(): Promise<SeasonBlock[]> {
+  const { seasons } = await readPromos();
+  return seasons.filter((s) => s.active);
+}
+
+export async function getSeasonBySlug(
+  slug: string
+): Promise<SeasonBlock | undefined> {
+  const { seasons } = await readPromos();
+  return seasons.find((s) => s.slug === slug);
+}
+
+export async function upsertSeason(season: SeasonBlock): Promise<boolean> {
+  const data = await readPromos();
+  const idx = data.seasons.findIndex((s) => s.id === season.id);
+  if (idx >= 0) data.seasons[idx] = season;
+  else data.seasons.push(season);
+  return writePromos(data);
+}
+
+export async function deleteSeason(id: string): Promise<boolean> {
+  const data = await readPromos();
+  data.seasons = data.seasons.filter((s) => s.id !== id);
+  return writePromos(data);
+}
+
+export async function nextSeasonId(): Promise<string> {
+  const { seasons } = await readPromos();
+  const max = seasons.reduce((m, s) => {
+    const n = parseInt(s.id.replace(/\D/g, ""), 10);
+    return Number.isFinite(n) && n > m ? n : m;
+  }, 0);
+  return `TEM-${max + 1}`;
 }
 
 // ---- REGLAS DE DESCUENTO --------------------------------------------

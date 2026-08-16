@@ -1,19 +1,38 @@
 import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
-import { getActiveBanners } from "@/lib/promos-data";
+import { getActiveBanners, getActiveSeasons } from "@/lib/promos-data";
 import { formatPrice } from "@/lib/format";
 import ProductGrid from "@/components/product/ProductGrid";
 import HeroSlider from "@/components/layout/HeroSlider";
 import TrackView from "@/components/TrackView";
-import { homeCollections, pickCollection } from "@/data/collections";
+import {
+  homeCollections,
+  pickCollection,
+  type HomeCollection,
+} from "@/data/collections";
 
 export default async function Home() {
-  const [products, banners] = await Promise.all([
+  const [products, banners, temporadas] = await Promise.all([
     getProducts(),
     getActiveBanners(),
+    getActiveSeasons(),
   ]);
   const favoritos = products.filter((p) => p.featured);
-  const colecciones = homeCollections
+
+  // Los bloques de temporada (que crea el agente, ej "Verano") se muestran
+  // primero, y después las colecciones fijas del inicio.
+  const bloques: HomeCollection[] = [
+    ...temporadas.map((t) => ({
+      slug: t.slug,
+      title: t.title,
+      subtitle: t.subtitle,
+      by: "collection" as const,
+      value: t.slug,
+      limit: t.limit ?? 4,
+    })),
+    ...homeCollections,
+  ];
+  const colecciones = bloques
     .map((c) => ({ col: c, items: pickCollection(products, c) }))
     .filter((c) => c.items.length > 0);
 

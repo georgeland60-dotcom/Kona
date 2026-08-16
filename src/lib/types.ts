@@ -93,6 +93,18 @@ export type DiscountRule = {
   endsAt?: string; // fecha ISO de fin (opcional)
 };
 
+// Un bloque de TEMPORADA en el inicio (ej "Verano", "Navidad"). Los
+// productos entran por su etiqueta de colección: un producto pertenece a
+// la temporada si su campo "collections" incluye el slug del bloque.
+export type SeasonBlock = {
+  id: string;
+  slug: string; // etiqueta de colección, ej "verano"
+  title: string; // título visible, ej "Verano 2026"
+  subtitle: string;
+  active: boolean; // false = no se muestra en el inicio
+  limit?: number; // cuántos productos mostrar (por defecto 4)
+};
+
 // Devuelve solo las tallas (para selects, etc.)
 export function productSizes(p: Product): string[] {
   return p.variants.map((v) => v.size);

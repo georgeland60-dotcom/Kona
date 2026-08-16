@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
 import { categories } from "@/data/categories";
 import { homeCollections } from "@/data/collections";
+import { getSeasonBySlug } from "@/lib/promos-data";
 import ProductGrid from "@/components/product/ProductGrid";
 
 export default async function TiendaPage({
@@ -20,12 +21,17 @@ export default async function TiendaPage({
       )
     : products;
 
+  // El título puede venir de una categoría, de una colección fija del
+  // inicio o de un bloque de temporada creado desde el agente.
   const coleccionActual = homeCollections.find((c) => c.slug === cat);
+  const temporadaActual = cat ? await getSeasonBySlug(cat) : undefined;
   const categoriaActual =
     categories.find((c) => c.slug === cat) ??
     (coleccionActual
       ? { slug: coleccionActual.slug, name: coleccionActual.title }
-      : undefined);
+      : temporadaActual
+        ? { slug: temporadaActual.slug, name: temporadaActual.title }
+        : undefined);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
