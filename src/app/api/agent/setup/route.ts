@@ -10,6 +10,7 @@
 // =============================================================
 
 import { registrarWebhook } from "@/lib/agent/telegram";
+import { listarModelos } from "@/lib/agent/gemini";
 import { isPersistent } from "@/lib/kv";
 
 export async function GET(req: Request) {
@@ -41,6 +42,20 @@ export async function GET(req: Request) {
   }
 
   const hayAutorizados = !!process.env.TELEGRAM_ALLOWED_CHAT_IDS?.trim();
+
+  // Diagnóstico: ?modelos=1 lista los modelos de IA que acepta ESTA clave.
+  // Sirve cuando la IA responde 404 (Google renombra y retira modelos), para
+  // saber cuál poner en GEMINI_MODEL sin adivinar.
+  if (url.searchParams.get("modelos")) {
+    const modelos = await listarModelos(process.env.GEMINI_API_KEY as string);
+    return Response.json({
+      modelos,
+      nota:
+        modelos.length > 0
+          ? "Estos son los modelos que tu clave puede usar. El agente elige el mejor solo; si quieres fijar uno, ponlo en la variable GEMINI_MODEL."
+          : "No pude leer la lista. Revisa que GEMINI_API_KEY sea correcta.",
+    });
+  }
 
   // La dirección pública a la que Telegram debe avisar.
   const base = (
