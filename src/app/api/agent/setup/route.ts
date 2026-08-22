@@ -10,7 +10,11 @@
 // =============================================================
 
 import { registrarWebhook } from "@/lib/agent/telegram";
-import { listarModelos } from "@/lib/agent/gemini";
+import {
+  listarModelos,
+  probarModelo,
+  modeloPreferido,
+} from "@/lib/agent/gemini";
 import { isPersistent } from "@/lib/kv";
 
 export async function GET(req: Request) {
@@ -54,6 +58,25 @@ export async function GET(req: Request) {
         modelos.length > 0
           ? "Estos son los modelos que tu clave puede usar. El agente elige el mejor solo; si quieres fijar uno, ponlo en la variable GEMINI_MODEL."
           : "No pude leer la lista. Revisa que GEMINI_API_KEY sea correcta.",
+    });
+  }
+
+  // Diagnóstico: ?probar=1 hace la llamada más simple posible a la IA y
+  // devuelve lo que respondió Google, sin interpretarlo. Es la forma de
+  // ver el motivo real de un fallo en vez de deducirlo del código HTTP.
+  if (url.searchParams.get("probar")) {
+    const apiKey = process.env.GEMINI_API_KEY as string;
+    const disponibles = await listarModelos(apiKey);
+    const preferido = modeloPreferido();
+    // Probamos el preferido y, si hay otro distinto, el siguiente candidato.
+    const otro = disponibles.find((m) => m !== preferido && m.includes("flash"));
+    const pruebas = [await probarModelo(apiKey, preferido)];
+    if (otro) pruebas.push(await probarModelo(apiKey, otro));
+    return Response.json({
+      preferido,
+      figura_en_la_lista: disponibles.includes(preferido),
+      total_modelos: disponibles.length,
+      pruebas,
     });
   }
 

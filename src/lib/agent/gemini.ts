@@ -62,6 +62,17 @@ type GeminiRespuesta = {
 
 export class ErrorAgente extends Error {}
 
+// Extrae el texto legible del error que devuelve Google, que viene
+// envuelto en JSON. Si no se puede leer, devuelve cadena vacía.
+function mensajeDeGoogle(cuerpo: string): string {
+  try {
+    const j = JSON.parse(cuerpo) as { error?: { message?: string } };
+    return (j.error?.message ?? "").slice(0, 300);
+  } catch {
+    return cuerpo.slice(0, 200);
+  }
+}
+
 // ---- Elegir un modelo que la clave sí tenga -------------------------
 
 type ModeloListado = {
@@ -174,6 +185,7 @@ export async function preguntarAlModelo(opciones: {
 
   let modelo = modeloConfirmado ?? MODELO_PREFERIDO;
   let res = await pedir(modelo);
+  const detalle404 = res.status === 404 ? await res.clone().text().catch(() => "") : "";
 
   // 404 = ese modelo no existe para esta clave. Google renombra y retira
   // modelos cada cierto tiempo, así que en vez de fallar preguntamos cuáles
@@ -186,10 +198,20 @@ export async function preguntarAlModelo(opciones: {
     }
     if (!res.ok) {
       const disponibles = await listarModelos(apiKey);
+      // Ojo: si el modelo SÍ figura entre los disponibles, el 404 no es por
+      // el nombre y culpar al nombre despista. Mostramos lo que dijo Google.
+      const razon = mensajeDeGoogle(detalle404);
+      if (disponibles.includes(MODELO_PREFERIDO)) {
+        throw new ErrorAgente(
+          `Google rechazó el modelo "${MODELO_PREFERIDO}" aunque figura como disponible.` +
+            (razon ? ` Dijo: ${razon}` : "") +
+            " Abre /api/agent/setup?clave=…&probar=1 para ver el detalle."
+        );
+      }
       throw new ErrorAgente(
         disponibles.length > 0
-          ? `El modelo "${MODELO_PREFERIDO}" no está disponible para tu clave. Pon una de estas en la variable GEMINI_MODEL: ${disponibles.slice(0, 6).join(", ")}.`
-          : `El modelo "${MODELO_PREFERIDO}" no existe para tu clave, y tampoco pude leer la lista de modelos disponibles. Revisa que GEMINI_API_KEY sea correcta.`
+          ? `El modelo "${MODELO_PREFERIDO}" no está disponible para tu clave. Pon una de estas en GEMINI_MODEL: ${disponibles.slice(0, 6).join(", ")}.`
+          : `El modelo "${MODELO_PREFERIDO}" no existe para tu clave y tampoco pude leer la lista de modelos. Revisa que GEMINI_API_KEY sea correcta.`
       );
     }
   }
@@ -240,4 +262,41 @@ export async function preguntarAlModelo(opciones: {
   }
 
   return { texto: texto.trim(), llamadas };
+}
+
+
+// ---- Diagnóstico ----------------------------------------------------
+
+// Hace la llamada más simple posible a un modelo y devuelve tal cual lo
+// que respondió Google. Sirve para ver el motivo real de un fallo en vez
+// de adivinar a partir del código HTTP.
+export async function probarModelo(
+  apiKey: string,
+  modelo: string
+): Promise<{ modelo: string; estado: number; respuesta: string }> {
+  try {
+    const res = await fetch(`${BASE}/${modelo}:generateContent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: "hola" }] }],
+      }),
+    });
+    const texto = await res.text();
+    return { modelo, estado: res.status, respuesta: texto.slice(0, 500) };
+  } catch (e) {
+    return {
+      modelo,
+      estado: 0,
+      respuesta: e instanceof Error ? e.message : "fallo de red",
+    };
+  }
+}
+
+export function modeloPreferido(): string {
+  return MODELO_PREFERIDO;
 }
