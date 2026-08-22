@@ -1061,10 +1061,20 @@ export function buscarHerramienta(nombre: string): Tool | undefined {
 }
 
 // Declaraciones en el formato que espera el modelo de IA.
+//
+// Ojo con las herramientas SIN parámetros (listar_categorias y compañía):
+// hay que omitir "parameters" del todo. Mandar un objeto con properties
+// vacío hace que la API responda 400 y tumba toda la conversación, no solo
+// esa herramienta.
 export function declaracionesParaModelo() {
-  return HERRAMIENTAS.map((h) => ({
-    name: h.nombre,
-    description: h.descripcion,
-    parameters: h.parametros,
-  }));
+  return HERRAMIENTAS.map((h) => {
+    const props = (h.parametros as { properties?: Record<string, unknown> })
+      .properties;
+    const sinParametros = !props || Object.keys(props).length === 0;
+    return {
+      name: h.nombre,
+      description: h.descripcion,
+      ...(sinParametros ? {} : { parameters: h.parametros }),
+    };
+  });
 }

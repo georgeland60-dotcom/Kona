@@ -157,7 +157,7 @@ function cuerpoPeticion(opciones: {
   herramientas: Array<{
     name: string;
     description: string;
-    parameters: Record<string, unknown>;
+    parameters?: Record<string, unknown>;
   }>;
 }): string {
   return JSON.stringify({
@@ -179,7 +179,7 @@ export async function preguntarAlModelo(opciones: {
   herramientas: Array<{
     name: string;
     description: string;
-    parameters: Record<string, unknown>;
+    parameters?: Record<string, unknown>;
   }>;
 }): Promise<RespuestaModelo> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -269,7 +269,12 @@ export async function preguntarAlModelo(opciones: {
         "Google rechazó la clave GEMINI_API_KEY (sin permiso). Genera una nueva en aistudio.google.com/apikey."
       );
     }
-    throw new ErrorAgente(`La IA respondió con un error (${res.status}).`);
+    // Siempre el motivo real. Un código HTTP suelto no dice nada y obliga a
+    // adivinar; el texto de Google suele señalar el problema exacto.
+    const razon = mensajeDeGoogle(detalle);
+    throw new ErrorAgente(
+      `La IA rechazó la petición (${res.status})${razon ? `: ${razon}` : "."}`
+    );
   }
 
   const data = (await res.json()) as GeminiRespuesta;
