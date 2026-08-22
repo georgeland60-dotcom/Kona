@@ -33,6 +33,7 @@ import {
   nextSeasonId,
 } from "@/lib/promos-data";
 import { categories } from "@/data/categories";
+import type { TipoCambio } from "@/lib/historial-data";
 import type {
   Product,
   DiscountRule,
@@ -1055,6 +1056,93 @@ export const HERRAMIENTAS: Tool[] = [
   cambiarTemporada,
   asignarTemporada,
 ];
+
+// ---- Clasificación para el historial de cambios ---------------------
+
+// De qué trata cada herramienta. Es una de las dos formas de filtrar el
+// historial en el panel.
+const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
+  crear_descuento: "descuentos",
+  cambiar_descuento: "descuentos",
+  cambiar_precio: "precios",
+  marcar_oferta: "ofertas",
+  agregar_producto: "productos",
+  quitar_producto: "productos",
+  mostrar_producto: "productos",
+  destacar_producto: "productos",
+  cambiar_stock: "stock",
+  crear_temporada: "temporada",
+  cambiar_temporada: "temporada",
+  asignar_temporada: "temporada",
+};
+
+export function tipoDeCambio(nombreHerramienta: string): TipoCambio {
+  const limpio = nombreHerramienta.includes(":")
+    ? nombreHerramienta.split(":").pop()!
+    : nombreHerramienta;
+  return TIPO_POR_HERRAMIENTA[limpio] ?? "otro";
+}
+
+// Qué categoría de productos toca un cambio. Se resuelve mirando los
+// argumentos: unas herramientas nombran el producto, otras la categoría, y
+// las que afectan a toda la tienda devuelven "todas".
+export async function categoriaAfectada(
+  nombreHerramienta: string,
+  args: ToolArgs
+): Promise<string> {
+  const limpio = nombreHerramienta.includes(":")
+    ? nombreHerramienta.split(":").pop()!
+    : nombreHerramienta;
+
+  // Un descuento puede ser global, por categoría o por producto.
+  if (limpio === "crear_descuento") {
+    const alcance = texto(args, "alcance", "all");
+    if (alcance === "category") {
+      const slug = texto(args, "objetivo");
+      const cat = categories.find(
+        (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
+      );
+      return cat?.slug ?? slug ?? "todas";
+    }
+    if (alcance === "product") {
+      const r = await resolverProducto(texto(args, "objetivo"));
+      return r.ok ? r.producto.category : "todas";
+    }
+    return "todas";
+  }
+
+  // Alta de producto: la categoría viene escrita en el propio pedido.
+  if (limpio === "agregar_producto") {
+    const slug = texto(args, "categoria");
+    const cat = categories.find(
+      (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
+    );
+    return cat?.slug ?? slug ?? "todas";
+  }
+
+  // Varios productos a la vez: si todos son de la misma categoría la
+  // usamos; si están mezclados, no hay una sola respuesta honesta.
+  const varios = lista(args, "productos");
+  if (varios.length > 0) {
+    const cats = new Set<string>();
+    for (const ref of varios) {
+      const r = await resolverProducto(ref);
+      if (r.ok) cats.add(r.producto.category);
+    }
+    if (cats.size === 1) return [...cats][0];
+    if (cats.size > 1) return "varias";
+    return "todas";
+  }
+
+  // Un solo producto nombrado.
+  const uno = texto(args, "producto");
+  if (uno) {
+    const r = await resolverProducto(uno);
+    if (r.ok) return r.producto.category;
+  }
+
+  return "todas";
+}
 
 export function buscarHerramienta(nombre: string): Tool | undefined {
   // El modelo a veces nombra la herramienta con un prefijo de espacio de

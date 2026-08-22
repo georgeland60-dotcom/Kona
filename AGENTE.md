@@ -236,6 +236,26 @@ agregarlo**, porque si no el cambio no toma efecto.
 
 ---
 
+## Trazabilidad: quién cambió qué
+
+Cada cambio confirmado queda anotado. En el panel, **Datos / Historial**
+(`/admin/datos`) muestra:
+
+- **Las cuatro bases** — productos, pedidos, ventas e historial — con su
+  resumen y un botón para **descargar el CSV** (se abre en Excel).
+- **El historial de cambios**, filtrable por **categoría de producto**
+  (vestidos, carteras…) y por **tipo de cambio** (descuentos, precios,
+  ofertas, productos, stock, temporada).
+
+Cada línea guarda cuándo, quién lo confirmó, qué tipo de cambio fue, sobre
+qué categoría y con qué valores quedó. Los cambios que afectan a toda la
+tienda aparecen al filtrar por cualquier categoría, porque también la
+afectaron. Lo que se propuso y se canceló no se registra.
+
+Se guardan los últimos 500 cambios.
+
+---
+
 ## Cómo está hecho (para quien toque el código)
 
 ```
@@ -253,6 +273,7 @@ src/lib/agent/run.ts                  ← el bucle: pregunta al modelo, ejecuta
    │
    ▼  (tras el botón Confirmar)
 src/lib/store-data.ts / promos-data.ts → src/lib/kv.ts → Upstash o disco
+src/lib/historial-data.ts             ← anota el cambio para el panel
 ```
 
 Decisiones que conviene no romper:

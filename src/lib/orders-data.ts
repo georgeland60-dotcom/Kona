@@ -1,17 +1,13 @@
 // =============================================================
 //  CAPA DE DATOS DE PEDIDOS (ventas)
-//  Guarda los pedidos en data/orders.json (igual filosofía que
-//  store.json: archivo simple, sin base de datos externa).
+//  Guarda los pedidos en el documento "orders". Dónde acaban (base KV
+//  o disco local) lo decide lib/kv.ts.
 //  Al marcar un pedido como "pagado" se descuenta el stock.
 // =============================================================
 
-import { promises as fs } from "fs";
-import path from "path";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { adjustStock } from "@/lib/store-data";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
+import { readDoc, writeDoc } from "@/lib/kv";
 
 type OrdersData = {
   orders: Order[];
@@ -19,22 +15,12 @@ type OrdersData = {
 };
 
 async function readOrders(): Promise<OrdersData> {
-  try {
-    const raw = await fs.readFile(ORDERS_FILE, "utf8");
-    return JSON.parse(raw) as OrdersData;
-  } catch {
-    return { orders: [], seq: 0 };
-  }
+  return readDoc<OrdersData>("orders", () => ({ orders: [], seq: 0 }));
 }
 
-async function writeOrders(data: OrdersData): Promise<void> {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(ORDERS_FILE, JSON.stringify(data, null, 2), "utf8");
-  } catch {
-    // Filesystem de solo lectura (Vercel): no se persiste. Para pedidos
-    // reales en producción se debería usar una base de datos.
-  }
+// Devuelve false si no se pudo guardar (disco de solo lectura y sin KV).
+async function writeOrders(data: OrdersData): Promise<boolean> {
+  return writeDoc("orders", data);
 }
 
 function makeId(seq: number): string {

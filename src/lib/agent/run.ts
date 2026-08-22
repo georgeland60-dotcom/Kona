@@ -149,6 +149,15 @@ export async function ejecutarAgente(
 export type ResultadoAplicar = {
   hechos: string[];
   fallos: string[];
+  // Una entrada por acción intentada, para poder anotarla en el historial
+  // con su herramienta y sus argumentos (de ahí salen tipo y categoría).
+  detalle: Array<{
+    herramienta: string;
+    args: ToolArgs;
+    resumen: string;
+    mensaje: string;
+    ok: boolean;
+  }>;
 };
 
 export async function aplicarPlan(
@@ -156,25 +165,41 @@ export async function aplicarPlan(
 ): Promise<ResultadoAplicar> {
   const hechos: string[] = [];
   const fallos: string[] = [];
+  const detalle: ResultadoAplicar["detalle"] = [];
+
+  const anotar = (accion: AccionPlan, mensaje: string, ok: boolean) => {
+    detalle.push({
+      herramienta: accion.herramienta,
+      args: accion.args,
+      resumen: accion.resumen,
+      mensaje,
+      ok,
+    });
+  };
 
   for (const accion of acciones) {
     const herramienta = buscarHerramienta(accion.herramienta);
     if (!herramienta || herramienta.leer) {
-      fallos.push(`No pude ejecutar "${accion.resumen}".`);
+      const mensaje = `No pude ejecutar "${accion.resumen}".`;
+      fallos.push(mensaje);
+      anotar(accion, mensaje, false);
       continue;
     }
     try {
       const resultado = await herramienta.ejecutar(accion.args);
       if (resultado.ok) hechos.push(resultado.mensaje);
       else fallos.push(resultado.mensaje);
+      anotar(accion, resultado.mensaje, resultado.ok);
     } catch (error) {
-      const detalle =
+      const razon =
         error instanceof ErrorAgente || error instanceof Error
           ? error.message
           : "error inesperado";
-      fallos.push(`"${accion.resumen}" falló: ${detalle}`);
+      const mensaje = `"${accion.resumen}" falló: ${razon}`;
+      fallos.push(mensaje);
+      anotar(accion, mensaje, false);
     }
   }
 
-  return { hechos, fallos };
+  return { hechos, fallos, detalle };
 }

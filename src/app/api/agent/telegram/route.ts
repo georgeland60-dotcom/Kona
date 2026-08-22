@@ -14,6 +14,8 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { ejecutarAgente, aplicarPlan, type AccionPlan } from "@/lib/agent/run";
 import { guardarPlan, tomarPlan, descartarPlan } from "@/lib/agent/pending";
+import { registrarCambios } from "@/lib/historial-data";
+import { tipoDeCambio, categoriaAfectada } from "@/lib/agent/tools";
 import { ErrorAgente, type Parte } from "@/lib/agent/gemini";
 import { isPersistent } from "@/lib/kv";
 import {
@@ -313,9 +315,30 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
   }
 
   await responderBoton(consulta.id, "Aplicando…");
-  const { hechos, fallos } = await aplicarPlan(acciones);
+  const { hechos, fallos, detalle } = await aplicarPlan(acciones);
 
   if (hechos.length > 0) refrescarTienda();
+
+  // Dejamos constancia de lo que se aplicó, para la trazabilidad del panel.
+  // Si esto fallara no debe tumbar la respuesta: el cambio ya está hecho y
+  // lo importante es que la dueña se entere.
+  try {
+    await registrarCambios(
+      await Promise.all(
+        detalle.map(async (d) => ({
+          quien,
+          origen: "telegram" as const,
+          tipo: tipoDeCambio(d.herramienta),
+          categoria: await categoriaAfectada(d.herramienta, d.args),
+          resumen: d.resumen,
+          detalle: d.mensaje,
+          ok: d.ok,
+        }))
+      )
+    );
+  } catch {
+    // El historial es un extra: no vale la pena romper nada por él.
+  }
 
   const lineas: string[] = [];
   if (hechos.length > 0) {

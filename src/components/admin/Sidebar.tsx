@@ -11,6 +11,7 @@ const links = [
   { href: "/admin/inventario", label: "Inventario / Stock" },
   { href: "/admin/promociones", label: "Banners" },
   { href: "/admin/descuentos", label: "Descuentos" },
+  { href: "/admin/datos", label: "Datos / Historial" },
 ];
 
 export default function Sidebar() {
