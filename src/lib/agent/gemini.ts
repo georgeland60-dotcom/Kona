@@ -13,9 +13,9 @@
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // Modelo preferido. Si no existe para la clave de quien instala (Google
-// va renombrando y retirando modelos), lo descubrimos solo: ver
-// elegirModeloDisponible() más abajo.
-const MODELO_PREFERIDO = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+// va renombrando y retirando modelos), se descubre solo probando
+// candidatos: ver el bloque de 404 en preguntarAlModelo().
+const MODELO_PREFERIDO = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
 // Una vez que sabemos cuál funciona, lo recordamos para no volver a
 // preguntar la lista en cada mensaje.
@@ -96,31 +96,57 @@ export async function listarModelos(apiKey: string): Promise<string[]> {
     .filter(Boolean);
 }
 
-// Puntúa cada modelo según lo que necesitamos: barato, rápido, que
-// entienda audio y que acepte herramientas. Los "flash" cumplen todo.
+// Puntúa cada modelo según lo que necesitamos: rápido, barato, que
+// entienda audio y acepte herramientas. Los "flash" cumplen todo.
+//
+// La versión se lee como número (3.6 > 2.5) en vez de listar versiones a
+// mano: así, cuando Google saque la siguiente, gana sola sin tocar código.
 function puntuar(nombre: string): number {
   const n = nombre.toLowerCase();
-  // Descartamos los que no sirven para conversar con herramientas.
-  if (/embedding|aqa|imagen|veo|tts|image-generation/.test(n)) return -1;
+  // Fuera los que no sirven para conversar con herramientas.
+  if (/embedding|aqa|imagen|veo|tts|image-generation|gemma|learnlm|live|native-audio/.test(n)) {
+    return -1;
+  }
   let p = 0;
+  const version = n.match(/(\d+)\.(\d+)/);
+  if (version) {
+    p += (parseInt(version[1], 10) * 10 + parseInt(version[2], 10)) * 4;
+  }
   if (n.includes("flash")) p += 100;
   if (n.includes("pro")) p += 40;
-  if (n.includes("2.5")) p += 30;
-  if (n.includes("2.0")) p += 20;
-  if (n.includes("latest")) p += 10;
-  // Preferimos versiones estables antes que experimentales o recortadas.
+  if (n.includes("latest")) p += 8;
+  // Preferimos estables antes que experimentales o recortados.
   if (/exp|preview|thinking/.test(n)) p -= 25;
   if (n.includes("lite")) p -= 15;
   return p;
 }
 
-async function elegirModeloDisponible(apiKey: string): Promise<string | null> {
-  const disponibles = await listarModelos(apiKey);
-  const ordenados = disponibles
+// Cuando Google retira un modelo, el error nombra el reemplazo ("Please
+// update your code to use models/gemini-3.6-flash"). Hacerle caso es más
+// fiable que cualquier lista: es la propia API diciendo qué usar.
+//
+// Ojo: el mensaje menciona DOS modelos, y el primero es el que acaba de
+// fallar ("This model models/X is no longer available... use models/Y").
+// Quedarse con el primero sería reintentar con el modelo muerto.
+function modeloSugeridoPorGoogle(cuerpo: string): string | null {
+  const limpiar = (m: string) =>
+    m.replace(/^models\//i, "").replace(/[.,;:]+$/, "");
+
+  const recomendado = cuerpo.match(/use\s+models\/[a-z0-9.\-]+/i);
+  if (recomendado) return limpiar(recomendado[0].replace(/^use\s+/i, ""));
+
+  // Sin esa frase, el último mencionado suele ser el reemplazo.
+  const todos = cuerpo.match(/models\/[a-z0-9.\-]+/gi);
+  return todos && todos.length > 1 ? limpiar(todos[todos.length - 1]) : null;
+}
+
+// Modelos ordenados de mejor a peor para nuestro caso.
+export function ordenarModelos(nombres: string[]): string[] {
+  return nombres
     .map((nombre) => ({ nombre, punto: puntuar(nombre) }))
     .filter((m) => m.punto >= 0)
-    .sort((a, b) => b.punto - a.punto);
-  return ordenados[0]?.nombre ?? null;
+    .sort((a, b) => b.punto - a.punto)
+    .map((m) => m.nombre);
 }
 
 // ---- Llamada al modelo ----------------------------------------------
@@ -185,33 +211,40 @@ export async function preguntarAlModelo(opciones: {
 
   let modelo = modeloConfirmado ?? MODELO_PREFERIDO;
   let res = await pedir(modelo);
-  const detalle404 = res.status === 404 ? await res.clone().text().catch(() => "") : "";
 
-  // 404 = ese modelo no existe para esta clave. Google renombra y retira
-  // modelos cada cierto tiempo, así que en vez de fallar preguntamos cuáles
-  // hay disponibles y reintentamos con el mejor.
+  // 404 aquí no significa "escribiste mal el nombre": Google retira modelos
+  // y deja de servirlos a las claves nuevas, aunque sigan apareciendo en la
+  // lista de modelos. Por eso no basta con consultar la lista; hay que
+  // probar candidatos hasta dar con uno que responda.
   if (res.status === 404 && !modeloConfirmado) {
-    const alternativo = await elegirModeloDisponible(apiKey);
-    if (alternativo && alternativo !== modelo) {
-      modelo = alternativo;
-      res = await pedir(modelo);
+    const cuerpo404 = await res.clone().text().catch(() => "");
+
+    // 1º el reemplazo que la propia Google sugiere en el mensaje de error.
+    const candidatos: string[] = [];
+    const sugerido = modeloSugeridoPorGoogle(cuerpo404);
+    if (sugerido && sugerido !== modelo) candidatos.push(sugerido);
+
+    // 2º los de la lista, del mejor al peor.
+    for (const m of ordenarModelos(await listarModelos(apiKey))) {
+      if (m !== modelo && !candidatos.includes(m)) candidatos.push(m);
     }
-    if (!res.ok) {
-      const disponibles = await listarModelos(apiKey);
-      // Ojo: si el modelo SÍ figura entre los disponibles, el 404 no es por
-      // el nombre y culpar al nombre despista. Mostramos lo que dijo Google.
-      const razon = mensajeDeGoogle(detalle404);
-      if (disponibles.includes(MODELO_PREFERIDO)) {
-        throw new ErrorAgente(
-          `Google rechazó el modelo "${MODELO_PREFERIDO}" aunque figura como disponible.` +
-            (razon ? ` Dijo: ${razon}` : "") +
-            " Abre /api/agent/setup?clave=…&probar=1 para ver el detalle."
-        );
+
+    // Probamos unos pocos: si los primeros fallan, el problema es otro.
+    for (const candidato of candidatos.slice(0, 4)) {
+      const intento = await pedir(candidato);
+      if (intento.ok) {
+        modelo = candidato;
+        res = intento;
+        break;
       }
+      res = intento;
+    }
+
+    if (!res.ok) {
+      const razon = mensajeDeGoogle(cuerpo404);
       throw new ErrorAgente(
-        disponibles.length > 0
-          ? `El modelo "${MODELO_PREFERIDO}" no está disponible para tu clave. Pon una de estas en GEMINI_MODEL: ${disponibles.slice(0, 6).join(", ")}.`
-          : `El modelo "${MODELO_PREFERIDO}" no existe para tu clave y tampoco pude leer la lista de modelos. Revisa que GEMINI_API_KEY sea correcta.`
+        `Ningún modelo de IA aceptó la petición. Google dijo sobre "${MODELO_PREFERIDO}": ${razon || "sin detalle"}. ` +
+          "Abre /api/agent/setup?clave=…&probar=1 para ver el detalle completo."
       );
     }
   }

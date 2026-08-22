@@ -14,6 +14,7 @@ import {
   listarModelos,
   probarModelo,
   modeloPreferido,
+  ordenarModelos,
 } from "@/lib/agent/gemini";
 import { isPersistent } from "@/lib/kv";
 
@@ -69,7 +70,10 @@ export async function GET(req: Request) {
     const disponibles = await listarModelos(apiKey);
     const preferido = modeloPreferido();
     // Probamos el preferido y, si hay otro distinto, el siguiente candidato.
-    const otro = disponibles.find((m) => m !== preferido && m.includes("flash"));
+    // El siguiente mejor candidato según el mismo criterio que usa el
+    // agente (no vale coger cualquiera que diga "flash": los de voz o
+    // imagen también lo dicen y no sirven para conversar).
+    const otro = ordenarModelos(disponibles).find((m) => m !== preferido);
     const pruebas = [await probarModelo(apiKey, preferido)];
     if (otro) pruebas.push(await probarModelo(apiKey, otro));
     return Response.json({
