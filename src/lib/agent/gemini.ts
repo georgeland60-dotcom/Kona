@@ -23,10 +23,16 @@ let modeloConfirmado: string | null = null;
 
 // ---- Forma de los mensajes que se le mandan al modelo ---------------
 
+// Los modelos Gemini 3 devuelven una "firma de razonamiento" pegada a cada
+// llamada a herramienta, y exigen que se les devuelva tal cual en el turno
+// siguiente. Por eso viaja aquí, aunque nosotros nunca la leamos.
 export type Parte =
-  | { text: string }
+  | { text: string; thoughtSignature?: string }
   | { inlineData: { mimeType: string; data: string } }
-  | { functionCall: { name: string; args: Record<string, unknown> } }
+  | {
+      functionCall: { name: string; args: Record<string, unknown> };
+      thoughtSignature?: string;
+    }
   | {
       functionResponse: {
         name: string;
@@ -44,11 +50,16 @@ export type LlamadaHerramienta = {
 export type RespuestaModelo = {
   texto: string;
   llamadas: LlamadaHerramienta[];
+  // El turno del modelo TAL CUAL vino. Hay que reenviarlo sin tocar: si se
+  // reconstruye a mano se pierden campos que la API exige de vuelta (la
+  // firma de razonamiento, sin ir más lejos) y rechaza la conversación.
+  partesCrudas: Parte[];
 };
 
 type GeminiParte = {
   text?: string;
   functionCall?: { name?: string; args?: Record<string, unknown> };
+  thoughtSignature?: string;
 };
 
 type GeminiRespuesta = {
@@ -299,7 +310,11 @@ export async function preguntarAlModelo(opciones: {
     }
   }
 
-  return { texto: texto.trim(), llamadas };
+  return {
+    texto: texto.trim(),
+    llamadas,
+    partesCrudas: partes as unknown as Parte[],
+  };
 }
 
 

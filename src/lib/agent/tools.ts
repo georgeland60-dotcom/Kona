@@ -1057,7 +1057,11 @@ export const HERRAMIENTAS: Tool[] = [
 ];
 
 export function buscarHerramienta(nombre: string): Tool | undefined {
-  return HERRAMIENTAS.find((h) => h.nombre === nombre);
+  // El modelo a veces nombra la herramienta con un prefijo de espacio de
+  // nombres ("default_api:buscar_productos"). Nos quedamos con la parte
+  // final, que es la que nos importa.
+  const limpio = nombre.includes(":") ? nombre.split(":").pop()! : nombre;
+  return HERRAMIENTAS.find((h) => h.nombre === limpio);
 }
 
 // Declaraciones en el formato que espera el modelo de IA.

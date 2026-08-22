@@ -63,13 +63,10 @@ export async function ejecutarAgente(
         : { tipo: "respuesta", texto };
     }
 
-    // Anotamos lo que pidió el modelo, tal cual, en el historial.
-    mensajes.push({
-      role: "model",
-      parts: respuesta.llamadas.map((l) => ({
-        functionCall: { name: l.nombre, args: l.args },
-      })),
-    });
+    // El turno del modelo se reenvía TAL CUAL vino. Reconstruirlo a mano
+    // perdía la firma de razonamiento que Gemini 3 exige de vuelta, y la
+    // API rechazaba la conversación entera.
+    mensajes.push({ role: "model", parts: respuesta.partesCrudas });
 
     // Y ahora resolvemos cada llamada.
     const respuestas: Parte[] = [];
