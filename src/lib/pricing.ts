@@ -1,12 +1,18 @@
 // =============================================================
 //  PRECIOS DEL SERVIDOR (fuente de verdad para el cobro)
-//  Recalcula el precio real de cada producto a partir de la base de
-//  datos + descuentos vigentes. NUNCA se confía en el precio que envía
-//  el navegador (podría manipularse).
+//
+//  Recalcula el precio real a partir de la base de datos + las
+//  promociones vigentes. NUNCA se confía en el precio que envía el
+//  navegador: podría manipularse.
+//
+//  Ojo con esto: el carrito de la tienda y el cobro usan LA MISMA
+//  función. No dos parecidas. Es lo único que garantiza que no se
+//  muestre un precio y se cobre otro.
 // =============================================================
 
-import { getProductById } from "@/lib/store-data";
-import { getLiveRules, priceFor } from "@/lib/promos-data";
+import { getProducts } from "@/lib/store-data";
+import { getRules } from "@/lib/promos-data";
+import { preciarCarrito, type CarritoPreciado } from "@/lib/promo-engine";
 import type { OrderItem } from "@/lib/types";
 
 type IncomingItem = {
@@ -18,25 +24,40 @@ type IncomingItem = {
   price?: number; // lo ignoramos: lo recalculamos aquí
 };
 
-// Devuelve los items con el precio y nombre tomados del servidor.
-// Si un producto ya no existe, se omite del pedido.
+// Precia un carrito con los datos reales de la tienda.
+export async function preciarPedido(
+  incoming: IncomingItem[]
+): Promise<CarritoPreciado> {
+  const [productos, reglas] = await Promise.all([
+    // En crudo: los precios base, sin descuentos ya aplicados. Si no,
+    // el motor descontaría sobre un precio ya descontado.
+    getProducts({ includeInactive: true, raw: true }),
+    getRules(),
+  ]);
+
+  return preciarCarrito(
+    incoming.map((i) => ({
+      productId: i.productId,
+      sku: i.sku,
+      size: i.size,
+      qty: Math.max(0, Math.floor(i.qty)),
+    })),
+    productos,
+    reglas
+  );
+}
+
+// Los items ya preciados, tal como se guardan en el pedido.
 export async function priceForItems(
   incoming: IncomingItem[]
 ): Promise<OrderItem[]> {
-  const liveRules = await getLiveRules();
-  const items: OrderItem[] = [];
-  for (const it of incoming) {
-    const product = await getProductById(it.productId, { raw: true });
-    if (!product) continue;
-    const { price } = priceFor(product, liveRules);
-    items.push({
-      productId: product.id,
-      sku: it.sku,
-      name: product.name,
-      size: it.size,
-      price,
-      qty: Math.max(1, Math.floor(it.qty)),
-    });
-  }
-  return items;
+  const { lineas } = await preciarPedido(incoming);
+  return lineas.map((l) => ({
+    productId: l.productId,
+    sku: l.sku,
+    name: l.nombre,
+    size: l.size,
+    price: l.precioUnitario,
+    qty: l.qty,
+  }));
 }

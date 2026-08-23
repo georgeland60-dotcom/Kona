@@ -17,6 +17,18 @@ function describeScope(
 }
 
 function describeValue(rule: DiscountRule): string {
+  // Un escalonado no tiene un valor único: son varios escalones. Mostrar su
+  // campo "value" diría "0% off", que es falso.
+  if (rule.tipo === "escalonado" && rule.tramos?.length) {
+    return rule.tramos
+      .map(
+        (t) =>
+          `${t.desde}${t.hasta ? `-${t.hasta}` : "+"} u: ${
+            t.kind === "percent" ? `${t.value}%` : `S/ ${t.value}`
+          }`
+      )
+      .join(" · ");
+  }
   return rule.kind === "percent" ? `${rule.value}% off` : `S/ ${rule.value} off`;
 }
 

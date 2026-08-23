@@ -14,7 +14,7 @@ function skuOf(product: Product, size?: string): string | undefined {
 }
 
 export default function CartDrawer() {
-  const { items, isOpen, setOpen, setQty, remove, total, clear, count } =
+  const { items, isOpen, setOpen, setQty, remove, total, precio, calculando, clear, count } =
     useCart();
   const [loading, setLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
@@ -138,9 +138,33 @@ export default function CartDrawer() {
                   {i.size && (
                     <p className="text-xs text-muted">Talla {i.size}</p>
                   )}
-                  <p className="text-sm text-accent mt-1">
-                    {formatPrice(i.product.price)}
-                  </p>
+                  {(() => {
+                    // Buscamos qué dijo el servidor para esta línea. Si aún
+                    // no respondió, mostramos el precio de lista.
+                    const l = precio?.lineas.find(
+                      (x) => x.productId === i.product.id && x.size === i.size
+                    );
+                    const conPromo = !!l && l.precioUnitario < l.precioLista;
+                    return (
+                      <div className="mt-1">
+                        <p className="text-sm">
+                          {conPromo && (
+                            <span className="text-muted line-through mr-2">
+                              {formatPrice(l!.precioLista)}
+                            </span>
+                          )}
+                          <span className={conPromo ? "text-accent font-semibold" : "text-accent"}>
+                            {formatPrice(l ? l.precioUnitario : i.product.price)}
+                          </span>
+                        </p>
+                        {conPromo && l?.promo && (
+                          <p className="text-xs text-green-700 font-medium mt-0.5">
+                            {l.promo} · ahorras {formatPrice(l.ahorro)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="flex items-center gap-3 mt-2">
                     <div className="flex items-center border border-line rounded">
                       <button
@@ -172,10 +196,27 @@ export default function CartDrawer() {
 
         {items.length > 0 && (
           <div className="border-t border-line p-5 space-y-4">
-            <div className="flex justify-between text-base">
-              <span>Total</span>
-              <span className="font-medium">{formatPrice(total)}</span>
+            <div className="flex justify-between text-base items-baseline">
+              <span>
+                Total
+                {calculando && (
+                  <span className="text-xs text-muted ml-2">actualizando…</span>
+                )}
+              </span>
+              <span className="font-medium">
+                {precio && precio.ahorro > 0 && (
+                  <span className="text-muted line-through font-normal text-sm mr-2">
+                    {formatPrice(precio.totalLista)}
+                  </span>
+                )}
+                {formatPrice(total)}
+              </span>
             </div>
+            {precio && precio.ahorro > 0 && (
+              <p className="text-sm text-green-700 font-medium -mt-2">
+                Ahorras {formatPrice(precio.ahorro)}
+              </p>
+            )}
             <button
               onClick={payOnline}
               disabled={loading}

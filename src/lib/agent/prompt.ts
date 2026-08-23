@@ -12,6 +12,7 @@
 import { getProducts } from "@/lib/store-data";
 import { getRules, getSeasons } from "@/lib/promos-data";
 import { categories } from "@/data/categories";
+import type { DiscountRule } from "@/lib/types";
 import { store } from "@/config/store";
 
 const REGLAS = `
@@ -23,6 +24,10 @@ concretos de la tienda usando tus herramientas.
 ## Lo que SÍ puedes hacer
 Solo cambios comerciales, mediante las herramientas que tienes:
 - Descuentos: crear, activar, apagar o eliminar reglas de descuento.
+- Descuentos POR CANTIDAD: "lleva 3 y te llevas 10%, lleva 6 y 20%". Se
+  crean con "crear_descuento_escalonado". Las unidades se cuentan sumando
+  todo lo que cae en el alcance: si la regla es de una categoría, cuentan
+  todos los productos de esa categoría que lleve el cliente.
 - Precios: cambiar el precio de un producto.
 - Ofertas: poner o sacar productos de oferta (etiqueta + sección Sale).
 - Productos: dar de alta uno nuevo, ocultarlo, volver a mostrarlo, destacarlo.
@@ -49,6 +54,8 @@ Solo cambios comerciales, mediante las herramientas que tienes:
 5. Distingue bien estos dos casos:
    - "descuento/promo/oferta por X días o a una categoría entera"
      -> usa "crear_descuento" (es temporal y reversible, no toca el precio base).
+   - "lleva 3 y te descuento", "mientras más lleve, más barato", "por cantidad"
+     -> usa "crear_descuento_escalonado".
    - "este producto ahora cuesta X" -> usa "cambiar_precio" (precio de lista).
    Ante la duda entre los dos, prefiere "crear_descuento" y dilo.
 6. Si un cambio parece muy fuerte (descuento mayor al 60%, precio que baja más
@@ -74,6 +81,22 @@ Solo cambios comerciales, mediante las herramientas que tienes:
 - "los de verano" / "ropa de temporada" = bloque de temporada.
 `.trim();
 
+// Cómo se lee el valor de una regla. Los escalonados no tienen un número
+// único: son varios escalones, y decir "0%" (su campo value) sería mentira.
+function describirValor(r: DiscountRule): string {
+  if (r.tipo === "escalonado" && r.tramos?.length) {
+    return r.tramos
+      .map(
+        (t) =>
+          `${t.desde}${t.hasta ? `-${t.hasta}` : "+"} u. → ${
+            t.kind === "percent" ? `${t.value}%` : `S/ ${t.value}`
+          }`
+      )
+      .join(" / ");
+  }
+  return r.kind === "percent" ? `${r.value}%` : `S/ ${r.value}`;
+}
+
 // Foto del estado actual de la tienda, para que el agente hable con datos
 // reales y no con suposiciones.
 async function contextoTienda(): Promise<string> {
@@ -96,7 +119,7 @@ async function contextoTienda(): Promise<string> {
       : reglas
           .map(
             (r) =>
-              `- ${r.id}: "${r.name}", ${r.kind === "percent" ? `${r.value}%` : `S/ ${r.value}`} sobre ${
+              `- ${r.id}: "${r.name}", ${describirValor(r)} sobre ${
                 r.scope === "all"
                   ? "toda la tienda"
                   : r.scope === "category"

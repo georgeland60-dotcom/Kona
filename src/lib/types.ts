@@ -81,6 +81,18 @@ export type Banner = {
 export type DiscountScope = "all" | "category" | "product";
 export type DiscountKind = "percent" | "fixed";
 
+// Qué CLASE de promoción es. Las reglas viejas no tienen este campo y se
+// tratan como "simple", así que nada de lo que ya existe deja de funcionar.
+export type DiscountType = "simple" | "escalonado";
+
+// Un tramo de un descuento por cantidad: "de 3 a 5 unidades, 10%".
+export type Tramo = {
+  desde: number; // cantidad mínima para entrar en este tramo
+  hasta?: number; // cantidad máxima; sin tope si no se indica
+  kind: DiscountKind;
+  value: number;
+};
+
 export type DiscountRule = {
   id: string;
   name: string; // nombre interno, ej "Cyber 20%"
@@ -91,6 +103,8 @@ export type DiscountRule = {
   active: boolean;
   startsAt?: string; // fecha ISO de inicio (opcional)
   endsAt?: string; // fecha ISO de fin (opcional)
+  tipo?: DiscountType; // ausente = "simple"
+  tramos?: Tramo[]; // solo en las de tipo "escalonado"
 };
 
 // Un bloque de TEMPORADA en el inicio (ej "Verano", "Navidad"). Los

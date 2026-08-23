@@ -15,6 +15,8 @@ Le escribes al bot como le hablarías a una persona, o le mandas una nota de voz
 
 > _"mete 20% de descuento a todos los vestidos hasta el domingo"_
 >
+> _"si llevan 3 blusas o más, 10% de descuento"_
+>
 > _"el pantalón Killa ahora cuesta 129"_
 >
 > _"pon el Dress Pams Malva en oferta a 89"_
@@ -43,6 +45,7 @@ propone, tú decides.
 | | Ejemplo |
 |---|---|
 | Descuentos | crear, encender, apagar o borrar promociones (por producto, categoría o toda la tienda, con fechas) |
+| Por cantidad | "lleva 3 y te llevas 10%, lleva 6 y 20%" — las unidades se cuentan por todo el alcance de la regla |
 | Precios | cambiar el precio de lista de un producto |
 | Ofertas | poner o sacar de oferta, con precio tachado, y meterlo al bloque Sale |
 | Productos | dar de alta uno nuevo, ocultarlo, volver a mostrarlo, destacarlo en el inicio |
@@ -272,6 +275,7 @@ src/lib/agent/run.ts                  ← el bucle: pregunta al modelo, ejecuta
    └── src/lib/agent/tools.ts         ← la lista CERRADA de acciones posibles
    │
    ▼  (tras el botón Confirmar)
+src/lib/promo-engine.ts               ← calcula el precio del CARRITO
 src/lib/store-data.ts / promos-data.ts → src/lib/kv.ts → Upstash o disco
 src/lib/historial-data.ts             ← anota el cambio para el panel
 ```
@@ -289,6 +293,13 @@ Decisiones que conviene no romper:
 - **Los precios se leen siempre en crudo** (`raw: true`), nunca con los
   descuentos ya aplicados. Si no, cada cambio de precio iría acumulando
   descuentos sobre descuentos.
+- **El carrito y el cobro usan la MISMA función** (`preciarPedido`), no dos
+  parecidas. Es lo único que garantiza que no se muestre un precio y se
+  cobre otro. `promo-engine.ts` es puro a propósito (recibe productos y
+  reglas, no los busca) para poder probarlo sin base de datos.
+- **Las promociones no se apilan**: gana la que más conviene al cliente. Y
+  se redondea por unidad, para que el total siempre sea la suma de las
+  líneas.
 - **El plan se guarda con un código de un solo uso** (`pending.ts`), así que
   apretar Confirmar dos veces no aplica los cambios dos veces.
 - El audio se le manda a Gemini tal cual, sin transcribirlo antes: entiende

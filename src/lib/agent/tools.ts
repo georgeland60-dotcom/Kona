@@ -41,6 +41,7 @@ import type {
   DiscountScope,
   SeasonBlock,
   Variant,
+  Tramo,
 } from "@/lib/types";
 
 // ---- Tipos -----------------------------------------------------------
@@ -464,6 +465,182 @@ const cambiarDescuento: Tool = {
     return {
       ok: true,
       mensaje: `Descuento "${regla.name}" ${regla.active ? "activado" : "apagado"}.`,
+    };
+  },
+};
+
+
+// Lee los escalones de cantidad que manda el modelo, tolerando que vengan
+// con nombres en español o en inglés.
+function leerTramos(args: ToolArgs): Tramo[] {
+  const bruto = args["tramos"];
+  if (!Array.isArray(bruto)) return [];
+  const tramos: Tramo[] = [];
+  for (const t of bruto) {
+    if (!t || typeof t !== "object") continue;
+    const o = t as Record<string, unknown>;
+    const desde = Number(o.desde ?? o.from ?? o.min);
+    const hastaBruto = o.hasta ?? o.to ?? o.max;
+    const hasta = hastaBruto === undefined || hastaBruto === null ? undefined : Number(hastaBruto);
+    const kind = String(o.tipo ?? o.kind ?? "percent") === "fixed" ? "fixed" : "percent";
+    const value = Number(o.valor ?? o.value ?? 0);
+    if (!Number.isFinite(desde) || !Number.isFinite(value)) continue;
+    tramos.push({
+      desde: Math.floor(desde),
+      hasta: hasta !== undefined && Number.isFinite(hasta) ? Math.floor(hasta) : undefined,
+      kind,
+      value,
+    });
+  }
+  return tramos;
+}
+
+
+const crearDescuentoEscalonado: Tool = {
+  nombre: "crear_descuento_escalonado",
+  leer: false,
+  descripcion:
+    "Crea un descuento POR CANTIDAD: mientras más lleve el cliente, mayor el descuento. Ej: 'lleva 3 blusas y te llevas 10%, lleva 6 y 20%'. Las cantidades se cuentan sumando todo lo que entra en el alcance: si es una categoría, cuentan todos los productos de esa categoría en el carrito, aunque sean modelos distintos.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      nombre: {
+        type: "STRING",
+        description: "Nombre corto para reconocerla, ej '3x15% en blusas'.",
+      },
+      alcance: {
+        type: "STRING",
+        enum: ["all", "category", "product"],
+        description:
+          "'all' = toda la tienda, 'category' = una categoría, 'product' = un solo producto.",
+      },
+      objetivo: {
+        type: "STRING",
+        description:
+          "Si alcance es 'category': el slug de la categoría. Si es 'product': el id o nombre. Vacío si es 'all'.",
+      },
+      tramos: {
+        type: "ARRAY",
+        description:
+          "Los escalones, de menor a mayor cantidad. Cada uno indica desde cuántas unidades aplica y cuánto descuenta.",
+        items: {
+          type: "OBJECT",
+          properties: {
+            desde: {
+              type: "NUMBER",
+              description: "Cantidad mínima de unidades para este escalón.",
+            },
+            hasta: {
+              type: "NUMBER",
+              description: "Cantidad máxima. Omitir en el último escalón.",
+            },
+            tipo: {
+              type: "STRING",
+              enum: ["percent", "fixed"],
+              description: "'percent' = porcentaje, 'fixed' = soles de rebaja.",
+            },
+            valor: { type: "NUMBER", description: "20 para 20%, o 30 para S/ 30." },
+          },
+          required: ["desde", "tipo", "valor"],
+        },
+      },
+      desde_fecha: {
+        type: "STRING",
+        description: "Fecha de inicio AAAA-MM-DD. Opcional.",
+      },
+      hasta_fecha: {
+        type: "STRING",
+        description: "Fecha de fin AAAA-MM-DD. Opcional.",
+      },
+    },
+    required: ["nombre", "alcance", "tramos"],
+  },
+  resumen: async (args) => {
+    const tramos = leerTramos(args);
+    const alcance = texto(args, "alcance", "all");
+    const objetivo = texto(args, "objetivo");
+    let donde = "toda la tienda";
+    if (alcance === "category") donde = `la categoría "${objetivo}"`;
+    if (alcance === "product") donde = `"${await nombreProducto(objetivo)}"`;
+    const escalones = tramos
+      .map((t) => {
+        const monto = t.kind === "percent" ? `${t.value}%` : soles(t.value);
+        return t.hasta
+          ? `de ${t.desde} a ${t.hasta} → ${monto}`
+          : `${t.desde} o más → ${monto}`;
+      })
+      .join("; ");
+    return `Crear descuento por cantidad en ${donde} (${escalones})`;
+  },
+  ejecutar: async (args) => {
+    const tramos = leerTramos(args);
+    if (tramos.length === 0) {
+      return { ok: false, mensaje: "No entendí los escalones de cantidad." };
+    }
+
+    // Un escalón con 0% o que empieza en 0 no descuenta nada y solo
+    // confunde; mejor rechazarlo que crear una promo que no hace nada.
+    for (const t of tramos) {
+      if (t.desde < 1) {
+        return { ok: false, mensaje: "Cada escalón debe empezar en 1 unidad o más." };
+      }
+      if (t.value <= 0) {
+        return { ok: false, mensaje: "Cada escalón debe descontar algo (mayor que cero)." };
+      }
+      if (t.kind === "percent" && t.value >= 100) {
+        return { ok: false, mensaje: "Un descuento en porcentaje debe ser menor que 100%." };
+      }
+      if (t.hasta !== undefined && t.hasta < t.desde) {
+        return {
+          ok: false,
+          mensaje: `Un escalón va de ${t.desde} a ${t.hasta}, que está al revés.`,
+        };
+      }
+    }
+
+    const alcance = texto(args, "alcance", "all") as DiscountScope;
+    let objetivo: string | undefined;
+    if (alcance === "category") {
+      const slug = texto(args, "objetivo");
+      const cat = categories.find(
+        (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
+      );
+      if (!cat) {
+        return {
+          ok: false,
+          mensaje: `No existe la categoría "${slug}". Las válidas son: ${categories
+            .map((c) => c.slug)
+            .join(", ")}.`,
+        };
+      }
+      objetivo = cat.slug;
+    } else if (alcance === "product") {
+      const r = await resolverProducto(texto(args, "objetivo"));
+      if (!r.ok) return { ok: false, mensaje: r.mensaje };
+      objetivo = r.producto.id;
+    }
+
+    const regla: DiscountRule = {
+      id: await nextRuleId(),
+      name: texto(args, "nombre", "Descuento por cantidad"),
+      scope: alcance,
+      target: objetivo,
+      kind: "percent",
+      value: 0, // no se usa en los escalonados: manda cada tramo
+      active: true,
+      tipo: "escalonado",
+      tramos: tramos.sort((a, b) => a.desde - b.desde),
+      startsAt: fechaISO(texto(args, "desde_fecha")),
+      endsAt: fechaISO(texto(args, "hasta_fecha"), true),
+    };
+
+    await upsertRule(regla);
+    const primero = regla.tramos![0];
+    const monto =
+      primero.kind === "percent" ? `${primero.value}%` : soles(primero.value);
+    return {
+      ok: true,
+      mensaje: `Descuento por cantidad "${regla.name}" creado: desde ${primero.desde} unidades, ${monto}.`,
     };
   },
 };
@@ -1044,6 +1221,7 @@ export const HERRAMIENTAS: Tool[] = [
   listarTemporadas,
   // escritura
   crearDescuento,
+  crearDescuentoEscalonado,
   cambiarDescuento,
   cambiarPrecio,
   marcarOferta,
@@ -1063,6 +1241,7 @@ export const HERRAMIENTAS: Tool[] = [
 // historial en el panel.
 const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
   crear_descuento: "descuentos",
+  crear_descuento_escalonado: "descuentos",
   cambiar_descuento: "descuentos",
   cambiar_precio: "precios",
   marcar_oferta: "ofertas",
@@ -1095,7 +1274,7 @@ export async function categoriaAfectada(
     : nombreHerramienta;
 
   // Un descuento puede ser global, por categoría o por producto.
-  if (limpio === "crear_descuento") {
+  if (limpio === "crear_descuento" || limpio === "crear_descuento_escalonado") {
     const alcance = texto(args, "alcance", "all");
     if (alcance === "category") {
       const slug = texto(args, "objetivo");
