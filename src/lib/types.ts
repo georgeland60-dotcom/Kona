@@ -79,11 +79,38 @@ export type Banner = {
 
 // Una regla de descuento aplicada automáticamente a la tienda.
 export type DiscountScope = "all" | "category" | "product";
-export type DiscountKind = "percent" | "fixed";
+
+// "percent" = % de descuento, "fixed" = soles de rebaja,
+// "precio_fijo" = deja el producto en ese precio exacto ("todos a S/ 89").
+export type DiscountKind = "percent" | "fixed" | "precio_fijo";
+
+// A QUÉ productos apunta una regla. El campo scope/target de siempre solo
+// permite un producto o una categoría; en la práctica las campañas apuntan
+// a listas ("estos 6 jeans") y sobre todo excluyen ("todo MENOS estos 2").
+// Cuando una regla trae filtro, este manda sobre scope/target.
+export type Filtro = {
+  todos?: boolean; // toda la tienda
+  categorias?: string[]; // slugs de categoría
+  productos?: string[]; // ids de producto
+  // Se descuentan de lo anterior. Un producto excluido nunca entra,
+  // aunque lo incluyan las otras condiciones.
+  excluirCategorias?: string[];
+  excluirProductos?: string[];
+};
 
 // Qué CLASE de promoción es. Las reglas viejas no tienen este campo y se
 // tratan como "simple", así que nada de lo que ya existe deja de funcionar.
-export type DiscountType = "simple" | "escalonado";
+export type DiscountType = "simple" | "escalonado" | "bogo";
+
+// Un 2x1 y sus parientes. "Lleva 2 paga 1" es porCada:2, regala:1 y
+// descuentoRegalo:100. "La 2da prenda al 50%" es lo mismo con 50.
+export type BogoConfig = {
+  porCada: number; // cada cuántas unidades elegibles...
+  regala: number; // ...cuántas se descuentan
+  descuentoRegalo: number; // % sobre la regalada; 100 = gratis
+  recursivo: boolean; // si se repite en el mismo carrito (4 -> 2 gratis)
+  maximoRegalos?: number; // tope de unidades regaladas por carrito
+};
 
 // Un tramo de un descuento por cantidad: "de 3 a 5 unidades, 10%".
 export type Tramo = {
@@ -105,6 +132,8 @@ export type DiscountRule = {
   endsAt?: string; // fecha ISO de fin (opcional)
   tipo?: DiscountType; // ausente = "simple"
   tramos?: Tramo[]; // solo en las de tipo "escalonado"
+  bogo?: BogoConfig; // solo en las de tipo "bogo"
+  filtro?: Filtro; // si viene, manda sobre scope/target
 };
 
 // Un bloque de TEMPORADA en el inicio (ej "Verano", "Navidad"). Los

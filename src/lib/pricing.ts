@@ -48,16 +48,33 @@ export async function preciarPedido(
 }
 
 // Los items ya preciados, tal como se guardan en el pedido.
+//
+// Ojo con los 2x1: dentro de una misma línea las unidades cuestan distinto
+// (una a S/ 115 y la regalada a S/ 0). Guardar un único precio unitario
+// cobraría de menos, así que la línea se parte en un item por cada precio.
+// De paso el pedido queda como una boleta de verdad: se ve qué se pagó y
+// qué se regaló.
 export async function priceForItems(
   incoming: IncomingItem[]
 ): Promise<OrderItem[]> {
   const { lineas } = await preciarPedido(incoming);
-  return lineas.map((l) => ({
-    productId: l.productId,
-    sku: l.sku,
-    name: l.nombre,
-    size: l.size,
-    price: l.precioUnitario,
-    qty: l.qty,
-  }));
+  const items: OrderItem[] = [];
+
+  for (const l of lineas) {
+    const porPrecio = new Map<number, number>();
+    for (const precio of l.precios) {
+      porPrecio.set(precio, (porPrecio.get(precio) ?? 0) + 1);
+    }
+    for (const [price, qty] of [...porPrecio.entries()].sort((a, b) => b[0] - a[0])) {
+      items.push({
+        productId: l.productId,
+        sku: l.sku,
+        name: price === 0 ? `${l.nombre} (regalo)` : l.nombre,
+        size: l.size,
+        price,
+        qty,
+      });
+    }
+  }
+  return items;
 }

@@ -150,16 +150,27 @@ export default function CartDrawer() {
                         <p className="text-sm">
                           {conPromo && (
                             <span className="text-muted line-through mr-2">
-                              {formatPrice(l!.precioLista)}
+                              {formatPrice(
+                                l!.regaladas > 0 ? l!.subtotalLista : l!.precioLista
+                              )}
                             </span>
                           )}
                           <span className={conPromo ? "text-accent font-semibold" : "text-accent"}>
-                            {formatPrice(l ? l.precioUnitario : i.product.price)}
+                            {/* Con un 2x1 las unidades valen distinto, así que
+                                mostramos lo que se paga por la línea entera. */}
+                            {l && l.regaladas > 0
+                              ? formatPrice(l.subtotal)
+                              : formatPrice(l ? l.precioUnitario : i.product.price)}
                           </span>
                         </p>
                         {conPromo && l?.promo && (
                           <p className="text-xs text-green-700 font-medium mt-0.5">
-                            {l.promo} · ahorras {formatPrice(l.ahorro)}
+                            {l.regaladas > 0
+                              ? `🎁 ${l.promo} · ${l.regaladas} ${
+                                  l.regaladas === 1 ? "unidad" : "unidades"
+                                } de regalo`
+                              : l.promo}{" "}
+                            · ahorras {formatPrice(l.ahorro)}
                           </p>
                         )}
                       </div>

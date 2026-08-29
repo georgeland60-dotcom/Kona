@@ -17,6 +17,10 @@ Le escribes al bot como le hablarías a una persona, o le mandas una nota de voz
 >
 > _"si llevan 3 blusas o más, 10% de descuento"_
 >
+> _"pon 2x1 en toda la tienda hasta el domingo"_
+>
+> _"60% en todo menos el Ribbon Bag y el Dress Pams"_
+>
 > _"el pantalón Killa ahora cuesta 129"_
 >
 > _"pon el Dress Pams Malva en oferta a 89"_
@@ -46,6 +50,9 @@ propone, tú decides.
 |---|---|
 | Descuentos | crear, encender, apagar o borrar promociones (por producto, categoría o toda la tienda, con fechas) |
 | Por cantidad | "lleva 3 y te llevas 10%, lleva 6 y 20%" — las unidades se cuentan por todo el alcance de la regla |
+| 2x1 y similares | "2x1", "3x2", "la segunda al 50%". Siempre se regala la unidad más barata |
+| Con exclusiones | "60% en todo menos estos dos" — el patrón de las campañas grandes |
+| Precio fijo | "todas las carteras a 59" |
 | Precios | cambiar el precio de lista de un producto |
 | Ofertas | poner o sacar de oferta, con precio tachado, y meterlo al bloque Sale |
 | Productos | dar de alta uno nuevo, ocultarlo, volver a mostrarlo, destacarlo en el inicio |
@@ -297,9 +304,13 @@ Decisiones que conviene no romper:
   parecidas. Es lo único que garantiza que no se muestre un precio y se
   cobre otro. `promo-engine.ts` es puro a propósito (recibe productos y
   reglas, no los busca) para poder probarlo sin base de datos.
-- **Las promociones no se apilan**: gana la que más conviene al cliente. Y
-  se redondea por unidad, para que el total siempre sea la suma de las
-  líneas.
+- **Las promociones no se apilan**: cada unidad recibe como máximo una, y
+  gana la que más conviene al cliente. Un 2x1 se compara contra lo que ya
+  tenían esas unidades y solo entra si sale mejor; si no, un "60% en todo"
+  más un 2x1 daría 80% de rebaja sin que nadie lo haya decidido.
+- **En un pedido, una línea con 2x1 se parte en dos** (lo pagado y el
+  regalo a S/ 0). Guardar un solo precio unitario cobraría de menos,
+  porque dentro de la línea las unidades valen distinto.
 - **El plan se guarda con un código de un solo uso** (`pending.ts`), así que
   apretar Confirmar dos veces no aplica los cambios dos veces.
 - El audio se le manda a Gemini tal cual, sin transcribirlo antes: entiende

@@ -28,7 +28,12 @@ Solo cambios comerciales, mediante las herramientas que tienes:
   crean con "crear_descuento_escalonado". Las unidades se cuentan sumando
   todo lo que cae en el alcance: si la regla es de una categoría, cuentan
   todos los productos de esa categoría que lleve el cliente.
-- Precios: cambiar el precio de un producto.
+- 2x1 y similares: "2x1", "3x2", "la segunda al 50%". Se crean con
+  "crear_promocion_2x1". Siempre se regala la unidad MÁS BARATA.
+- Precios: cambiar el precio de un producto, o dejar varios en un precio
+  exacto ("todas las carteras a 59") con tipo "precio_fijo".
+- Campañas con EXCLUSIONES: "60% en todo menos estos dos". Se arman con
+  los campos toda_la_tienda / categorias / productos / excluir_productos.
 - Ofertas: poner o sacar productos de oferta (etiqueta + sección Sale).
 - Productos: dar de alta uno nuevo, ocultarlo, volver a mostrarlo, destacarlo.
 - Stock: fijar las unidades disponibles.
@@ -56,12 +61,16 @@ Solo cambios comerciales, mediante las herramientas que tienes:
      -> usa "crear_descuento" (es temporal y reversible, no toca el precio base).
    - "lleva 3 y te descuento", "mientras más lleve, más barato", "por cantidad"
      -> usa "crear_descuento_escalonado".
+   - "2x1", "3x2", "lleva 2 paga 1", "la segunda a mitad de precio"
+     -> usa "crear_promocion_2x1".
    - "este producto ahora cuesta X" -> usa "cambiar_precio" (precio de lista).
    Ante la duda entre los dos, prefiere "crear_descuento" y dilo.
-6. Si un cambio parece muy fuerte (descuento mayor al 60%, precio que baja más
+6. En un 2x1, di siempre el ejemplo en soles antes de que confirme: un
+   "lleva 2 paga 1" y un "3x2" suenan parecido y cuestan muy distinto.
+7. Si un cambio parece muy fuerte (descuento mayor al 60%, precio que baja más
    de la mitad, eliminar productos de verdad), hazlo igual pero AVISA en tu
    respuesta que es un cambio grande, para que ella lo revise antes de confirmar.
-7. Para quitar un producto, usa siempre modo "ocultar", salvo que ella diga
+8. Para quitar un producto, usa siempre modo "ocultar", salvo que ella diga
    claramente "bórralo", "elimínalo para siempre" o similar.
 
 ## Cómo hablar
@@ -94,6 +103,13 @@ function describirValor(r: DiscountRule): string {
       )
       .join(" / ");
   }
+  if (r.tipo === "bogo" && r.bogo) {
+    const { porCada, regala, descuentoRegalo } = r.bogo;
+    return descuentoRegalo >= 100
+      ? `${porCada}x${porCada - regala}`
+      : `llevando ${porCada}, ${regala} al ${descuentoRegalo}%`;
+  }
+  if (r.kind === "precio_fijo") return `precio fijo S/ ${r.value}`;
   return r.kind === "percent" ? `${r.value}%` : `S/ ${r.value}`;
 }
 

@@ -42,6 +42,8 @@ import type {
   SeasonBlock,
   Variant,
   Tramo,
+  Filtro,
+  BogoConfig,
 } from "@/lib/types";
 
 // ---- Tipos -----------------------------------------------------------
@@ -302,6 +304,222 @@ const listarTemporadas: Tool = {
   },
 };
 
+// ---- Filtros: a qué productos apunta una promoción -------------------
+//  Las campañas de verdad no apuntan a "un producto" o "una categoría":
+//  apuntan a listas ("estos 6 jeans") y sobre todo EXCLUYEN ("60% en todo
+//  menos estos dos"). Esto arma ese filtro a partir de lo que pide el
+//  modelo, resolviendo nombres a ids y avisando si algo no existe.
+
+type FiltroArmado =
+  | { ok: true; filtro?: Filtro; descripcion: string }
+  | { ok: false; mensaje: string };
+
+async function armarFiltro(args: ToolArgs): Promise<FiltroArmado> {
+  const catsIncluir = lista(args, "categorias");
+  const prodsIncluir = lista(args, "productos");
+  const catsExcluir = lista(args, "excluir_categorias");
+  const prodsExcluir = lista(args, "excluir_productos");
+  const todos = booleano(args, "toda_la_tienda", false);
+
+  // Sin nada de esto, la regla usa el alcance clásico y no lleva filtro.
+  if (!todos && !catsIncluir.length && !prodsIncluir.length &&
+      !catsExcluir.length && !prodsExcluir.length) {
+    return { ok: true, descripcion: "" };
+  }
+
+  const resolverCats = (nombres: string[]): string[] | string => {
+    const slugs: string[] = [];
+    for (const n of nombres) {
+      const cat = categories.find(
+        (c) => c.slug === n || normalizar(c.name) === normalizar(n)
+      );
+      if (!cat) {
+        return `No existe la categoría "${n}". Las válidas son: ${categories
+          .map((c) => c.slug)
+          .join(", ")}.`;
+      }
+      slugs.push(cat.slug);
+    }
+    return slugs;
+  };
+
+  const resolverProds = async (
+    refs: string[]
+  ): Promise<{ ids: string[]; nombres: string[] } | string> => {
+    const ids: string[] = [];
+    const nombres: string[] = [];
+    for (const ref of refs) {
+      const r = await resolverProducto(ref);
+      if (!r.ok) return r.mensaje;
+      ids.push(r.producto.id);
+      nombres.push(r.producto.name);
+    }
+    return { ids, nombres };
+  };
+
+  const ci = resolverCats(catsIncluir);
+  if (typeof ci === "string") return { ok: false, mensaje: ci };
+  const ce = resolverCats(catsExcluir);
+  if (typeof ce === "string") return { ok: false, mensaje: ce };
+  const pi = await resolverProds(prodsIncluir);
+  if (typeof pi === "string") return { ok: false, mensaje: pi };
+  const pe = await resolverProds(prodsExcluir);
+  if (typeof pe === "string") return { ok: false, mensaje: pe };
+
+  const filtro: Filtro = {
+    ...(todos ? { todos: true } : {}),
+    ...(ci.length ? { categorias: ci } : {}),
+    ...(pi.ids.length ? { productos: pi.ids } : {}),
+    ...(ce.length ? { excluirCategorias: ce } : {}),
+    ...(pe.ids.length ? { excluirProductos: pe.ids } : {}),
+  };
+
+  const partes: string[] = [];
+  if (todos) partes.push("toda la tienda");
+  if (ci.length) partes.push(`categorías ${ci.join(", ")}`);
+  if (pi.nombres.length) partes.push(pi.nombres.map((n) => `"${n}"`).join(", "));
+  let descripcion = partes.join(" + ") || "toda la tienda";
+  const fuera: string[] = [];
+  if (ce.length) fuera.push(`categorías ${ce.join(", ")}`);
+  if (pe.nombres.length) fuera.push(pe.nombres.map((n) => `"${n}"`).join(", "));
+  if (fuera.length) descripcion += `, EXCEPTO ${fuera.join(" y ")}`;
+
+  return { ok: true, filtro, descripcion };
+}
+
+// Los campos de filtro que comparten varias herramientas.
+const PARAMS_FILTRO = {
+  toda_la_tienda: {
+    type: "BOOLEAN",
+    description: "true = aplica a todos los productos.",
+  },
+  categorias: {
+    type: "ARRAY",
+    items: { type: "STRING" },
+    description: "Slugs de las categorías incluidas, ej ['blusas','vestidos'].",
+  },
+  productos: {
+    type: "ARRAY",
+    items: { type: "STRING" },
+    description: "Ids o nombres de los productos incluidos.",
+  },
+  excluir_productos: {
+    type: "ARRAY",
+    items: { type: "STRING" },
+    description:
+      "Ids o nombres de productos que quedan FUERA. Para campañas del tipo 'todo menos estos'.",
+  },
+  excluir_categorias: {
+    type: "ARRAY",
+    items: { type: "STRING" },
+    description: "Slugs de categorías que quedan FUERA.",
+  },
+};
+
+const crearBogo: Tool = {
+  nombre: "crear_promocion_2x1",
+  leer: false,
+  descripcion:
+    "Crea una promoción tipo 2x1: llevando cierta cantidad, una o varias unidades salen gratis o rebajadas. Sirve para '2x1', '3x2' y 'la segunda prenda al 50%'. Siempre se regala la unidad MÁS BARATA de las que aplican.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      nombre: { type: "STRING", description: "Nombre corto, ej '2x1 en carteras'." },
+      por_cada: {
+        type: "NUMBER",
+        description:
+          "Cada cuántas unidades aplica. En un 2x1 son 2; en un 3x2 son 3; en 'la 2da al 50%' son 2.",
+      },
+      regala: {
+        type: "NUMBER",
+        description: "Cuántas unidades se descuentan por cada bloque. Normalmente 1.",
+      },
+      descuento_regalo: {
+        type: "NUMBER",
+        description:
+          "Qué porcentaje se le descuenta a la unidad regalada. 100 = gratis (2x1). 50 = la segunda a mitad de precio.",
+      },
+      recursivo: {
+        type: "BOOLEAN",
+        description:
+          "true = se repite en el mismo carrito (con 4 unidades regala 2). false = solo una vez. Por defecto true.",
+      },
+      desde_fecha: { type: "STRING", description: "Inicio AAAA-MM-DD. Opcional." },
+      hasta_fecha: { type: "STRING", description: "Fin AAAA-MM-DD. Opcional." },
+      ...PARAMS_FILTRO,
+    },
+    required: ["nombre", "por_cada", "regala", "descuento_regalo"],
+  },
+  resumen: async (args) => {
+    const porCada = numero(args, "por_cada") ?? 2;
+    const regala = numero(args, "regala") ?? 1;
+    const dto = numero(args, "descuento_regalo") ?? 100;
+    const f = await armarFiltro(args);
+    const donde = f.ok ? f.descripcion || "toda la tienda" : "…";
+    const que =
+      dto >= 100
+        ? `${porCada}x${porCada - regala} (llevando ${porCada} pagas ${porCada - regala})`
+        : `llevando ${porCada}, ${regala} al ${dto}% de descuento`;
+    return `Crear promoción ${que} en ${donde}`;
+  },
+  ejecutar: async (args) => {
+    const porCada = numero(args, "por_cada");
+    const regala = numero(args, "regala");
+    const dto = numero(args, "descuento_regalo");
+
+    if (!porCada || porCada < 2) {
+      return { ok: false, mensaje: "Un 2x1 necesita al menos 2 unidades para aplicar." };
+    }
+    if (!regala || regala < 1) {
+      return { ok: false, mensaje: "Tiene que regalar al menos una unidad." };
+    }
+    if (regala >= porCada) {
+      // Regalar tantas como se llevan sería regalar todo el carrito.
+      return {
+        ok: false,
+        mensaje: `Estarías regalando ${regala} de cada ${porCada}: eso deja los productos gratis. Revisa los números.`,
+      };
+    }
+    if (dto === undefined || dto <= 0 || dto > 100) {
+      return { ok: false, mensaje: "El descuento del regalo va entre 1 y 100." };
+    }
+
+    const f = await armarFiltro(args);
+    if (!f.ok) return { ok: false, mensaje: f.mensaje };
+
+    const bogo: BogoConfig = {
+      porCada: Math.floor(porCada),
+      regala: Math.floor(regala),
+      descuentoRegalo: dto,
+      recursivo: booleano(args, "recursivo", true),
+    };
+
+    const regla: DiscountRule = {
+      id: await nextRuleId(),
+      name: texto(args, "nombre", "Promoción 2x1"),
+      scope: "all",
+      kind: "percent",
+      value: 0, // no se usa en los 2x1
+      active: true,
+      tipo: "bogo",
+      bogo,
+      filtro: f.filtro ?? { todos: true },
+      startsAt: fechaISO(texto(args, "desde_fecha")),
+      endsAt: fechaISO(texto(args, "hasta_fecha"), true),
+    };
+
+    await upsertRule(regla);
+    const paga = porCada - regala;
+    return {
+      ok: true,
+      mensaje:
+        dto >= 100
+          ? `Promoción "${regla.name}" activa: llevando ${porCada} se paga ${paga} (se regala la más barata) en ${f.descripcion || "toda la tienda"}.`
+          : `Promoción "${regla.name}" activa: llevando ${porCada}, ${regala} con ${dto}% de descuento en ${f.descripcion || "toda la tienda"}.`,
+    };
+  },
+};
+
 // ---- DESCUENTOS ------------------------------------------------------
 
 const crearDescuento: Tool = {
@@ -329,13 +547,14 @@ const crearDescuento: Tool = {
       },
       tipo: {
         type: "STRING",
-        enum: ["percent", "fixed"],
+        enum: ["percent", "fixed", "precio_fijo"],
         description:
-          "'percent' = porcentaje de descuento, 'fixed' = rebaja fija en soles.",
+          "'percent' = porcentaje, 'fixed' = rebaja fija en soles, 'precio_fijo' = deja los productos en ese precio exacto ('todas las carteras a 59').",
       },
       valor: {
         type: "NUMBER",
-        description: "20 para 20%, o 30 para S/ 30 de rebaja.",
+        description:
+          "20 para 20%, 30 para S/ 30 de rebaja, o 59 si el tipo es 'precio_fijo'.",
       },
       desde: {
         type: "STRING",
@@ -346,18 +565,26 @@ const crearDescuento: Tool = {
         description:
           "Fecha de fin AAAA-MM-DD. Opcional (vacío = sin fecha de término).",
       },
+      ...PARAMS_FILTRO,
     },
-    required: ["nombre", "alcance", "tipo", "valor"],
+    required: ["nombre", "tipo", "valor"],
   },
   resumen: async (args) => {
     const tipo = texto(args, "tipo", "percent");
     const valor = numero(args, "valor") ?? 0;
-    const monto = tipo === "percent" ? `${valor}%` : soles(valor);
+    const monto =
+      tipo === "percent"
+        ? `${valor}%`
+        : tipo === "precio_fijo"
+          ? `precio fijo de ${soles(valor)}`
+          : soles(valor);
+    const f = await armarFiltro(args);
     const alcance = texto(args, "alcance", "all");
     const objetivo = texto(args, "objetivo");
     let donde = "toda la tienda";
-    if (alcance === "category") donde = `la categoría "${objetivo}"`;
-    if (alcance === "product") donde = `"${await nombreProducto(objetivo)}"`;
+    if (f.ok && f.descripcion) donde = f.descripcion;
+    else if (alcance === "category") donde = `la categoría "${objetivo}"`;
+    else if (alcance === "product") donde = `"${await nombreProducto(objetivo)}"`;
     const desde = texto(args, "desde");
     const hasta = texto(args, "hasta");
     const cuando = [
@@ -366,7 +593,9 @@ const crearDescuento: Tool = {
     ]
       .filter(Boolean)
       .join(" ");
-    return `Crear descuento de ${monto} en ${donde}${cuando ? ` (${cuando})` : ""}`;
+    return tipo === "precio_fijo"
+      ? `Dejar en ${monto} ${donde}${cuando ? ` (${cuando})` : ""}`
+      : `Crear descuento de ${monto} en ${donde}${cuando ? ` (${cuando})` : ""}`;
   },
   ejecutar: async (args) => {
     const alcance = texto(args, "alcance", "all") as DiscountScope;
@@ -383,8 +612,12 @@ const crearDescuento: Tool = {
       };
     }
 
+    // Si vienen listas o exclusiones, el filtro manda sobre el alcance.
+    const f = await armarFiltro(args);
+    if (!f.ok) return { ok: false, mensaje: f.mensaje };
+
     let objetivo: string | undefined;
-    if (alcance === "category") {
+    if (!f.filtro && alcance === "category") {
       const slug = texto(args, "objetivo");
       const cat = categories.find(
         (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
@@ -398,7 +631,7 @@ const crearDescuento: Tool = {
         };
       }
       objetivo = cat.slug;
-    } else if (alcance === "product") {
+    } else if (!f.filtro && alcance === "product") {
       const r = await resolverProducto(texto(args, "objetivo"));
       if (!r.ok) return { ok: false, mensaje: r.mensaje };
       objetivo = r.producto.id;
@@ -407,17 +640,21 @@ const crearDescuento: Tool = {
     const regla: DiscountRule = {
       id: await nextRuleId(),
       name: texto(args, "nombre", "Descuento"),
-      scope: alcance,
-      target: objetivo,
+      scope: f.filtro ? "all" : alcance,
+      target: f.filtro ? undefined : objetivo,
       kind: tipo,
       value: valor,
       active: true,
+      filtro: f.filtro,
       startsAt: fechaISO(texto(args, "desde")),
       endsAt: fechaISO(texto(args, "hasta"), true),
     };
 
     await upsertRule(regla);
-    return { ok: true, mensaje: `Descuento "${regla.name}" creado y activo.` };
+    return {
+      ok: true,
+      mensaje: `Descuento "${regla.name}" creado y activo sobre ${f.descripcion || "el alcance indicado"}.`,
+    };
   },
 };
 
@@ -644,6 +881,7 @@ const crearDescuentoEscalonado: Tool = {
     };
   },
 };
+
 
 // ---- PRECIOS Y OFERTAS ----------------------------------------------
 
@@ -1222,6 +1460,7 @@ export const HERRAMIENTAS: Tool[] = [
   // escritura
   crearDescuento,
   crearDescuentoEscalonado,
+  crearBogo,
   cambiarDescuento,
   cambiarPrecio,
   marcarOferta,
@@ -1242,6 +1481,7 @@ export const HERRAMIENTAS: Tool[] = [
 const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
   crear_descuento: "descuentos",
   crear_descuento_escalonado: "descuentos",
+  crear_promocion_2x1: "ofertas",
   cambiar_descuento: "descuentos",
   cambiar_precio: "precios",
   marcar_oferta: "ofertas",

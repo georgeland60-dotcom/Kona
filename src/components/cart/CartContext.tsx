@@ -31,6 +31,8 @@ export type LineaPreciada = {
   subtotalLista: number;
   subtotal: number;
   ahorro: number;
+  regaladas: number; // unidades gratis o rebajadas por un 2x1
+  precios: number[];
   promo?: string;
 };
 
