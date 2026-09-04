@@ -30,5 +30,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "//": "pruebas/ se comprueba aparte (pruebas/tsconfig.json): sus imports llevan la extension .ts porque se corren directo con node, y el build de Next no lo acepta.",
+  "exclude": ["node_modules", "pruebas"]
 }
