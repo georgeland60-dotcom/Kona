@@ -19,9 +19,19 @@
 //   - Se redondea a soles enteros, para que el total sea siempre la
 //     suma exacta de las líneas.
 //   - El precio anterior viaja siempre, para mostrarlo tachado.
+//   - Los descuentos DE CARRITO ("10% de toda tu compra si llevas X, con
+//     tope de S/ 85") son otra cosa: no bajan el precio de un producto,
+//     bajan el total. Se calculan al final, sobre el subtotal YA
+//     descontado (nunca sobre el precio de lista), y con tope. Es la
+//     dirección conservadora: descuentan menos, no más.
 // =============================================================
 
-import type { DiscountRule, Product, Tramo } from "@/lib/types";
+import type {
+  CondicionCarrito,
+  DiscountRule,
+  Product,
+  Tramo,
+} from "@/lib/types";
 
 export type LineaPedida = {
   productId: string;
@@ -46,15 +56,30 @@ export type LineaPreciada = {
   // unidades a precios distintos (una a 115 y otra a 0), así que un solo
   // "precio unitario" no alcanza para cobrar bien.
   precios: number[];
+  // Los mismos precios pero ya con el descuento de carrito repartido.
+  // Se separan a propósito: la línea se MUESTRA con su precio (el
+  // descuento de carrito se muestra aparte, como una rebaja al total),
+  // pero se COBRA con estos, para que la suma cuadre al céntimo.
+  preciosFinales: number[];
   promo?: string; // la promoción que actuó, para mostrarla
+};
+
+// Un descuento aplicado al total de la compra.
+export type DescuentoCarrito = {
+  nombre: string;
+  monto: number; // soles de rebaja sobre el subtotal
+  tope?: number; // el máximo configurado, si tenía
+  topeAplicado: boolean; // true = el tope recortó el descuento
 };
 
 export type CarritoPreciado = {
   lineas: LineaPreciada[];
   totalLista: number;
-  total: number;
+  subtotal: number; // suma de las líneas, ANTES del descuento de carrito
+  total: number; // lo que se cobra de verdad
   ahorro: number;
   promos: string[];
+  descuentoCarrito?: DescuentoCarrito;
 };
 
 // ---- Utilidades ------------------------------------------------------
@@ -126,6 +151,73 @@ function cantidadRelevante(
   }, 0);
 }
 
+// ---- Descuentos de carrito ------------------------------------------
+
+// Reparte un descuento del total entre las unidades que lo generaron.
+//
+// Hace falta porque el pedido (y Mercado Pago) se arman con precios por
+// unidad: no admiten una línea negativa de "descuento". Se reparte en
+// proporción a lo que vale cada unidad, en soles enteros, y el resto que
+// deja el redondeo va a las que quedaron más cerca de subir. Así la suma
+// de las unidades es EXACTAMENTE el monto descontado, ni un sol más.
+export function repartirDescuento(precios: number[], monto: number): number[] {
+  const cero = precios.map(() => 0);
+  const suma = precios.reduce((a, b) => a + b, 0);
+  if (monto <= 0 || suma <= 0) return cero;
+
+  const aRepartir = Math.min(Math.round(monto), suma);
+  const exactos = precios.map((p) => (p * aRepartir) / suma);
+  const partes = exactos.map((e) => Math.floor(e));
+  let resto = aRepartir - partes.reduce((a, b) => a + b, 0);
+
+  const porResiduo = exactos
+    .map((e, i) => ({ i, residuo: e - Math.floor(e) }))
+    .sort((a, b) => b.residuo - a.residuo || a.i - b.i);
+
+  for (const { i } of porResiduo) {
+    if (resto <= 0) break;
+    if (partes[i] < precios[i]) {
+      partes[i] += 1;
+      resto -= 1;
+    }
+  }
+  return partes;
+}
+
+// ¿Se cumple la condición para que aplique un descuento de carrito?
+// Todo lo que se haya pedido tiene que cumplirse a la vez.
+function cumpleCondicion(
+  condicion: CondicionCarrito | undefined,
+  lineas: Array<{ producto: Product; qty: number }>,
+  subtotal: number
+): boolean {
+  if (!condicion) return true;
+
+  const { productos, categorias, cantidadMinima, subtotalMinimo } = condicion;
+
+  if (subtotalMinimo !== undefined && subtotal < subtotalMinimo) return false;
+
+  const pideAlgo = !!productos?.length || !!categorias?.length;
+  if (pideAlgo) {
+    const unidades = lineas.reduce(
+      (suma, l) =>
+        productos?.includes(l.producto.id) ||
+        categorias?.includes(l.producto.category)
+          ? suma + l.qty
+          : suma,
+      0
+    );
+    return unidades >= Math.max(1, cantidadMinima ?? 1);
+  }
+
+  if (cantidadMinima !== undefined) {
+    const unidades = lineas.reduce((suma, l) => suma + l.qty, 0);
+    return unidades >= cantidadMinima;
+  }
+
+  return true;
+}
+
 // ---- El cálculo ------------------------------------------------------
 
 // Una unidad suelta del carrito. Trabajamos unidad por unidad porque un
@@ -161,6 +253,7 @@ export function preciarCarrito(
 
     for (const regla of vigentes) {
       if (regla.tipo === "bogo") continue; // van en el paso 2
+      if (regla.tipo === "carrito") continue; // van en el paso 4
       if (!aplicaAlProducto(regla, producto!)) continue;
 
       let candidato: number | undefined;
@@ -238,13 +331,90 @@ export function preciarCarrito(
     }
   }
 
-  // ---- Paso 3: volver a juntar las unidades en líneas ---------------
+  // ---- Paso 3: descuentos sobre el TOTAL de la compra ---------------
+  // "Si llevan la cartera verde, 10% de toda la compra con tope de S/ 85".
+  // No baja el precio de ningún producto: baja el total. Se calcula sobre
+  // lo que ya quedó después de los descuentos de arriba, así que en el
+  // peor de los casos descuenta de menos, nunca de más.
+  //
+  // Si hay varias promociones de carrito aplicables, se aplica UNA SOLA:
+  // la que más le conviene al cliente. Sumarlas es la forma rápida de
+  // regalar el carrito entero sin que nadie lo haya decidido.
+  const subtotal = unidades.reduce((s, u) => s + u.precio, 0);
+  const enCarrito = validas.map(({ l, producto }) => ({
+    producto: producto!,
+    qty: l.qty,
+  }));
+
+  let elegida:
+    | { regla: DiscountRule; monto: number; indices: number[]; topeAplicado: boolean }
+    | undefined;
+
+  for (const regla of vigentes) {
+    if (regla.tipo !== "carrito") continue;
+    if (regla.kind === "precio_fijo") continue; // no tiene sentido sobre un total
+    if (!cumpleCondicion(regla.carrito?.condicion, enCarrito, subtotal)) continue;
+
+    // Sobre qué parte de la compra se calcula. Por defecto, todo.
+    const indices: number[] = [];
+    unidades.forEach((u, i) => {
+      if (u.precio <= 0) return; // una unidad de regalo ya no puede bajar más
+      const producto = porId.get(validas[u.linea].l.productId);
+      if (producto && aplicaAlProducto(regla, producto)) indices.push(i);
+    });
+
+    const base = indices.reduce((s, i) => s + unidades[i].precio, 0);
+    if (base <= 0) continue;
+
+    const bruto = regla.kind === "percent" ? (base * regla.value) / 100 : regla.value;
+    const tope = regla.carrito?.maximoDescuento;
+    const conTope = tope !== undefined ? Math.min(bruto, tope) : bruto;
+    // Nunca más que la propia compra: el total no puede quedar negativo.
+    const monto = Math.min(Math.round(conTope), base);
+    if (monto < 1) continue;
+
+    if (!elegida || monto > elegida.monto) {
+      elegida = {
+        regla,
+        monto,
+        indices,
+        topeAplicado: tope !== undefined && conTope < bruto,
+      };
+    }
+  }
+
+  // El descuento del total se reparte entre las unidades que lo generaron,
+  // porque el pedido se cobra unidad por unidad.
+  const rebajaPorUnidad = unidades.map(() => 0);
+  let descuentoCarrito: DescuentoCarrito | undefined;
+
+  if (elegida) {
+    const partes = repartirDescuento(
+      elegida.indices.map((i) => unidades[i].precio),
+      elegida.monto
+    );
+    elegida.indices.forEach((i, k) => {
+      rebajaPorUnidad[i] = partes[k];
+    });
+    descuentoCarrito = {
+      nombre: elegida.regla.name,
+      // El monto real repartido, no el teórico: es lo que se descuenta.
+      monto: partes.reduce((a, b) => a + b, 0),
+      tope: elegida.regla.carrito?.maximoDescuento,
+      topeAplicado: elegida.topeAplicado,
+    };
+  }
+
+  // ---- Paso 4: volver a juntar las unidades en líneas ---------------
   const preciadas: LineaPreciada[] = validas.map(({ l, producto }, idx) => {
-    const mias = unidades.filter((u) => u.linea === idx);
-    const subtotal = mias.reduce((s, u) => s + u.precio, 0);
+    const mias: number[] = [];
+    unidades.forEach((u, i) => {
+      if (u.linea === idx) mias.push(i);
+    });
+    const subtotalLinea = mias.reduce((s, i) => s + unidades[i].precio, 0);
     const subtotalLista = producto!.price * l.qty;
-    const regaladas = mias.filter((u) => u.regalada).length;
-    const conPromo = mias.find((u) => u.promo);
+    const regaladas = mias.filter((i) => unidades[i].regalada).length;
+    const conPromo = mias.map((i) => unidades[i]).find((u) => u.promo);
 
     return {
       productId: producto!.id,
@@ -254,19 +424,38 @@ export function preciarCarrito(
       qty: l.qty,
       precioLista: producto!.price,
       // Lo que cuesta una unidad normal (la regalada se muestra aparte).
-      precioUnitario: Math.max(...mias.map((u) => u.precio)),
-      precios: mias.map((u) => u.precio).sort((a, b) => b - a),
+      precioUnitario: Math.max(...mias.map((i) => unidades[i].precio)),
+      precios: mias.map((i) => unidades[i].precio).sort((a, b) => b - a),
+      preciosFinales: mias
+        .map((i) => unidades[i].precio - rebajaPorUnidad[i])
+        .sort((a, b) => b - a),
       subtotalLista,
-      subtotal,
-      ahorro: subtotalLista - subtotal,
+      subtotal: subtotalLinea,
+      ahorro: subtotalLista - subtotalLinea,
       regaladas,
-      promo: subtotal < subtotalLista ? conPromo?.promo : undefined,
+      promo: subtotalLinea < subtotalLista ? conPromo?.promo : undefined,
     };
   });
 
-  const total = preciadas.reduce((s, l) => s + l.subtotal, 0);
+  const sumaLineas = preciadas.reduce((s, l) => s + l.subtotal, 0);
+  const total = sumaLineas - (descuentoCarrito?.monto ?? 0);
   const totalLista = preciadas.reduce((s, l) => s + l.subtotalLista, 0);
-  const promos = [...new Set(preciadas.map((l) => l.promo).filter(Boolean))] as string[];
+  const promos = [
+    ...new Set(
+      [
+        ...preciadas.map((l) => l.promo),
+        descuentoCarrito?.nombre,
+      ].filter(Boolean)
+    ),
+  ] as string[];
 
-  return { lineas: preciadas, totalLista, total, ahorro: totalLista - total, promos };
+  return {
+    lineas: preciadas,
+    totalLista,
+    subtotal: sumaLineas,
+    total,
+    ahorro: totalLista - total,
+    promos,
+    ...(descuentoCarrito ? { descuentoCarrito } : {}),
+  };
 }

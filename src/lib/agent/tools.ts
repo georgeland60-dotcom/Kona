@@ -44,6 +44,7 @@ import type {
   Tramo,
   Filtro,
   BogoConfig,
+  CondicionCarrito,
 } from "@/lib/types";
 
 // ---- Tipos -----------------------------------------------------------
@@ -272,8 +273,10 @@ const listarDescuentos: Tool = {
         nombre: r.name,
         alcance: r.scope,
         objetivo: r.target,
+        clase: r.tipo ?? "simple",
         tipo: r.kind,
         valor: r.value,
+        tope: r.carrito?.maximoDescuento,
         activa: r.active,
         desde: r.startsAt,
         hasta: r.endsAt,
@@ -516,6 +519,197 @@ const crearBogo: Tool = {
         dto >= 100
           ? `Promoción "${regla.name}" activa: llevando ${porCada} se paga ${paga} (se regala la más barata) en ${f.descripcion || "toda la tienda"}.`
           : `Promoción "${regla.name}" activa: llevando ${porCada}, ${regala} con ${dto}% de descuento en ${f.descripcion || "toda la tienda"}.`,
+    };
+  },
+};
+
+// ---- DESCUENTO SOBRE EL TOTAL DE LA COMPRA --------------------------
+//  Otra familia distinta: no baja el precio de un producto, baja el total
+//  del carrito, y casi siempre viene condicionado ("si llevan tal cosa")
+//  y con tope ("máximo S/ 85"). Es el tipo de promoción que más usaban en
+//  la tienda anterior.
+
+// Lee la condición que activa la promoción. Devuelve un mensaje de error
+// si nombra un producto o una categoría que no existe.
+async function armarCondicion(
+  args: ToolArgs
+): Promise<
+  | { ok: true; condicion?: CondicionCarrito; descripcion: string }
+  | { ok: false; mensaje: string }
+> {
+  const refsProd = lista(args, "si_llevan_producto");
+  const refsCat = lista(args, "si_llevan_categoria");
+  const cantidad = numero(args, "cantidad_minima");
+  const compra = numero(args, "compra_minima");
+
+  const ids: string[] = [];
+  const nombres: string[] = [];
+  for (const ref of refsProd) {
+    const r = await resolverProducto(ref);
+    if (!r.ok) return { ok: false, mensaje: r.mensaje };
+    ids.push(r.producto.id);
+    nombres.push(r.producto.name);
+  }
+
+  const slugs: string[] = [];
+  for (const n of refsCat) {
+    const cat = categories.find(
+      (c) => c.slug === n || normalizar(c.name) === normalizar(n)
+    );
+    if (!cat) {
+      return {
+        ok: false,
+        mensaje: `No existe la categoría "${n}". Las válidas son: ${categories
+          .map((c) => c.slug)
+          .join(", ")}.`,
+      };
+    }
+    slugs.push(cat.slug);
+  }
+
+  const condicion: CondicionCarrito = {
+    ...(ids.length ? { productos: ids } : {}),
+    ...(slugs.length ? { categorias: slugs } : {}),
+    ...(cantidad !== undefined && cantidad > 1
+      ? { cantidadMinima: Math.floor(cantidad) }
+      : {}),
+    ...(compra !== undefined && compra > 0 ? { subtotalMinimo: compra } : {}),
+  };
+
+  if (Object.keys(condicion).length === 0) {
+    return { ok: true, descripcion: "" }; // sin condición: aplica siempre
+  }
+
+  const partes: string[] = [];
+  const que = [
+    ...nombres.map((n) => `"${n}"`),
+    ...slugs.map((s) => `algo de ${s}`),
+  ].join(" o ");
+  if (que) {
+    partes.push(
+      condicion.cantidadMinima
+        ? `lleven ${condicion.cantidadMinima} unidades de ${que}`
+        : `lleven ${que}`
+    );
+  } else if (condicion.cantidadMinima) {
+    partes.push(`lleven ${condicion.cantidadMinima} prendas o más`);
+  }
+  if (condicion.subtotalMinimo) {
+    partes.push(`la compra pase de ${soles(condicion.subtotalMinimo)}`);
+  }
+
+  return { ok: true, condicion, descripcion: partes.join(" y ") };
+}
+
+const crearDescuentoCarrito: Tool = {
+  nombre: "crear_descuento_carrito",
+  leer: false,
+  descripcion:
+    "Crea un descuento sobre el TOTAL de la compra, no sobre el precio de un producto. Sirve para 'si llevan tal producto, 10% de toda su compra', 'comprando más de S/ 300, S/ 50 de descuento' o 'llevando 3 prendas, 15% del total'. Admite un TOPE máximo en soles ('con un máximo de S/ 85').",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      nombre: {
+        type: "STRING",
+        description: "Nombre corto de la promoción, ej 'Promo cartera verde'.",
+      },
+      tipo: {
+        type: "STRING",
+        enum: ["percent", "fixed"],
+        description:
+          "'percent' = un porcentaje del total. 'fixed' = una cantidad fija de soles.",
+      },
+      valor: {
+        type: "NUMBER",
+        description: "10 para 10% del total, o 50 para S/ 50 de descuento.",
+      },
+      tope_maximo: {
+        type: "NUMBER",
+        description:
+          "Máximo de soles que puede descontar esta promoción, por más grande que sea la compra. Ej: 85 en 'con un tope de 85 soles'. Omitir si no hay tope.",
+      },
+      si_llevan_producto: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+        description:
+          "Condición: ids o nombres de productos que deben estar en el carrito para que se active. Basta con que haya alguno.",
+      },
+      si_llevan_categoria: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+        description:
+          "Condición: slugs de categorías; basta con que lleven algo de alguna.",
+      },
+      cantidad_minima: {
+        type: "NUMBER",
+        description:
+          "Condición: unidades mínimas. Si se indicaron productos o categorías, cuenta solo esas; si no, cuenta todo el carrito.",
+      },
+      compra_minima: {
+        type: "NUMBER",
+        description: "Condición: soles mínimos de compra para que se active.",
+      },
+      desde_fecha: { type: "STRING", description: "Inicio AAAA-MM-DD. Opcional." },
+      hasta_fecha: { type: "STRING", description: "Fin AAAA-MM-DD. Opcional." },
+    },
+    required: ["nombre", "tipo", "valor"],
+  },
+  resumen: async (args) => {
+    const tipo = texto(args, "tipo", "percent");
+    const valor = numero(args, "valor") ?? 0;
+    const tope = numero(args, "tope_maximo");
+    const c = await armarCondicion(args);
+    const cuanto = tipo === "fixed" ? soles(valor) : `${valor}%`;
+    const cuando = c.ok && c.descripcion ? ` cuando ${c.descripcion}` : "";
+    const limite = tope ? `, con tope de ${soles(tope)}` : "";
+    return `Crear promoción: ${cuanto} de descuento sobre el total de la compra${cuando}${limite}`;
+  },
+  ejecutar: async (args) => {
+    const tipo = texto(args, "tipo", "percent") === "fixed" ? "fixed" : "percent";
+    const valor = numero(args, "valor");
+    const tope = numero(args, "tope_maximo");
+
+    if (valor === undefined || valor <= 0) {
+      return { ok: false, mensaje: "El descuento tiene que ser mayor que cero." };
+    }
+    if (tipo === "percent" && valor >= 100) {
+      return {
+        ok: false,
+        mensaje: "Un descuento del 100% sobre el total dejaría la compra gratis. Revisa el número.",
+      };
+    }
+    if (tope !== undefined && tope <= 0) {
+      return { ok: false, mensaje: "El tope máximo tiene que ser mayor que cero." };
+    }
+
+    const c = await armarCondicion(args);
+    if (!c.ok) return { ok: false, mensaje: c.mensaje };
+
+    const regla: DiscountRule = {
+      id: await nextRuleId(),
+      name: texto(args, "nombre", "Descuento sobre el total"),
+      scope: "all",
+      kind: tipo,
+      value: valor,
+      active: true,
+      tipo: "carrito",
+      carrito: {
+        ...(c.condicion ? { condicion: c.condicion } : {}),
+        ...(tope !== undefined ? { maximoDescuento: tope } : {}),
+      },
+      filtro: { todos: true }, // el descuento es sobre toda la compra
+      startsAt: fechaISO(texto(args, "desde_fecha")),
+      endsAt: fechaISO(texto(args, "hasta_fecha"), true),
+    };
+
+    await upsertRule(regla);
+
+    const cuanto = tipo === "fixed" ? soles(valor) : `${valor}% del total`;
+    const cuando = c.descripcion ? ` cuando ${c.descripcion}` : " en toda compra";
+    const limite = tope ? `, descontando como máximo ${soles(tope)}` : "";
+    return {
+      ok: true,
+      mensaje: `Promoción "${regla.name}" activa: ${cuanto}${cuando}${limite}.`,
     };
   },
 };
@@ -1461,6 +1655,7 @@ export const HERRAMIENTAS: Tool[] = [
   crearDescuento,
   crearDescuentoEscalonado,
   crearBogo,
+  crearDescuentoCarrito,
   cambiarDescuento,
   cambiarPrecio,
   marcarOferta,
@@ -1482,6 +1677,7 @@ const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
   crear_descuento: "descuentos",
   crear_descuento_escalonado: "descuentos",
   crear_promocion_2x1: "ofertas",
+  crear_descuento_carrito: "descuentos",
   cambiar_descuento: "descuentos",
   cambiar_precio: "precios",
   marcar_oferta: "ofertas",

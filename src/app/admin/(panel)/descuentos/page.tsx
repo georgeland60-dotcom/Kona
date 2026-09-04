@@ -10,7 +10,40 @@ function describeScope(
   catName: (slug: string) => string,
   prodName: (id: string) => string
 ): string {
-  if (rule.scope === "all") return "Toda la tienda";
+  // Un descuento del total no apunta a productos: apunta a la compra.
+  if (rule.tipo === "carrito") {
+    const c = rule.carrito?.condicion;
+    if (!c) return "Total de la compra";
+    const partes: string[] = [];
+    if (c.productos?.length)
+      partes.push(c.productos.map(prodName).join(" o "));
+    if (c.categorias?.length) partes.push(c.categorias.map(catName).join(" o "));
+    if (c.cantidadMinima) partes.push(`${c.cantidadMinima} unidades o más`);
+    if (c.subtotalMinimo) partes.push(`compra desde S/ ${c.subtotalMinimo}`);
+    return `Total de la compra, si: ${partes.join(" + ")}`;
+  }
+
+  // Las campañas con filtro (listas y exclusiones) no caben en scope/target.
+  const f = rule.filtro;
+  if (f && !f.todos) {
+    const dentro = [
+      ...(f.categorias || []).map(catName),
+      ...(f.productos || []).map(prodName),
+    ].join(", ");
+    const fuera = [
+      ...(f.excluirCategorias || []).map(catName),
+      ...(f.excluirProductos || []).map(prodName),
+    ].join(", ");
+    return (dentro || "Toda la tienda") + (fuera ? ` · excepto ${fuera}` : "");
+  }
+
+  if (rule.scope === "all" || f?.todos) {
+    const fuera = [
+      ...(f?.excluirCategorias || []).map(catName),
+      ...(f?.excluirProductos || []).map(prodName),
+    ].join(", ");
+    return fuera ? `Toda la tienda, excepto ${fuera}` : "Toda la tienda";
+  }
   if (rule.scope === "category")
     return `Categoría: ${catName(rule.target || "")}`;
   return `Producto: ${prodName(rule.target || "")}`;
@@ -29,6 +62,21 @@ function describeValue(rule: DiscountRule): string {
       )
       .join(" · ");
   }
+  // Un 2x1 tampoco: su "value" es 0 y diría "0% off".
+  if (rule.tipo === "bogo" && rule.bogo) {
+    const { porCada, regala, descuentoRegalo } = rule.bogo;
+    return descuentoRegalo >= 100
+      ? `${porCada}x${porCada - regala}`
+      : `llevando ${porCada}, ${regala} al ${descuentoRegalo}%`;
+  }
+  if (rule.tipo === "carrito") {
+    const cuanto =
+      rule.kind === "fixed" ? `S/ ${rule.value} off` : `${rule.value}% off`;
+    return rule.carrito?.maximoDescuento
+      ? `${cuanto} del total (máx S/ ${rule.carrito.maximoDescuento})`
+      : `${cuanto} del total`;
+  }
+  if (rule.kind === "precio_fijo") return `queda en S/ ${rule.value}`;
   return rule.kind === "percent" ? `${rule.value}% off` : `S/ ${rule.value} off`;
 }
 

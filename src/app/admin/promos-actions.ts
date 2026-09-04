@@ -13,6 +13,7 @@ import {
   upsertRule,
   deleteRule,
   nextRuleId,
+  getRuleById,
 } from "@/lib/promos-data";
 import type { Banner, DiscountRule, DiscountKind, DiscountScope } from "@/lib/types";
 
@@ -101,13 +102,24 @@ export async function saveRuleAction(formData: FormData) {
   const startsAt = String(formData.get("startsAt") || "").trim() || undefined;
   const endsAt = String(formData.get("endsAt") || "").trim() || undefined;
 
+  // Las promociones avanzadas (por cantidad, 2x1, sobre el total de la
+  // compra, o con listas y exclusiones) no caben en este formulario, que
+  // solo entiende "un porcentaje sobre una categoría". Si se guardaran con
+  // lo que manda el formulario, un 2x1 se convertiría en un descuento
+  // cualquiera y una promo del total pasaría a rebajar TODOS los precios.
+  // Así que de esas solo se cambian el nombre, las fechas y si está activa.
+  const previa = id ? await getRuleById(id) : undefined;
+  const avanzada =
+    !!previa && ((!!previa.tipo && previa.tipo !== "simple") || !!previa.filtro);
+
   const rule: DiscountRule = {
+    ...(previa ?? {}),
     id: id || (await nextRuleId()),
     name,
-    scope,
-    target,
-    kind,
-    value,
+    scope: avanzada ? previa!.scope : scope,
+    target: avanzada ? previa!.target : target,
+    kind: avanzada ? previa!.kind : kind,
+    value: avanzada ? previa!.value : value,
     active,
     startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
     endsAt: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : undefined,

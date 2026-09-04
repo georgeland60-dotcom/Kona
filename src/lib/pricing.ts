@@ -54,6 +54,12 @@ export async function preciarPedido(
 // cobraría de menos, así que la línea se parte en un item por cada precio.
 // De paso el pedido queda como una boleta de verdad: se ve qué se pagó y
 // qué se regaló.
+//
+// Se usan los "preciosFinales": los que ya traen repartido el descuento
+// de carrito (el que baja el total, no el producto). El pedido y Mercado
+// Pago cobran por unidad y no admiten una línea negativa de descuento,
+// así que el motor lo reparte y aquí solo se cobra lo repartido. El total
+// del pedido termina siendo exactamente el que vio la clienta.
 export async function priceForItems(
   incoming: IncomingItem[]
 ): Promise<OrderItem[]> {
@@ -62,7 +68,7 @@ export async function priceForItems(
 
   for (const l of lineas) {
     const porPrecio = new Map<number, number>();
-    for (const precio of l.precios) {
+    for (const precio of l.preciosFinales) {
       porPrecio.set(precio, (porPrecio.get(precio) ?? 0) + 1);
     }
     for (const [price, qty] of [...porPrecio.entries()].sort((a, b) => b[0] - a[0])) {

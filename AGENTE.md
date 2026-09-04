@@ -51,6 +51,7 @@ propone, tú decides.
 | Descuentos | crear, encender, apagar o borrar promociones (por producto, categoría o toda la tienda, con fechas) |
 | Por cantidad | "lleva 3 y te llevas 10%, lleva 6 y 20%" — las unidades se cuentan por todo el alcance de la regla |
 | 2x1 y similares | "2x1", "3x2", "la segunda al 50%". Siempre se regala la unidad más barata |
+| Sobre el total | "si llevan la cartera verde, 10% de toda su compra con tope de 85 soles", "comprando más de 300, 50 de descuento" |
 | Con exclusiones | "60% en todo menos estos dos" — el patrón de las campañas grandes |
 | Precio fijo | "todas las carteras a 59" |
 | Precios | cambiar el precio de lista de un producto |
@@ -308,6 +309,17 @@ Decisiones que conviene no romper:
   gana la que más conviene al cliente. Un 2x1 se compara contra lo que ya
   tenían esas unidades y solo entra si sale mejor; si no, un "60% en todo"
   más un 2x1 daría 80% de rebaja sin que nadie lo haya decidido.
+- **El descuento del total es la excepción, y es la excepción segura**: no
+  baja el precio de ningún producto, baja el total, y se calcula sobre el
+  subtotal YA descontado (nunca sobre el precio de lista), con tope y sin
+  poder dejar el total en negativo. Si hay varias promociones de este tipo
+  aplicables, se aplica una sola: la mejor para el cliente. En el carrito se
+  muestra como una rebaja al final, para que el tope se vea.
+- **Ese descuento se reparte entre las unidades al cobrar**: el pedido (y
+  Mercado Pago) cobran por unidad y no admiten una línea negativa. El
+  reparto es proporcional, en soles enteros, y suma exactamente el monto
+  descontado. Por eso la línea tiene `precios` (lo que se muestra) y
+  `preciosFinales` (lo que se cobra).
 - **En un pedido, una línea con 2x1 se parte en dos** (lo pagado y el
   regalo a S/ 0). Guardar un solo precio unitario cobraría de menos,
   porque dentro de la línea las unidades valen distinto.
@@ -315,6 +327,20 @@ Decisiones que conviene no romper:
   apretar Confirmar dos veces no aplica los cambios dos veces.
 - El audio se le manda a Gemini tal cual, sin transcribirlo antes: entiende
   el OGG de Telegram directamente y eso ahorra un servicio (y su costo).
+
+### Probar el motor de precios
+
+El motor (`src/lib/promo-engine.ts`) es una función pura, así que se puede
+probar sin base de datos ni servidor:
+
+```bash
+node --experimental-strip-types pruebas/motor-promociones.ts
+```
+
+Comprueba lo que cuesta dinero: que la suma de las unidades sea exactamente
+el total mostrado, que los topes recorten, que las promociones no se apilen
+y que una condición sin cumplir no descuente nada. Si tocas el motor, corre
+esto antes de subir.
 
 ### Agregar una acción nueva
 

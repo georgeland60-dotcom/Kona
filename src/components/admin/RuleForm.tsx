@@ -25,12 +25,27 @@ export default function RuleForm({
   const isEdit = !!rule;
   const [scope, setScope] = useState<DiscountRule["scope"]>(rule?.scope || "all");
 
+  // Las promos que hizo el asistente (por cantidad, 2x1, sobre el total,
+  // o con exclusiones) no se pueden representar en este formulario.
+  const avanzada =
+    !!rule && ((!!rule.tipo && rule.tipo !== "simple") || !!rule.filtro);
+
   const field =
     "w-full border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-accent";
 
   return (
     <form action={saveRuleAction} className="space-y-6 max-w-2xl">
       {isEdit && <input type="hidden" name="id" value={rule!.id} />}
+
+      {avanzada && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 text-sm">
+          Esta es una promoción avanzada (por cantidad, 2x1, sobre el total de
+          la compra o con exclusiones). Aquí solo puedes cambiarle el nombre,
+          las fechas y encenderla o apagarla: sus números se guardan tal como
+          están. Para cambiarlos, pídeselo al asistente por Telegram o bórrala
+          y créala de nuevo.
+        </div>
+      )}
 
       <div className="bg-background border border-line rounded-xl p-5 space-y-4">
         <div>

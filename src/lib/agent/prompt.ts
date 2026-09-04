@@ -30,6 +30,11 @@ Solo cambios comerciales, mediante las herramientas que tienes:
   todos los productos de esa categoría que lleve el cliente.
 - 2x1 y similares: "2x1", "3x2", "la segunda al 50%". Se crean con
   "crear_promocion_2x1". Siempre se regala la unidad MÁS BARATA.
+- Descuentos SOBRE EL TOTAL de la compra, con condición y tope: "si llevan
+  la cartera verde, 10% de toda su compra con tope de 85 soles", "comprando
+  más de 300 soles, 50 de descuento", "llevando 3 prendas, 15% del total".
+  Se crean con "crear_descuento_carrito". No bajan el precio de ningún
+  producto: bajan el total al final.
 - Precios: cambiar el precio de un producto, o dejar varios en un precio
   exacto ("todas las carteras a 59") con tipo "precio_fijo".
 - Campañas con EXCLUSIONES: "60% en todo menos estos dos". Se arman con
@@ -63,14 +68,22 @@ Solo cambios comerciales, mediante las herramientas que tienes:
      -> usa "crear_descuento_escalonado".
    - "2x1", "3x2", "lleva 2 paga 1", "la segunda a mitad de precio"
      -> usa "crear_promocion_2x1".
+   - "descuento de toda la compra", "del total", "si llevan X le descuento
+     tanto", "con un tope de", "máximo tanto de descuento"
+     -> usa "crear_descuento_carrito". La pista es que el descuento se
+     calcula sobre el TOTAL, o que hay una CONDICIÓN ("cuando lleven...",
+     "comprando más de...") o un TOPE.
    - "este producto ahora cuesta X" -> usa "cambiar_precio" (precio de lista).
    Ante la duda entre los dos, prefiere "crear_descuento" y dilo.
 6. En un 2x1, di siempre el ejemplo en soles antes de que confirme: un
    "lleva 2 paga 1" y un "3x2" suenan parecido y cuestan muy distinto.
-7. Si un cambio parece muy fuerte (descuento mayor al 60%, precio que baja más
+7. En un descuento sobre el total, si la dueña no menciona un tope,
+   NO lo inventes: créalo sin tope y dilo en tu respuesta, para que ella
+   decida si quiere ponerle uno.
+8. Si un cambio parece muy fuerte (descuento mayor al 60%, precio que baja más
    de la mitad, eliminar productos de verdad), hazlo igual pero AVISA en tu
    respuesta que es un cambio grande, para que ella lo revise antes de confirmar.
-8. Para quitar un producto, usa siempre modo "ocultar", salvo que ella diga
+9. Para quitar un producto, usa siempre modo "ocultar", salvo que ella diga
    claramente "bórralo", "elimínalo para siempre" o similar.
 
 ## Cómo hablar
@@ -108,6 +121,13 @@ function describirValor(r: DiscountRule): string {
     return descuentoRegalo >= 100
       ? `${porCada}x${porCada - regala}`
       : `llevando ${porCada}, ${regala} al ${descuentoRegalo}%`;
+  }
+  if (r.tipo === "carrito") {
+    const cuanto = r.kind === "fixed" ? `S/ ${r.value}` : `${r.value}%`;
+    const tope = r.carrito?.maximoDescuento
+      ? `, tope S/ ${r.carrito.maximoDescuento}`
+      : "";
+    return `${cuanto} del total de la compra${tope}`;
   }
   if (r.kind === "precio_fijo") return `precio fijo S/ ${r.value}`;
   return r.kind === "percent" ? `${r.value}%` : `S/ ${r.value}`;

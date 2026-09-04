@@ -100,7 +100,11 @@ export type Filtro = {
 
 // Qué CLASE de promoción es. Las reglas viejas no tienen este campo y se
 // tratan como "simple", así que nada de lo que ya existe deja de funcionar.
-export type DiscountType = "simple" | "escalonado" | "bogo";
+//
+// "carrito" es la única que NO baja el precio de un producto: descuenta
+// sobre el total de la compra, y suele venir con una condición ("si llevan
+// tal cosa") y un tope en soles.
+export type DiscountType = "simple" | "escalonado" | "bogo" | "carrito";
 
 // Un 2x1 y sus parientes. "Lleva 2 paga 1" es porCada:2, regala:1 y
 // descuentoRegalo:100. "La 2da prenda al 50%" es lo mismo con 50.
@@ -110,6 +114,26 @@ export type BogoConfig = {
   descuentoRegalo: number; // % sobre la regalada; 100 = gratis
   recursivo: boolean; // si se repite en el mismo carrito (4 -> 2 gratis)
   maximoRegalos?: number; // tope de unidades regaladas por carrito
+};
+
+// Cuándo se activa un descuento de carrito. Todo lo que se indique tiene
+// que cumplirse a la vez. Sin nada indicado, aplica siempre.
+export type CondicionCarrito = {
+  productos?: string[]; // ids: basta con que haya alguno de estos en el carrito
+  categorias?: string[]; // slugs: basta con que haya algo de estas categorías
+  // Unidades mínimas. Si hay productos/categorías arriba, cuenta solo esas;
+  // si no, cuenta todo el carrito.
+  cantidadMinima?: number;
+  subtotalMinimo?: number; // soles mínimos de compra (ya con los otros descuentos)
+};
+
+// Un descuento sobre el total. El cuánto sale de kind/value de la regla
+// ("percent" = % del total que aplica, "fixed" = soles fijos).
+export type CarritoConfig = {
+  condicion?: CondicionCarrito;
+  // Tope en soles. "10% de toda la compra con un máximo de S/ 85": el tope
+  // es lo que evita que una compra grande se lleve media tienda.
+  maximoDescuento?: number;
 };
 
 // Un tramo de un descuento por cantidad: "de 3 a 5 unidades, 10%".
@@ -133,6 +157,7 @@ export type DiscountRule = {
   tipo?: DiscountType; // ausente = "simple"
   tramos?: Tramo[]; // solo en las de tipo "escalonado"
   bogo?: BogoConfig; // solo en las de tipo "bogo"
+  carrito?: CarritoConfig; // solo en las de tipo "carrito"
   filtro?: Filtro; // si viene, manda sobre scope/target
 };
 

@@ -207,6 +207,29 @@ export default function CartDrawer() {
 
         {items.length > 0 && (
           <div className="border-t border-line p-5 space-y-4">
+            {/* Un descuento sobre el total va aparte, como una rebaja al
+                final: es lo que hace visible el tope ("máximo S/ 85"). */}
+            {precio?.descuentoCarrito && (
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between text-muted">
+                  <span>Subtotal</span>
+                  <span>{formatPrice(precio.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-green-700 font-medium">
+                  <span>
+                    {precio.descuentoCarrito.nombre}
+                    {precio.descuentoCarrito.topeAplicado &&
+                      precio.descuentoCarrito.tope !== undefined && (
+                        <span className="text-muted font-normal">
+                          {" "}
+                          (tope {formatPrice(precio.descuentoCarrito.tope)})
+                        </span>
+                      )}
+                  </span>
+                  <span>−{formatPrice(precio.descuentoCarrito.monto)}</span>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between text-base items-baseline">
               <span>
                 Total

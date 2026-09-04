@@ -33,15 +33,27 @@ export type LineaPreciada = {
   ahorro: number;
   regaladas: number; // unidades gratis o rebajadas por un 2x1
   precios: number[];
+  preciosFinales: number[];
   promo?: string;
+};
+
+// Un descuento sobre el total de la compra ("10% si llevas la cartera
+// verde, tope S/ 85"). No baja el precio de ninguna línea: baja el total.
+export type DescuentoCarrito = {
+  nombre: string;
+  monto: number;
+  tope?: number;
+  topeAplicado: boolean;
 };
 
 export type PrecioCarrito = {
   lineas: LineaPreciada[];
   totalLista: number;
+  subtotal: number; // suma de las líneas, antes del descuento de carrito
   total: number;
   ahorro: number;
   promos: string[];
+  descuentoCarrito?: DescuentoCarrito;
 };
 
 type CartContextType = {
