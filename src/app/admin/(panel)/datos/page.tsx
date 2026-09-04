@@ -9,6 +9,11 @@ import {
 import { categories } from "@/data/categories";
 import { formatPrice } from "@/lib/format";
 import { isPersistent } from "@/lib/kv";
+import {
+  resumirConsumo,
+  getConsumo,
+  LIMITE_LLAMADAS_DIA,
+} from "@/lib/consumo-data";
 
 // Siempre datos frescos: es una pantalla de consulta, no vale cachearla.
 export const dynamic = "force-dynamic";
@@ -39,12 +44,14 @@ export default async function DatosPage({
 }) {
   const { categoria, tipo } = await searchParams;
 
-  const [productos, pedidos, ventas, cambios, todos] = await Promise.all([
+  const [productos, pedidos, ventas, cambios, todos, consumo, dias] = await Promise.all([
     getProducts({ includeInactive: true, raw: true }),
     getOrders(),
     getSalesSummary(),
     getHistorial({ categoria, tipo, limite: 100 }),
     getHistorial(),
+    resumirConsumo(),
+    getConsumo(),
   ]);
 
   const bases = [
@@ -129,6 +136,92 @@ export default async function DatosPage({
             </a>
           </div>
         ))}
+      </div>
+
+      {/* Consumo de la IA */}
+      <div className="mb-10">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Consumo de la IA</h2>
+          <p className="text-muted text-sm">
+            La capa gratuita de Google no son créditos que se gastan para
+            siempre: es un límite por día que se reinicia solo cada noche.
+          </p>
+        </div>
+
+        <div className="bg-background border border-line rounded-xl p-5">
+          {consumo.hoy.mensajes === 0 && consumo.diasConDatos === 0 ? (
+            <p className="text-muted text-sm">
+              Todavía no hay consumo registrado. Aparecerá en cuanto le pidas
+              algo al bot.
+            </p>
+          ) : (
+            <>
+              <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+                <p className="text-sm">
+                  Hoy: <strong>{consumo.hoy.mensajes}</strong> mensaje
+                  {consumo.hoy.mensajes === 1 ? "" : "s"} ·{" "}
+                  <strong>{consumo.hoy.llamadas}</strong> de{" "}
+                  {LIMITE_LLAMADAS_DIA} consultas
+                </p>
+                <p className="text-sm text-muted">
+                  {consumo.porcentajeDelDia < 1
+                    ? "menos del 1% de la cuota"
+                    : `${consumo.porcentajeDelDia.toFixed(1)}% de la cuota`}
+                </p>
+              </div>
+
+              <div className="h-2 rounded-full bg-soft overflow-hidden mb-4">
+                <div
+                  className="h-full bg-accent rounded-full"
+                  style={{
+                    width: `${Math.min(100, Math.max(consumo.porcentajeDelDia, consumo.hoy.llamadas > 0 ? 1 : 0))}%`,
+                  }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted text-xs">Cada cambio cuesta</p>
+                  <p className="font-medium">
+                    {consumo.llamadasPorMensaje > 0
+                      ? `${consumo.llamadasPorMensaje.toFixed(1)} consultas`
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted text-xs">Te quedan hoy</p>
+                  <p className="font-medium">
+                    ~{consumo.mensajesQueFaltan} cambios
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted text-xs">Palabras procesadas hoy</p>
+                  <p className="font-medium">
+                    {(
+                      consumo.hoy.tokensEntrada + consumo.hoy.tokensSalida
+                    ).toLocaleString("es-PE")}
+                  </p>
+                </div>
+              </div>
+
+              {dias.length > 1 && (
+                <div className="mt-5 pt-4 border-t border-line">
+                  <p className="text-xs text-muted mb-2">Últimos días</p>
+                  <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                    {dias.slice(0, 7).map((d) => (
+                      <span key={d.fecha}>
+                        <span className="text-muted">
+                          {d.fecha.slice(5).replace("-", "/")}
+                        </span>{" "}
+                        {d.mensajes} cambio{d.mensajes === 1 ? "" : "s"}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Historial */}

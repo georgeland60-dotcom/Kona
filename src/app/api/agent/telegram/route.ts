@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { ejecutarAgente, aplicarPlan, type AccionPlan } from "@/lib/agent/run";
 import { guardarPlan, tomarPlan, descartarPlan } from "@/lib/agent/pending";
 import { registrarCambios } from "@/lib/historial-data";
+import { anotarConsumo } from "@/lib/consumo-data";
 import { tipoDeCambio, categoriaAfectada } from "@/lib/agent/tools";
 import { ErrorAgente, type Parte } from "@/lib/agent/gemini";
 import { isPersistent } from "@/lib/kv";
@@ -196,6 +197,14 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
 
   await mostrarEscribiendo(chatId);
   const resultado = await ejecutarAgente(partes);
+
+  // Dejamos anotado lo que costó, para poder ver el consumo en el panel
+  // con datos reales en vez de estimaciones.
+  await anotarConsumo({
+    llamadas: resultado.gasto.llamadas,
+    tokensEntrada: resultado.gasto.tokensEntrada,
+    tokensSalida: resultado.gasto.tokensSalida,
+  });
 
   if (resultado.tipo === "respuesta") {
     // En un grupo colgamos la respuesta del mensaje original, para que se

@@ -47,9 +47,14 @@ export type LlamadaHerramienta = {
   args: Record<string, unknown>;
 };
 
+// Lo que Google dice que costó la llamada. Viene en la respuesta, así que
+// no hay que estimar nada: es el dato real.
+export type Consumo = { entrada: number; salida: number };
+
 export type RespuestaModelo = {
   texto: string;
   llamadas: LlamadaHerramienta[];
+  consumo: Consumo;
   // El turno del modelo TAL CUAL vino. Hay que reenviarlo sin tocar: si se
   // reconstruye a mano se pierden campos que la API exige de vuelta (la
   // firma de razonamiento, sin ir más lejos) y rechaza la conversación.
@@ -69,6 +74,11 @@ type GeminiRespuesta = {
   }>;
   promptFeedback?: { blockReason?: string };
   error?: { message?: string; status?: string };
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
 };
 
 export class ErrorAgente extends Error {}
@@ -314,6 +324,10 @@ export async function preguntarAlModelo(opciones: {
     texto: texto.trim(),
     llamadas,
     partesCrudas: partes as unknown as Parte[],
+    consumo: {
+      entrada: data.usageMetadata?.promptTokenCount ?? 0,
+      salida: data.usageMetadata?.candidatesTokenCount ?? 0,
+    },
   };
 }
 

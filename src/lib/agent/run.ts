@@ -32,9 +32,16 @@ export type AccionPlan = {
   resumen: string; // en cristiano, para mostrarle a la dueña
 };
 
+// Lo que costó atender el mensaje, sumando todas las idas y vueltas.
+export type GastoAgente = {
+  llamadas: number;
+  tokensEntrada: number;
+  tokensSalida: number;
+};
+
 export type ResultadoAgente =
-  | { tipo: "respuesta"; texto: string }
-  | { tipo: "plan"; texto: string; acciones: AccionPlan[] };
+  | { tipo: "respuesta"; texto: string; gasto: GastoAgente }
+  | { tipo: "plan"; texto: string; acciones: AccionPlan[]; gasto: GastoAgente };
 
 // Cuántas veces puede ir y volver el modelo (buscar productos, pensar,
 // proponer). Con 4 vueltas alcanza de sobra y acota el gasto.
@@ -47,6 +54,7 @@ export async function ejecutarAgente(
   const herramientas = declaracionesParaModelo();
   const mensajes: Mensaje[] = [{ role: "user", parts: entrada }];
   const acciones: AccionPlan[] = [];
+  const gasto: GastoAgente = { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 };
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     const respuesta = await preguntarAlModelo({
@@ -55,12 +63,16 @@ export async function ejecutarAgente(
       herramientas,
     });
 
+    gasto.llamadas += 1;
+    gasto.tokensEntrada += respuesta.consumo.entrada;
+    gasto.tokensSalida += respuesta.consumo.salida;
+
     // Sin llamadas a herramientas: el modelo ya terminó de pensar.
     if (respuesta.llamadas.length === 0) {
       const texto = respuesta.texto || "Listo.";
       return acciones.length > 0
-        ? { tipo: "plan", texto, acciones }
-        : { tipo: "respuesta", texto };
+        ? { tipo: "plan", texto, acciones, gasto }
+        : { tipo: "respuesta", texto, gasto };
     }
 
     // El turno del modelo se reenvía TAL CUAL vino. Reconstruirlo a mano
@@ -135,12 +147,14 @@ export async function ejecutarAgente(
       tipo: "plan",
       texto: "Esto es lo que entendí:",
       acciones,
+      gasto,
     };
   }
   return {
     tipo: "respuesta",
     texto:
       "No logré entender bien el pedido. ¿Me lo dices de otra forma, más concreto?",
+    gasto,
   };
 }
 
