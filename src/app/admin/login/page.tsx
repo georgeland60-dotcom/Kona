@@ -22,11 +22,23 @@ export default async function LoginPage({
           <p className="text-sm text-muted mt-1">Panel de administración</p>
         </div>
 
-        {error && (
+        {error === "sin-clave" ? (
+          <div className="mb-4 text-sm bg-amber-50 border border-amber-300 rounded-lg px-3 py-3">
+            <p className="font-semibold mb-1">
+              Todavía no hay contraseña configurada
+            </p>
+            <p className="text-muted">
+              No es que te equivocaras: aún no existe ninguna contraseña, así
+              que ninguna funciona. Hay que crear la variable{" "}
+              <code className="text-xs">ADMIN_PASSWORD</code> en Vercel con la
+              contraseña que quieras, y volver a desplegar.
+            </p>
+          </div>
+        ) : error ? (
           <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-center">
             Contraseña incorrecta. Inténtalo de nuevo.
           </p>
-        )}
+        ) : null}
 
         <form action={loginAction} className="space-y-4">
           <div>
@@ -52,7 +64,7 @@ export default async function LoginPage({
         </form>
 
         <p className="text-center text-xs text-muted mt-6">
-          Solo para la dueña de la tienda.
+          Solo se pide contraseña: no hay usuario.
         </p>
       </div>
     </div>
