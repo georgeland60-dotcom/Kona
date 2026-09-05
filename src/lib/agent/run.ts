@@ -10,6 +10,13 @@
 //  herramientas de lectura sí corren solas (para que se entere de qué
 //  productos existen), pero todo lo que toca precios o catálogo queda
 //  anotado y espera el botón "Confirmar".
+//
+//  Sobre el TIEMPO. Un pedido complicado ("cuando lleven la cartera
+//  verde, 10% de toda la compra con tope de 85") necesita varias idas y
+//  vueltas con la IA, y el servidor mata la función a los pocos minutos.
+//  Por eso el agente guarda su estado y puede seguir pensando en otra
+//  tanda: aquí se trabaja con un presupuesto por tanda, y cuando se
+//  acaba se devuelve "pendiente" en vez de morir a medio camino.
 // =============================================================
 
 import {
@@ -39,79 +46,123 @@ export type GastoAgente = {
   tokensSalida: number;
 };
 
+// Todo lo que hace falta para retomar el razonamiento donde se quedó.
+// Viaja a la base de datos entre una tanda y la siguiente.
+export type EstadoAgente = {
+  mensajes: Mensaje[];
+  acciones: AccionPlan[];
+  gasto: GastoAgente;
+  vuelta: number;
+  inicio: number; // cuándo empezó todo (para el tope general)
+  // Veces seguidas que una respuesta de la IA no llegó a tiempo. Si una
+  // sola respuesta no cabe nunca en una tanda, seguir reintentando sería
+  // dar vueltas para siempre gastando cuota.
+  cortes?: number;
+};
+
 export type ResultadoAgente =
   | { tipo: "respuesta"; texto: string; gasto: GastoAgente }
-  | { tipo: "plan"; texto: string; acciones: AccionPlan[]; gasto: GastoAgente };
+  | { tipo: "plan"; texto: string; acciones: AccionPlan[]; gasto: GastoAgente }
+  // Se acabó el tiempo de ESTA tanda, pero el pedido sigue en pie: hay
+  // que retomarlo en otra. No es un error.
+  | { tipo: "pendiente"; estado: EstadoAgente };
 
 // Cuántas veces puede ir y volver el modelo (buscar productos, pensar,
-// proponer). Con 4 vueltas alcanza de sobra y acota el gasto.
-const MAX_VUELTAS = 4;
+// proponer). Un pedido normal usa 2 o 3; el tope es para que un enredo
+// no se quede dando vueltas para siempre.
+const MAX_VUELTAS = 16;
 
-// Cuánto puede durar TODO el razonamiento.
-//
-// Esto no es una preferencia: la función que atiende Telegram se muere
-// sola a los 60 segundos y, cuando eso pasa, la dueña no recibe nada. Ni
-// la respuesta ni un aviso: silencio, que es lo peor que puede hacer un
-// asistente. Así que se corta antes, a tiempo para poder contestar.
-const PRESUPUESTO_MS = 45_000;
+// Tope general de paciencia: media hora. No se espera llegar nunca, pero
+// es preferible un límite claro a un agente pensando indefinidamente.
+export const TOPE_TOTAL_MS = 30 * 60 * 1000;
 
-// Por debajo de esto no vale la pena empezar otra vuelta: no daría tiempo
-// de terminarla y solo gastaría cuota.
-const MINIMO_POR_VUELTA_MS = 9_000;
+// Por debajo de esto no vale la pena empezar otra vuelta en esta tanda:
+// no daría tiempo de terminarla y solo gastaría cuota.
+const MINIMO_POR_VUELTA_MS = 12_000;
 
+// Cuántos cortes seguidos se toleran antes de rendirse y decirlo.
+const MAX_CORTES = 3;
+
+export function estadoInicial(entrada: Parte[]): EstadoAgente {
+  return {
+    mensajes: [{ role: "user", parts: entrada }],
+    acciones: [],
+    gasto: { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 },
+    vuelta: 0,
+    inicio: Date.now(),
+    cortes: 0,
+  };
+}
+
+// Avanza el razonamiento todo lo que quepa en el presupuesto de tiempo.
+// OJO: modifica "estado" sobre la marcha, a propósito: así, aunque se
+// corte a media tanda, lo ya pensado no se pierde.
 export async function ejecutarAgente(
-  entrada: Parte[],
-  opciones: { presupuestoMs?: number } = {}
+  estado: EstadoAgente,
+  opciones: { presupuestoMs: number }
 ): Promise<ResultadoAgente> {
-  const fin = Date.now() + (opciones.presupuestoMs ?? PRESUPUESTO_MS);
-  let agotado = false;
+  const finDeTanda = Date.now() + opciones.presupuestoMs;
+  const llamadasAlEmpezar = estado.gasto.llamadas;
   const instruccion = await construirInstruccion();
   const herramientas = declaracionesParaModelo();
-  const mensajes: Mensaje[] = [{ role: "user", parts: entrada }];
-  const acciones: AccionPlan[] = [];
-  const gasto: GastoAgente = { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 };
 
-  for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
-    const restante = fin - Date.now();
-    if (restante < MINIMO_POR_VUELTA_MS) {
-      agotado = true;
-      break;
+  while (estado.vuelta < MAX_VUELTAS) {
+    // ¿Se pasó del tope general? Entonces se corta de verdad.
+    if (Date.now() - estado.inicio > TOPE_TOTAL_MS) {
+      return cerrarPorTiempo(estado);
     }
+
+    // ¿Se acabó el tiempo de esta tanda? Se sigue en la próxima.
+    const restante = finDeTanda - Date.now();
+    if (restante < MINIMO_POR_VUELTA_MS) {
+      // Si en toda la tanda no se avanzó nada, encadenar otra igual sería
+      // dar vueltas sin fin (pasa si el presupuesto quedó mal puesto).
+      // Se cuenta como corte y a los tres se corta de verdad.
+      if (estado.gasto.llamadas === llamadasAlEmpezar) {
+        estado.cortes = (estado.cortes ?? 0) + 1;
+        if (estado.cortes >= MAX_CORTES) return rendirse(estado);
+      }
+      return { tipo: "pendiente", estado };
+    }
+
+    estado.vuelta += 1;
 
     let respuesta;
     try {
       respuesta = await preguntarAlModelo({
         instruccion,
-        mensajes,
+        mensajes: estado.mensajes,
         herramientas,
         limiteMs: restante,
       });
     } catch (error) {
-      // Que se acabe el tiempo no es un fallo del que haya que huir: si ya
-      // hay algo que proponer, se propone; y si no, se dice claramente.
+      // Que se acabe el tiempo no es un fallo: se retoma en otra tanda.
       if (error instanceof ErrorAgente && error.tiempoAgotado) {
-        agotado = true;
-        break;
+        estado.cortes = (estado.cortes ?? 0) + 1;
+        // Siempre se corta en el mismo punto: seguir no lo va a arreglar.
+        if (estado.cortes >= MAX_CORTES) return rendirse(estado);
+        return { tipo: "pendiente", estado };
       }
       throw error;
     }
 
-    gasto.llamadas += 1;
-    gasto.tokensEntrada += respuesta.consumo.entrada;
-    gasto.tokensSalida += respuesta.consumo.salida;
+    estado.cortes = 0;
+    estado.gasto.llamadas += 1;
+    estado.gasto.tokensEntrada += respuesta.consumo.entrada;
+    estado.gasto.tokensSalida += respuesta.consumo.salida;
 
     // Sin llamadas a herramientas: el modelo ya terminó de pensar.
     if (respuesta.llamadas.length === 0) {
       const texto = respuesta.texto || "Listo.";
-      return acciones.length > 0
-        ? { tipo: "plan", texto, acciones, gasto }
-        : { tipo: "respuesta", texto, gasto };
+      return estado.acciones.length > 0
+        ? { tipo: "plan", texto, acciones: estado.acciones, gasto: estado.gasto }
+        : { tipo: "respuesta", texto, gasto: estado.gasto };
     }
 
     // El turno del modelo se reenvía TAL CUAL vino. Reconstruirlo a mano
     // perdía la firma de razonamiento que Gemini 3 exige de vuelta, y la
     // API rechazaba la conversación entera.
-    mensajes.push({ role: "model", parts: respuesta.partesCrudas });
+    estado.mensajes.push({ role: "model", parts: respuesta.partesCrudas });
 
     // Y ahora resolvemos cada llamada.
     const respuestas: Parte[] = [];
@@ -154,7 +205,7 @@ export async function ejecutarAgente(
       } catch {
         resumen = herramienta.nombre;
       }
-      acciones.push({
+      estado.acciones.push({
         herramienta: llamada.nombre,
         args: llamada.args,
         resumen,
@@ -171,35 +222,62 @@ export async function ejecutarAgente(
       });
     }
 
-    mensajes.push({ role: "user", parts: respuestas });
+    estado.mensajes.push({ role: "user", parts: respuestas });
   }
 
-  // Se acabaron las vueltas (o el tiempo). Si alcanzó a armar un plan, lo
-  // mostramos igual: es mejor eso que no decir nada.
-  if (acciones.length > 0) {
+  // Se acabaron las vueltas. Si alcanzó a armar un plan, lo mostramos.
+  if (estado.acciones.length > 0) {
     return {
       tipo: "plan",
-      texto: agotado
-        ? "Me demoré más de lo normal, así que revisa bien la lista antes de confirmar."
-        : "Esto es lo que entendí:",
-      acciones,
-      gasto,
-    };
-  }
-  if (agotado) {
-    return {
-      tipo: "respuesta",
-      texto:
-        "Se me hizo largo pensarlo y corté para no dejarte esperando sin respuesta. " +
-        "Vuelve a mandármelo, o pídemelo en dos partes más simples.",
-      gasto,
+      texto: "Esto es lo que entendí:",
+      acciones: estado.acciones,
+      gasto: estado.gasto,
     };
   }
   return {
     tipo: "respuesta",
     texto:
       "No logré entender bien el pedido. ¿Me lo dices de otra forma, más concreto?",
-    gasto,
+    gasto: estado.gasto,
+  };
+}
+
+// No se logra avanzar: la IA no contesta a tiempo, una y otra vez.
+function rendirse(estado: EstadoAgente): ResultadoAgente {
+  if (estado.acciones.length > 0) {
+    return {
+      tipo: "plan",
+      texto:
+        "La IA se está demorando muchísimo en cada respuesta, así que te muestro lo que alcancé a armar. Revísalo bien.",
+      acciones: estado.acciones,
+      gasto: estado.gasto,
+    };
+  }
+  return {
+    tipo: "respuesta",
+    texto:
+      "La IA está tardando demasiado en responder y no logro avanzar. Vuelve a intentarlo en un rato, o pídemelo más simple.",
+    gasto: estado.gasto,
+  };
+}
+
+// Se acabó la paciencia (media hora). Igual se contesta: con lo que
+// alcanzó a armar, o diciéndolo claro. Nunca en silencio.
+function cerrarPorTiempo(estado: EstadoAgente): ResultadoAgente {
+  if (estado.acciones.length > 0) {
+    return {
+      tipo: "plan",
+      texto:
+        "Me tomó mucho más de lo normal, así que revisa bien la lista antes de confirmar.",
+      acciones: estado.acciones,
+      gasto: estado.gasto,
+    };
+  }
+  return {
+    tipo: "respuesta",
+    texto:
+      "Llevo media hora dándole vueltas y no logro cerrarlo. Mejor pídemelo en dos partes más simples.",
+    gasto: estado.gasto,
   };
 }
 

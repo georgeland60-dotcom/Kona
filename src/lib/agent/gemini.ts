@@ -21,9 +21,6 @@ const MODELO_PREFERIDO = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 // preguntar la lista en cada mensaje.
 let modeloConfirmado: string | null = null;
 
-// Lo mismo con el "piensa poco": si el modelo no lo acepta, se deja de
-// mandar y no se vuelve a intentar en toda la vida del proceso.
-let pensarPoco = true;
 
 // ---- Forma de los mensajes que se le mandan al modelo ---------------
 
@@ -81,6 +78,9 @@ type GeminiRespuesta = {
   usageMetadata?: {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
+    // Lo que el modelo gastó pensando. Va aparte de la respuesta, pero se
+    // paga igual, así que para medir el consumo hay que sumarlo.
+    thoughtsTokenCount?: number;
     totalTokenCount?: number;
   };
 };
@@ -184,18 +184,15 @@ export function ordenarModelos(nombres: string[]): string[] {
 
 // ---- Llamada al modelo ----------------------------------------------
 
-function cuerpoPeticion(
-  opciones: {
-    instruccion: string;
-    mensajes: Mensaje[];
-    herramientas: Array<{
-      name: string;
-      description: string;
-      parameters?: Record<string, unknown>;
-    }>;
-  },
-  pensarPoco: boolean
-): string {
+function cuerpoPeticion(opciones: {
+  instruccion: string;
+  mensajes: Mensaje[];
+  herramientas: Array<{
+    name: string;
+    description: string;
+    parameters?: Record<string, unknown>;
+  }>;
+}): string {
   return JSON.stringify({
     systemInstruction: { parts: [{ text: opciones.instruccion }] },
     contents: opciones.mensajes,
@@ -204,22 +201,13 @@ function cuerpoPeticion(
     generationConfig: {
       // Temperatura baja: queremos precisión con precios, no creatividad.
       temperature: 0.1,
-      maxOutputTokens: 2048,
-      // Los Gemini 3 "piensan" antes de responder, y por defecto piensan
-      // mucho: en un pedido con varias condiciones eso son decenas de
-      // segundos por vuelta, y la función se queda sin tiempo antes de
-      // contestar. Aquí no hace falta filosofar: las decisiones difíciles
-      // están en el prompt y en las herramientas.
-      ...(pensarPoco ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
+      // Los Gemini 3 "piensan" antes de responder y ese pensamiento gasta
+      // del mismo presupuesto que la respuesta. Con poco margen se quedan
+      // sin espacio y devuelven un turno vacío, así que se les da aire:
+      // el tiempo ya no es problema (el agente puede seguir en otra tanda).
+      maxOutputTokens: 8192,
     },
   });
-}
-
-// ¿El error que devolvió Google es por el thinkingConfig? Los modelos que
-// no lo aceptan responden 400 nombrando el campo. Si pasa, se reintenta
-// sin él en vez de dejar al agente mudo.
-function esQuejaDePensamiento(cuerpo: string): boolean {
-  return /thinking/i.test(cuerpo);
 }
 
 export async function preguntarAlModelo(opciones: {
@@ -242,7 +230,7 @@ export async function preguntarAlModelo(opciones: {
     );
   }
 
-  let cuerpo = cuerpoPeticion(opciones, pensarPoco);
+  const cuerpo = cuerpoPeticion(opciones);
 
   async function pedir(modelo: string): Promise<Response> {
     try {
@@ -270,16 +258,6 @@ export async function preguntarAlModelo(opciones: {
 
   let modelo = modeloConfirmado ?? MODELO_PREFERIDO;
   let res = await pedir(modelo);
-
-  // Si el modelo no entiende el "piensa poco", se reintenta sin eso.
-  if (res.status === 400 && pensarPoco) {
-    const detalle400 = await res.clone().text().catch(() => "");
-    if (esQuejaDePensamiento(detalle400)) {
-      pensarPoco = false;
-      cuerpo = cuerpoPeticion(opciones, false);
-      res = await pedir(modelo);
-    }
-  }
 
   // 404 aquí no significa "escribiste mal el nombre": Google retira modelos
   // y deja de servirlos a las claves nuevas, aunque sigan apareciendo en la
@@ -384,7 +362,9 @@ export async function preguntarAlModelo(opciones: {
     partesCrudas: partes as unknown as Parte[],
     consumo: {
       entrada: data.usageMetadata?.promptTokenCount ?? 0,
-      salida: data.usageMetadata?.candidatesTokenCount ?? 0,
+      salida:
+        (data.usageMetadata?.candidatesTokenCount ?? 0) +
+        (data.usageMetadata?.thoughtsTokenCount ?? 0),
     },
   };
 }

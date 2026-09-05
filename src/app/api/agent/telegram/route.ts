@@ -12,13 +12,12 @@
 
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { ejecutarAgente, aplicarPlan, type AccionPlan } from "@/lib/agent/run";
-import { guardarPlan, tomarPlan, descartarPlan } from "@/lib/agent/pending";
+import { aplicarPlan, estadoInicial } from "@/lib/agent/run";
+import { atenderSesion } from "@/lib/agent/conversacion";
+import { tomarPlan, descartarPlan } from "@/lib/agent/pending";
 import { registrarCambios } from "@/lib/historial-data";
-import { anotarConsumo } from "@/lib/consumo-data";
 import { tipoDeCambio, categoriaAfectada } from "@/lib/agent/tools";
 import { ErrorAgente, type Parte } from "@/lib/agent/gemini";
-import { isPersistent } from "@/lib/kv";
 import {
   enviarMensaje,
   editarMensaje,
@@ -26,16 +25,13 @@ import {
   mostrarEscribiendo,
   descargarAudio,
   escapar,
-  type Boton,
 } from "@/lib/agent/telegram";
 
-// El agente puede tardar unos segundos (piensa y consulta el catálogo).
-// Pasado este tiempo, Vercel MATA la función sin avisar a nadie: no se
-// manda ni la respuesta ni un error, y la dueña se queda esperando algo
-// que ya no va a llegar. Por eso el agente trabaja con un presupuesto de
-// tiempo más corto (ver PRESUPUESTO_MS en run.ts) y siempre contesta
-// antes de que llegue este límite.
-export const maxDuration = 60;
+// Pasado este tiempo, Vercel MATA la función sin avisar a nadie: no sale
+// ni la respuesta ni un error. Por eso el agente trabaja con un
+// presupuesto más corto (PRESUPUESTO_TANDA_MS) y, si necesita más, guarda
+// lo pensado y sigue en otra tanda: ver /api/agent/continuar.
+export const maxDuration = 300;
 
 // ---- Forma de lo que manda Telegram ---------------------------------
 
@@ -201,86 +197,23 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
     return;
   }
 
-  // Un aviso inmediato, que luego se convierte en la respuesta. Sin esto
-  // el silencio es ambiguo: no se sabe si está pensando o si se cayó.
+  // Un aviso inmediato, que luego se va actualizando y termina siendo la
+  // respuesta. Sin esto el silencio es ambiguo: no se sabe si está
+  // pensando o si se cayó.
   await mostrarEscribiendo(chatId);
-  const pensando = await enviarMensaje(chatId, "🤔 Déjame ver…", undefined, {
+  const avisoId = await enviarMensaje(chatId, "🤔 Déjame ver…", undefined, {
     responderA: enGrupo ? mensaje.message_id : undefined,
   });
 
-  // Responder es lo mismo que editar ese aviso; si no se pudo enviar (o
-  // Telegram no dio el id), se manda un mensaje nuevo.
-  const responder = async (cuerpo: string, botones?: Boton[]) => {
-    if (pensando) await editarMensaje(chatId, pensando, cuerpo, botones);
-    else
-      await enviarMensaje(chatId, cuerpo, botones, {
-        responderA: enGrupo ? mensaje.message_id : undefined,
-      });
-  };
-
-  const resultado = await ejecutarAgente(partes);
-
-  // Dejamos anotado lo que costó, para poder ver el consumo en el panel
-  // con datos reales en vez de estimaciones.
-  await anotarConsumo({
-    llamadas: resultado.gasto.llamadas,
-    tokensEntrada: resultado.gasto.tokensEntrada,
-    tokensSalida: resultado.gasto.tokensSalida,
+  await atenderSesion({
+    chatId,
+    avisoId,
+    responderA: enGrupo ? mensaje.message_id : undefined,
+    enGrupo,
+    quien,
+    estado: estadoInicial(partes),
+    creadoEn: Date.now(),
   });
-
-  if (resultado.tipo === "respuesta") {
-    await responder(escapar(resultado.texto));
-    return;
-  }
-
-  // Hay cambios que proponer: los mostramos y esperamos confirmación.
-  const codigo = await guardarPlan(chatId, resultado.acciones, quien);
-
-  // Si el plan no se pudo guardar, el botón "Confirmar" fallaría al
-  // apretarlo. Preferimos decirlo ahora y no ofrecer un botón inútil.
-  if (!codigo) {
-    await responder(
-      "⚠️ Entendí lo que quieres, pero <b>no puedo guardarlo</b>: falta conectar la base de datos.\n\n" +
-        "Hay que agregar Upstash Redis (gratis) desde Vercel → Storage. Está explicado en AGENTE.md."
-    );
-    return;
-  }
-
-  await responder(
-    textoDelPlan(resultado.texto, resultado.acciones, enGrupo ? quien : undefined),
-    [
-      { texto: "✅ Confirmar", dato: `ok:${codigo}` },
-      { texto: "✖️ Cancelar", dato: `no:${codigo}` },
-    ]
-  );
-}
-
-function textoDelPlan(
-  comentario: string,
-  acciones: AccionPlan[],
-  pedidoPor?: string
-): string {
-  const lista = acciones
-    .map((a, i) => `${i + 1}. ${escapar(a.resumen)}`)
-    .join("\n");
-
-  const encabezado = pedidoPor
-    ? `<b>${escapar(pedidoPor)} pidió esto:</b>`
-    : "<b>Voy a hacer esto:</b>";
-  const partes = [`${encabezado}\n${lista}`];
-
-  if (comentario) partes.push(escapar(comentario));
-
-  // Sin base de datos configurada, en producción los cambios se pierden
-  // al rato. Mejor avisarlo antes de que confirme, no después.
-  if (process.env.NODE_ENV === "production" && !isPersistent()) {
-    partes.push(
-      "⚠️ <b>Ojo:</b> falta configurar la base de datos (KV), así que estos cambios NO se van a guardar. Revisa AGENTE.md."
-    );
-  }
-
-  partes.push("¿Lo aplico?");
-  return partes.join("\n\n");
 }
 
 // ---- Botones (Confirmar / Cancelar) ---------------------------------

@@ -323,16 +323,23 @@ Decisiones que conviene no romper:
 - **En un pedido, una línea con 2x1 se parte en dos** (lo pagado y el
   regalo a S/ 0). Guardar un solo precio unitario cobraría de menos,
   porque dentro de la línea las unidades valen distinto.
-- **El agente tiene un presupuesto de tiempo y siempre contesta**: la
-  función de Vercel se muere a los 60 segundos y, cuando eso pasa, no sale
-  ningún mensaje: ni la respuesta ni el error. Quedarse en silencio es lo
-  peor que puede hacer un asistente, porque no se sabe si está pensando o
-  si se cayó. Así que el razonamiento se corta a los 45 segundos, cada
-  llamada a la IA lleva su propio límite, y si se acaba el tiempo se
-  responde igual: con el plan que alcanzó a armar, o diciendo que se
-  demoró y que lo pida más simple.
-- **Se avisa "déjame ver…" apenas llega el mensaje**, y ese mismo mensaje
-  se edita después con la respuesta. Así nunca hay un hueco de silencio.
+- **El agente puede pensar hasta media hora, en tandas.** La función de
+  Vercel se muere a los pocos minutos y, cuando eso pasa, no sale ningún
+  mensaje: ni la respuesta ni el error. Así que el agente trabaja en
+  tandas de 45 segundos: al agotarse una, guarda TODO lo que lleva
+  pensado (`sesion.ts`) y se llama a sí mismo (`/api/agent/continuar`)
+  para seguir donde estaba, en el mismo mensaje de Telegram. El tope
+  general es media hora; los 45 segundos solo marcan cada cuánto hace el
+  relevo, y son deliberadamente cortos para que funcione con cualquier
+  plan de alojamiento (`AGENTE_TANDA_MS` lo cambia).
+- **Se avisa "déjame ver…" apenas llega el mensaje** y ese mismo mensaje
+  se va actualizando cada minuto ("sigo armando la modificación… (3 min)")
+  hasta convertirse en la respuesta. Un mensaje quieto no distingue "sigo
+  trabajando" de "me caí", y esa duda es peor que la espera.
+- **Nunca se termina en silencio.** Si se acaba la media hora, si la IA no
+  contesta a tiempo tres veces seguidas o si no se puede guardar la
+  sesión, se responde igual: con el plan que alcanzó a armar (avisando que
+  se revise) o diciendo qué pasó.
 - **El plan se guarda con un código de un solo uso** (`pending.ts`), así que
   apretar Confirmar dos veces no aplica los cambios dos veces.
 - El audio se le manda a Gemini tal cual, sin transcribirlo antes: entiende
