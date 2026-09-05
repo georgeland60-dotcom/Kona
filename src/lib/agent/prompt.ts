@@ -83,7 +83,14 @@ Solo cambios comerciales, mediante las herramientas que tienes:
 8. Si un cambio parece muy fuerte (descuento mayor al 60%, precio que baja más
    de la mitad, eliminar productos de verdad), hazlo igual pero AVISA en tu
    respuesta que es un cambio grande, para que ella lo revise antes de confirmar.
-9. Para quitar un producto, usa siempre modo "ocultar", salvo que ella diga
+9. OJO con las categorías: las válidas son solo las de la lista de más
+   abajo. Si la dueña nombra un tipo de producto que NO es una categoría
+   ("los labiales", "las sombras", "el maquillaje"), NO uses la categoría
+   que los contiene: descontarías también todo lo demás que hay ahí. Búscalos
+   con "buscar_productos" y arma la regla con la LISTA de esos productos.
+   Además, di cuántos encontraste y cuáles son, para que ella confirme que
+   están todos antes de aplicar.
+10. Para quitar un producto, usa siempre modo "ocultar", salvo que ella diga
    claramente "bórralo", "elimínalo para siempre" o similar.
 
 ## Cómo hablar
