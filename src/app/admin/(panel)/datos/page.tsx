@@ -15,6 +15,7 @@ import {
   LIMITE_LLAMADAS_DIA,
 } from "@/lib/consumo-data";
 import { resumenModelos } from "@/lib/agent/modelos";
+import { modeloPreferido } from "@/lib/agent/gemini";
 
 // Siempre datos frescos: es una pantalla de consulta, no vale cachearla.
 export const dynamic = "force-dynamic";
@@ -61,17 +62,35 @@ export default async function DatosPage({
   // hablar de modelos, no de un total abstracto: cuál trabaja ahora,
   // cuánto se le pidió hoy a cada uno y cuál se quedó sin cupo.
   const agotadoHoy = new Map(modelos.agotados.map((a) => [a.modelo, a]));
-  const usoPorModelo = Object.entries(consumo.hoy.porModelo ?? {}).sort(
-    (a, b) => b[1].llamadas - a[1].llamadas
-  );
-  for (const a of modelos.agotados) {
-    if (!usoPorModelo.some(([m]) => m === a.modelo)) {
-      usoPorModelo.push([
-        a.modelo,
-        { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 },
-      ]);
+
+  type UsoModelo = {
+    llamadas: number;
+    tokensEntrada: number;
+    tokensSalida: number;
+    frenos?: number;
+  };
+  const usoPorModelo: Array<[string, UsoModelo]> = Object.entries(
+    consumo.hoy.porModelo ?? {}
+  ).sort((a, b) => b[1].llamadas - a[1].llamadas);
+
+  const vacio: UsoModelo = { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 };
+  const asegurar = (modelo?: string) => {
+    if (modelo && !usoPorModelo.some(([m]) => m === modelo)) {
+      usoPorModelo.push([modelo, { ...vacio }]);
     }
-  }
+  };
+  // Que la lista nunca esté vacía: aunque hoy no se haya usado, hay que
+  // poder ver CUÁL modelo va a atender y cómo está.
+  for (const a of modelos.agotados) asegurar(a.modelo);
+  asegurar(modelos.enUso);
+  if (usoPorModelo.length === 0) asegurar(modeloPreferido());
+
+  // Consultas del día que no tienen modelo anotado (son de antes de que
+  // se empezara a registrar). Se muestran aparte para que los números
+  // cuadren en vez de parecer que faltan.
+  const sinDesglose =
+    consumo.hoy.llamadas -
+    usoPorModelo.reduce((suma, [, u]) => suma + u.llamadas, 0);
 
   const bases = [
     {
@@ -244,7 +263,12 @@ export default async function DatosPage({
               {/* Lo que de verdad responde "¿me queda cupo?": el estado
                   de cada modelo, porque el límite es de cada uno. */}
               {usoPorModelo.length > 0 && (
-                <div className="mb-4 rounded-lg border border-line overflow-hidden">
+                <div className="mb-4">
+                  <p className="text-xs text-muted mb-1.5">
+                    Modelos de IA (el cupo gratis es de cada uno por
+                    separado)
+                  </p>
+                  <div className="rounded-lg border border-line overflow-hidden">
                   {usoPorModelo.map(([nombre, uso]) => {
                     const agotado = agotadoHoy.get(nombre);
                     const enUso = modelos.enUso === nombre && !agotado;
@@ -261,6 +285,11 @@ export default async function DatosPage({
                             {uso.frenos
                               ? ` · ${uso.frenos} freno${uso.frenos === 1 ? "" : "s"}`
                               : ""}
+                            {uso.tokensEntrada + uso.tokensSalida > 0
+                              ? ` · ${(
+                                  uso.tokensEntrada + uso.tokensSalida
+                                ).toLocaleString("es-PE")} palabras`
+                              : ""}
                           </p>
                         </div>
                         {agotado ? (
@@ -273,12 +302,19 @@ export default async function DatosPage({
                           </span>
                         ) : (
                           <span className="text-xs bg-soft text-muted px-2 py-1 rounded-full whitespace-nowrap">
-                            Disponible
+                            {uso.llamadas > 0 ? "Usado hoy" : "Disponible"}
                           </span>
                         )}
                       </div>
                     );
                   })}
+                  {sinDesglose > 0 && (
+                    <div className="px-3 py-2 text-xs text-muted border-t border-line">
+                      {sinDesglose} consulta{sinDesglose === 1 ? "" : "s"} de hoy
+                      sin modelo anotado (son anteriores a este registro).
+                    </div>
+                  )}
+                  </div>
                 </div>
               )}
 
