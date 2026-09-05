@@ -2,25 +2,20 @@
 //  CONSUMO DE LA IA
 //
 //  Cuenta cuántas llamadas y cuántos tokens gasta el agente, por día.
-//  Sirve para responder con datos y no con estimaciones: "¿cuánto me
-//  queda de la cuota gratuita?".
+//  Sirve para responder con datos y no con estimaciones: "¿cuánto llevo
+//  consumido hoy?".
 //
-//  La capa gratuita de Google no son créditos que se agotan para
-//  siempre: son límites POR DÍA que se reinician solos. Por eso lo que
-//  interesa es el consumo diario, no un saldo acumulado.
+//  Los límites de Google no son créditos que se agotan para siempre: son
+//  topes POR DÍA que se reinician solos. Por eso lo que interesa es el
+//  consumo diario, no un saldo acumulado.
 // =============================================================
 
 import { readDoc, writeDoc } from "@/lib/kv";
 
-// Límites de la capa gratuita de Gemini Flash. OJO: cada modelo tiene el
-// suyo y Google los cambia sin avisar, así que esto es una referencia
-// para el panel, no una verdad absoluta: el que manda es Google, y
-// cuando frena una petición lo dice en el mensaje de error. Se puede
-// ajustar sin tocar código con GEMINI_LIMITE_DIA.
-export const LIMITE_LLAMADAS_DIA = Number(
-  process.env.GEMINI_LIMITE_DIA || 1500
-);
-export const LIMITE_LLAMADAS_MINUTO = 10;
+// El tope diario de cada modelo NO se pone aquí a mano: Google no lo
+// publica y varía según el modelo, así que cualquier número escrito
+// aquí sería inventado. Se MIDE: el día que Google corta un modelo, lo
+// consumido hasta ese momento es su tope real (ver modelos.ts).
 
 export type DiaDeConsumo = {
   fecha: string; // AAAA-MM-DD
@@ -40,7 +35,7 @@ export type DiaDeConsumo = {
     detalle: string; // lo que dijo Google, textual
     modelo?: string;
   };
-  // Desglose por modelo. El cupo gratis de Google es POR MODELO, así que
+  // Desglose por modelo. El límite de Google es POR MODELO, así que
   // el total del día no dice gran cosa: lo que importa es cuánto se le
   // pidió a CADA uno, sobre todo desde que el agente cambia de modelo
   // solo cuando uno se queda sin cupo.
@@ -146,6 +141,11 @@ export async function anotarFreno(datos: {
   porDia: boolean;
   detalle: string;
   modelo?: string;
+  // true cuando nadie más va a contar este intento: pasa cuando el corte
+  // se maneja por dentro (se cambia de modelo y el pedido sigue), así que
+  // el error no llega a quien lleva la cuenta. Sin esto, las consultas
+  // frenadas no aparecerían y el tope medido saldría corto.
+  contarConsulta?: boolean;
 }): Promise<void> {
   try {
     const consumo = await readDoc<Consumo>("consumo", vacio);
@@ -164,13 +164,19 @@ export async function anotarFreno(datos: {
     }
 
     dia.frenos = (dia.frenos ?? 0) + 1;
+    if (datos.contarConsulta) dia.llamadas += 1;
     dia.ultimoFreno = {
       cuando: new Date().toISOString(),
       porDia: datos.porDia,
       detalle: datos.detalle.slice(0, 300),
       modelo: datos.modelo,
     };
-    if (datos.modelo) sumarModelo(dia, datos.modelo, { frenos: 1 });
+    if (datos.modelo) {
+      sumarModelo(dia, datos.modelo, {
+        frenos: 1,
+        ...(datos.contarConsulta ? { llamadas: 1 } : {}),
+      });
+    }
 
     consumo.dias = consumo.dias
       .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
@@ -188,9 +194,7 @@ export async function getConsumo(): Promise<DiaDeConsumo[]> {
 
 export type ResumenConsumo = {
   hoy: DiaDeConsumo;
-  porcentajeDelDia: number; // cuánto de la cuota diaria se lleva usado
-  llamadasPorMensaje: number; // cuántas llamadas cuesta un cambio, medido
-  mensajesQueFaltan: number; // cuántos más caben hoy, al ritmo medido
+  llamadasPorMensaje: number; // cuántas consultas cuesta un cambio, medido
   diasConDatos: number;
 };
 
@@ -211,14 +215,21 @@ export async function resumirConsumo(): Promise<ResumenConsumo> {
   const totalMensajes = dias.reduce((s, d) => s + d.mensajes, 0);
   const llamadasPorMensaje = totalMensajes > 0 ? totalLlamadas / totalMensajes : 0;
 
-  const restantes = Math.max(0, LIMITE_LLAMADAS_DIA - deHoy.llamadas);
-
   return {
     hoy: deHoy,
-    porcentajeDelDia: (deHoy.llamadas / LIMITE_LLAMADAS_DIA) * 100,
     llamadasPorMensaje,
-    mensajesQueFaltan:
-      llamadasPorMensaje > 0 ? Math.floor(restantes / llamadasPorMensaje) : restantes,
     diasConDatos: dias.length,
   };
+}
+
+// Cuántas consultas se le hicieron HOY a un modelo, sin contar las que
+// Google frenó (esas no las atendió). Es el número que sirve para medir
+// su tope real.
+export async function consultasAtendidasHoy(
+  modelo: string
+): Promise<number> {
+  const dias = await getConsumo();
+  const uso = dias.find((d) => d.fecha === hoy())?.porModelo?.[modelo];
+  if (!uso) return 0;
+  return Math.max(0, uso.llamadas - (uso.frenos ?? 0));
 }

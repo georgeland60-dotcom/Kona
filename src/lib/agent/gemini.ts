@@ -1,8 +1,8 @@
 // =============================================================
 //  CEREBRO DEL AGENTE (Google Gemini)
 //
-//  ¿Por qué Gemini? Porque su plan gratuito alcanza de sobra para una
-//  tienda (decenas de mensajes al día sin pagar) y porque entiende el
+//  ¿Por qué Gemini? Porque su plan sin costo alcanza de sobra para una
+//  tienda (decenas de mensajes al día) y porque entiende el
 //  AUDIO directamente: la nota de voz de Telegram se le manda tal cual,
 //  sin necesidad de contratar un servicio de transcripción aparte.
 //
@@ -295,7 +295,7 @@ export async function preguntarAlModelo(opciones: {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new ErrorAgente(
-      "Falta la clave GEMINI_API_KEY. Sácala gratis en aistudio.google.com/apikey y ponla en las variables de entorno."
+      "Falta la clave GEMINI_API_KEY. Sácala en aistudio.google.com/apikey y ponla en las variables de entorno."
     );
   }
 
@@ -328,7 +328,7 @@ export async function preguntarAlModelo(opciones: {
 
   // ---- Con qué modelo hablar ----------------------------------------
   //
-  //  La capa gratuita es POR MODELO. Si el de siempre se quedó sin cupo,
+  //  El límite de consumo es POR MODELO. Si el de siempre llegó a su tope,
   //  no hay razón para dejar de trabajar: se pasa al siguiente que la
   //  clave acepte. Los que ya se sabe agotados hoy ni se intentan, para
   //  no gastar un viaje en chocar con la misma pared.
@@ -345,7 +345,7 @@ export async function preguntarAlModelo(opciones: {
   }
   if (cola.length === 0) {
     const error = new ErrorAgente(
-      "Se acabó el cupo gratis de hoy en todos los modelos de IA disponibles. " +
+      "Todos los modelos de IA disponibles llegaron a su tope de consultas por hoy. " +
         "Se renueva solo de madrugada."
     );
     error.cuota = { porDia: true, detalle: "sin modelos con cupo" };
@@ -383,7 +383,14 @@ export async function preguntarAlModelo(opciones: {
         // Queda registrado en el consumo del día aunque el pedido siga
         // adelante con otro modelo: si no, el panel no mostraría nada y
         // el corte sería invisible, que es justo lo que confunde.
-        await anotarFreno({ porDia: true, detalle: cuota.detalle, modelo });
+        await anotarFreno({
+          porDia: true,
+          detalle: cuota.detalle,
+          modelo,
+          // El pedido sigue con otro modelo, así que este intento no le
+          // llega a nadie más: se cuenta aquí.
+          contarConsulta: true,
+        });
         sinCupo.add(modelo);
         if (modeloConfirmado === modelo) modeloConfirmado = null;
       }
@@ -445,11 +452,11 @@ export async function preguntarAlModelo(opciones: {
       const cuota = leerCuota(detalle);
       const error = new ErrorAgente(
         cuota.porDia
-          ? `Se acabó la cuota GRATIS DEL DÍA de la IA (límite de Google para el modelo "${modelo}"). ` +
-            "Se renueva sola de madrugada. Google dijo: " +
+          ? `Se llegó al TOPE DE CONSULTAS DEL DÍA del modelo "${modelo}". ` +
+            "Se reinicia solo de madrugada. Google dijo: " +
             (cuota.detalle || "sin detalle")
           : "La IA está recibiendo muchas peticiones seguidas y me frenó por unos minutos " +
-            "(es el límite POR MINUTO de la capa gratuita, no se acabó la cuota del día). " +
+            "(es el límite POR MINUTO, no el tope del día). " +
             "Espera un par de minutos y vuelve a pedírmelo. Google dijo: " +
             (cuota.detalle || "sin detalle")
       );

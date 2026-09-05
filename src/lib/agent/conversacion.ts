@@ -22,7 +22,16 @@ import {
 import { guardarSesion, type Sesion } from "@/lib/agent/sesion";
 import { guardarPlan } from "@/lib/agent/pending";
 import { ErrorAgente } from "@/lib/agent/gemini";
-import { anotarConsumo, anotarFreno } from "@/lib/consumo-data";
+import {
+  anotarConsumo,
+  anotarFreno,
+  consultasAtendidasHoy,
+} from "@/lib/consumo-data";
+import {
+  anotarLimiteObservado,
+  modelosSinLimiteMedido,
+  resumenModelos,
+} from "@/lib/agent/modelos";
 import { isPersistent } from "@/lib/kv";
 import {
   enviarMensaje,
@@ -229,6 +238,27 @@ function gastoDeLaTanda(
   return delta;
 }
 
+// Mide el tope de los modelos que Google cortó hoy y aún no tienen
+// medición del día.
+async function medirTopes(): Promise<void> {
+  try {
+    const { agotados } = await resumenModelos();
+    if (agotados.length === 0) return;
+
+    const pendientes = await modelosSinLimiteMedido(
+      agotados.map((a) => a.modelo)
+    );
+    const fecha = new Date().toISOString().slice(0, 10);
+
+    for (const modelo of pendientes) {
+      const consultas = await consultasAtendidasHoy(modelo);
+      await anotarLimiteObservado(modelo, consultas, fecha);
+    }
+  } catch {
+    // Medir es un extra: nunca puede estropear la respuesta.
+  }
+}
+
 // ---- El ciclo --------------------------------------------------------
 
 export async function atenderSesion(
@@ -277,6 +307,13 @@ export async function atenderSesion(
     mensajeNuevo: primeraTanda,
     porModelo: gastoDeLaTanda(sesion.estado.gasto, antesPorModelo),
   });
+
+  // Si Google cortó algún modelo hoy, este es el momento de medir su
+  // tope real: lo que alcanzó a atender antes del corte. Se hace aquí,
+  // después de anotar el consumo de la tanda, para que el número esté
+  // completo. Es la única forma de tener un límite de verdad y no uno
+  // inventado: Google no lo publica.
+  await medirTopes();
 
   if (fallo) {
     // Que Google nos frene se anota aparte: es la única señal fiable de

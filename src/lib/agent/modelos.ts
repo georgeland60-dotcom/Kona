@@ -1,14 +1,18 @@
 // =============================================================
 //  QUÉ MODELO SE ESTÁ USANDO Y CUÁLES SE AGOTARON
 //
-//  La capa gratuita de Google es POR MODELO y se reinicia cada día. Si
-//  el modelo preferido se queda sin cupo, no hay por qué dejar de
-//  trabajar: hay otros que sí tienen. Para eso hace falta recordar dos
-//  cosas entre una petición y otra:
+//  El límite de consumo de Google es POR MODELO y se reinicia cada día.
+//  Si el modelo preferido llega a su tope, no hay por qué dejar de
+//  trabajar: hay otros que aún tienen margen. Para eso hace falta
+//  recordar tres cosas entre una petición y otra:
 //
-//   - cuál está en uso ahora mismo (para mostrarlo en el panel), y
-//   - cuáles ya dijo Google que están agotados HOY (para saltárselos
-//     en vez de volver a chocar con la misma pared).
+//   - cuál está en uso ahora mismo (para mostrarlo en el panel),
+//   - cuáles ya dijo Google que llegaron a su tope HOY (para
+//     saltárselos en vez de volver a chocar con la misma pared), y
+//   - CUÁNTAS consultas aguantó cada uno antes de toparse. Ese número no
+//     lo publica la API en ningún lado, así que la única forma honesta de
+//     saberlo es medirlo: el día que Google corta, lo que se llevaba
+//     consumido ES el límite. Mejor un número medido que uno inventado.
 //
 //  Se guarda en la base compartida, no en memoria del servidor: cada
 //  petición puede caer en una máquina distinta, y si se olvidara,
@@ -23,13 +27,20 @@ type Agotado = {
   detalle: string; // lo que dijo Google
 };
 
+// El tope real de un modelo, medido el día que Google cortó.
+export type LimiteObservado = {
+  consultas: number; // cuántas aguantó ese día
+  fecha: string; // cuándo se midió (AAAA-MM-DD)
+};
+
 type EstadoModelos = {
   enUso?: string;
   agotados: Record<string, Agotado>;
+  limites?: Record<string, LimiteObservado>;
 };
 
 function vacio(): EstadoModelos {
-  return { agotados: {} };
+  return { agotados: {}, limites: {} };
 }
 
 function hoy(): string {
@@ -84,6 +95,26 @@ export async function marcarAgotado(
   }
 }
 
+// Guarda el tope medido de un modelo: lo que se llevaba consumido el día
+// que Google cortó. Se guarda con su fecha, y se vuelve a medir cada vez
+// que vuelve a cortar, porque Google cambia estos límites sin avisar.
+export async function anotarLimiteObservado(
+  modelo: string,
+  consultas: number,
+  fecha: string
+): Promise<void> {
+  if (consultas <= 0) return;
+  try {
+    const estado = await estadoModelos();
+    if (!estado.limites) estado.limites = {};
+    if (estado.limites[modelo]?.fecha === fecha) return; // ya medido hoy
+    estado.limites[modelo] = { consultas, fecha };
+    await guardar(estado);
+  } catch {
+    // Es información, no puede romper nada.
+  }
+}
+
 export async function marcarEnUso(modelo: string): Promise<void> {
   try {
     const estado = await estadoModelos();
@@ -99,6 +130,7 @@ export async function marcarEnUso(modelo: string): Promise<void> {
 export async function resumenModelos(): Promise<{
   enUso?: string;
   agotados: Array<{ modelo: string; cuando: string; detalle: string }>;
+  limites: Record<string, LimiteObservado>;
 }> {
   const estado = await estadoModelos();
   const fecha = hoy();
@@ -111,5 +143,18 @@ export async function resumenModelos(): Promise<{
         cuando: a.cuando,
         detalle: a.detalle,
       })),
+    limites: estado.limites ?? {},
   };
+}
+
+// ¿De qué modelos ya sabemos el tope y de cuáles no? Lo usa el ciclo del
+// agente para medirlo justo después de que Google corte.
+export async function modelosSinLimiteMedido(
+  candidatos: string[]
+): Promise<string[]> {
+  const estado = await estadoModelos();
+  const fecha = hoy();
+  return candidatos.filter(
+    (m) => (estado.limites ?? {})[m]?.fecha !== fecha
+  );
 }

@@ -44,7 +44,7 @@ export type GastoAgente = {
   llamadas: number;
   tokensEntrada: number;
   tokensSalida: number;
-  // Desglose por modelo. Hace falta porque el cupo gratis de Google es
+  // Desglose por modelo. Hace falta porque el límite de Google es
   // POR MODELO: saber "20 consultas hoy" no dice nada si no se sabe a
   // cuál se le pidieron, sobre todo cuando el agente cambia de modelo
   // solo al agotarse uno.

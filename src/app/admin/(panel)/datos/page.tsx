@@ -9,11 +9,7 @@ import {
 import { categories } from "@/data/categories";
 import { formatPrice } from "@/lib/format";
 import { isPersistent } from "@/lib/kv";
-import {
-  resumirConsumo,
-  getConsumo,
-  LIMITE_LLAMADAS_DIA,
-} from "@/lib/consumo-data";
+import { resumirConsumo, getConsumo } from "@/lib/consumo-data";
 import { resumenModelos } from "@/lib/agent/modelos";
 import { modeloPreferido } from "@/lib/agent/gemini";
 
@@ -58,9 +54,9 @@ export default async function DatosPage({
       resumenModelos(),
     ]);
 
-  // El cupo gratis de Google es POR MODELO, así que el panel tiene que
-  // hablar de modelos, no de un total abstracto: cuál trabaja ahora,
-  // cuánto se le pidió hoy a cada uno y cuál se quedó sin cupo.
+  // El límite de Google es POR MODELO, así que el panel tiene que hablar
+  // de modelos y no de un total abstracto: cuál trabaja ahora, cuánto se
+  // le pidió hoy a cada uno, y cuál llegó a su tope.
   const agotadoHoy = new Map(modelos.agotados.map((a) => [a.modelo, a]));
 
   type UsoModelo = {
@@ -91,6 +87,26 @@ export default async function DatosPage({
   const sinDesglose =
     consumo.hoy.llamadas -
     usoPorModelo.reduce((suma, [, u]) => suma + u.llamadas, 0);
+
+  // Cuántos cambios más caben hoy: solo se puede decir si el tope del
+  // modelo en uso ya se midió alguna vez. Si no, se dice "sin medir" en
+  // lugar de inventar un número.
+  const enUso = modelos.enUso;
+  const limiteEnUso = enUso ? modelos.limites[enUso] : undefined;
+  const usoEnUso = enUso
+    ? (consumo.hoy.porModelo?.[enUso] ?? { llamadas: 0, frenos: 0 })
+    : undefined;
+  const quedanCambios =
+    limiteEnUso && usoEnUso && consumo.llamadasPorMensaje > 0
+      ? Math.max(
+          0,
+          Math.floor(
+            (limiteEnUso.consultas -
+              Math.max(0, usoEnUso.llamadas - (usoEnUso.frenos ?? 0))) /
+              consumo.llamadasPorMensaje
+          )
+        )
+      : null;
 
   const bases = [
     {
@@ -181,10 +197,10 @@ export default async function DatosPage({
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Consumo de la IA</h2>
           <p className="text-muted text-sm">
-            La capa gratuita de Google no son créditos que se gastan para
-            siempre: es un límite por día, POR MODELO, que se reinicia solo
-            cada noche. Si un modelo se queda sin cupo, el bot pasa solo al
-            siguiente y sigue trabajando.
+            No son créditos que se gastan para siempre: es un límite de
+            consultas por día, POR MODELO, que se reinicia solo cada noche.
+            Si un modelo llega a su tope, el bot pasa solo al siguiente y
+            sigue trabajando.
           </p>
         </div>
 
@@ -196,36 +212,13 @@ export default async function DatosPage({
             </p>
           ) : (
             <>
-              <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+              <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
                 <p className="text-sm">
                   Hoy: <strong>{consumo.hoy.mensajes}</strong> mensaje
                   {consumo.hoy.mensajes === 1 ? "" : "s"} ·{" "}
-                  <strong>{consumo.hoy.llamadas}</strong> de{" "}
-                  {LIMITE_LLAMADAS_DIA} consultas
+                  <strong>{consumo.hoy.llamadas}</strong> consulta
+                  {consumo.hoy.llamadas === 1 ? "" : "s"} a la IA
                 </p>
-                <p className="text-sm text-muted">
-                  {consumo.porcentajeDelDia < 1
-                    ? "menos del 1% de la cuota"
-                    : `${consumo.porcentajeDelDia.toFixed(1)}% de la cuota`}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted mb-2">
-                  Este contador cuenta lo que pedimos nosotros, contra un
-                  límite de referencia. El cupo de verdad lo lleva Google y
-                  cambia según el modelo, así que puede frenarnos antes de
-                  que la barra se llene: si eso pasa, sale avisado aquí
-                  abajo.
-                </p>
-              </div>
-
-              <div className="h-2 rounded-full bg-soft overflow-hidden mb-4">
-                <div
-                  className="h-full bg-accent rounded-full"
-                  style={{
-                    width: `${Math.min(100, Math.max(consumo.porcentajeDelDia, consumo.hoy.llamadas > 0 ? 1 : 0))}%`,
-                  }}
-                />
               </div>
 
               {/* Lo único que dice la verdad sobre la cuota. La barra de
@@ -237,7 +230,7 @@ export default async function DatosPage({
                 <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                   <p className="font-medium">
                     {consumo.hoy.ultimoFreno.porDia
-                      ? `Google cortó el cupo GRATIS del día${
+                      ? `Google cortó el consumo del día${
                           consumo.hoy.ultimoFreno.modelo
                             ? ` de ${consumo.hoy.ultimoFreno.modelo}`
                             : ""
@@ -249,7 +242,7 @@ export default async function DatosPage({
                   </p>
                   <p className="mt-1 text-xs">
                     {consumo.hoy.ultimoFreno.porDia
-                      ? "El cupo diario es de Google y depende del modelo: puede cortarse aunque la barra de arriba esté casi vacía. El bot ya pasó al siguiente modelo disponible; este se renueva solo de madrugada."
+                      ? "El tope diario lo pone Google y depende del modelo. El bot ya pasó al siguiente modelo disponible; este se renueva solo de madrugada. Con este corte queda medido cuántas consultas aguanta."
                       : "Es el límite por minuto: se pasa en segundos. El bot ya espera y reintenta solo."}
                   </p>
                   {consumo.hoy.ultimoFreno.detalle && (
@@ -265,23 +258,40 @@ export default async function DatosPage({
               {usoPorModelo.length > 0 && (
                 <div className="mb-4">
                   <p className="text-xs text-muted mb-1.5">
-                    Modelos de IA (el cupo gratis es de cada uno por
-                    separado)
+                    Modelos de IA. El límite de consultas es de cada uno por
+                    separado, y no lo publica Google: se mide el día que
+                    corta, así que aparece cuando ya ha pasado al menos una
+                    vez.
                   </p>
                   <div className="rounded-lg border border-line overflow-hidden">
                   {usoPorModelo.map(([nombre, uso]) => {
                     const agotado = agotadoHoy.get(nombre);
                     const enUso = modelos.enUso === nombre && !agotado;
+                    // El tope real, medido: lo que aguantó el día que
+                    // Google lo cortó. Si nunca cortó, no hay número que
+                    // mostrar, y decirlo es mejor que inventarlo.
+                    const limite = modelos.limites[nombre];
+                    const atendidas = Math.max(
+                      0,
+                      uso.llamadas - (uso.frenos ?? 0)
+                    );
+                    const porcentaje = limite
+                      ? Math.min(
+                          100,
+                          Math.round((atendidas / limite.consultas) * 100)
+                        )
+                      : 0;
                     return (
                       <div
                         key={nombre}
                         className="flex items-center justify-between gap-3 px-3 py-2 border-b border-line last:border-b-0 text-sm flex-wrap"
                       >
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium truncate">{nombre}</p>
                           <p className="text-xs text-muted">
-                            {uso.llamadas} consulta
-                            {uso.llamadas === 1 ? "" : "s"} hoy
+                            {limite
+                              ? `${atendidas} de ${limite.consultas} consultas`
+                              : `${uso.llamadas} consulta${uso.llamadas === 1 ? "" : "s"} hoy`}
                             {uso.frenos
                               ? ` · ${uso.frenos} freno${uso.frenos === 1 ? "" : "s"}`
                               : ""}
@@ -291,10 +301,38 @@ export default async function DatosPage({
                                 ).toLocaleString("es-PE")} palabras`
                               : ""}
                           </p>
+                          {limite ? (
+                            <>
+                              <div className="h-1.5 rounded-full bg-soft overflow-hidden mt-1.5 max-w-xs">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    porcentaje >= 90 ? "bg-red-500" : "bg-accent"
+                                  }`}
+                                  style={{ width: `${porcentaje}%` }}
+                                />
+                              </div>
+                              <p className="text-[11px] text-muted mt-1">
+                                Tope medido el {limite.fecha.slice(8)}/
+                                {limite.fecha.slice(5, 7)}, el día que Google
+                                cortó. Google puede cambiarlo sin avisar.
+                              </p>
+                            </>
+                          ) : agotado ? (
+                            <p className="text-[11px] text-muted mt-1">
+                              Llegó al tope sin atender ninguna consulta hoy,
+                              así que no se pudo medir: es probable que el
+                              consumo venga de otro uso de la misma clave.
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-muted mt-1">
+                              Tope todavía sin medir: se sabrá el día que
+                              Google corte este modelo.
+                            </p>
+                          )}
                         </div>
                         {agotado ? (
                           <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded-full whitespace-nowrap">
-                            Sin cupo hoy · {fechaCorta(agotado.cuando)}
+                            Al tope hoy · {fechaCorta(agotado.cuando)}
                           </span>
                         ) : enUso ? (
                           <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full whitespace-nowrap">
@@ -330,7 +368,7 @@ export default async function DatosPage({
                 <div>
                   <p className="text-muted text-xs">Te quedan hoy</p>
                   <p className="font-medium">
-                    ~{consumo.mensajesQueFaltan} cambios
+                    {quedanCambios === null ? "sin medir" : `~${quedanCambios} cambios`}
                   </p>
                 </div>
                 <div>

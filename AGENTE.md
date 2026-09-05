@@ -340,11 +340,17 @@ Decisiones que conviene no romper:
   intentar hasta mañana, para no gastar un viaje en chocar con la misma
   pared. En `/admin/datos` se ve cuál está trabajando, cuánto se le pidió
   hoy a cada uno y cuál se quedó sin cupo y a qué hora.
-- **El contador propio no puede reemplazar a Google.** Nosotros contamos
-  lo que pedimos; el cupo lo lleva Google y su límite depende del modelo,
-  así que puede cortarnos con la barra casi vacía. Por eso lo que manda
-  en el panel es el estado por modelo y los frenos registrados, no el
-  porcentaje.
+- **El tope de cada modelo no se inventa: se mide.** Google no publica
+  cuántas consultas al día admite cada modelo, así que cualquier número
+  escrito a mano en el código sería mentira (y lo fue: el panel decía
+  "1500" mientras el bot avisaba que ya no había margen). Ahora, el día
+  que Google corta un modelo, lo que ese modelo alcanzó a atender ES su
+  tope, y queda anotado con su fecha. Hasta que eso pase, el panel dice
+  "sin medir" en vez de dar un número inventado.
+- **Se cuentan los intentos, no los aciertos.** Una consulta que Google
+  frena también ocupó su lugar en el límite, así que se anota igual
+  (incluso cuando el corte se maneja por dentro y el pedido sigue con
+  otro modelo). Si no, el tope medido saldría corto.
 - **El agente puede pensar hasta media hora, en tandas.** La función de
   Vercel se muere a los pocos minutos y, cuando eso pasa, no sale ningún
   mensaje: ni la respuesta ni el error. Así que el agente trabaja en
