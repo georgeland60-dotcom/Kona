@@ -44,7 +44,33 @@ export type GastoAgente = {
   llamadas: number;
   tokensEntrada: number;
   tokensSalida: number;
+  // Desglose por modelo. Hace falta porque el cupo gratis de Google es
+  // POR MODELO: saber "20 consultas hoy" no dice nada si no se sabe a
+  // cuál se le pidieron, sobre todo cuando el agente cambia de modelo
+  // solo al agotarse uno.
+  porModelo?: Record<
+    string,
+    { llamadas: number; tokensEntrada: number; tokensSalida: number }
+  >;
 };
+
+// Suma una llamada a la cuenta de un modelo.
+export function sumarAlModelo(
+  gasto: GastoAgente,
+  modelo: string,
+  datos: { llamadas?: number; tokensEntrada?: number; tokensSalida?: number }
+): void {
+  if (!gasto.porModelo) gasto.porModelo = {};
+  const actual = gasto.porModelo[modelo] ?? {
+    llamadas: 0,
+    tokensEntrada: 0,
+    tokensSalida: 0,
+  };
+  actual.llamadas += datos.llamadas ?? 0;
+  actual.tokensEntrada += datos.tokensEntrada ?? 0;
+  actual.tokensSalida += datos.tokensSalida ?? 0;
+  gasto.porModelo[modelo] = actual;
+}
 
 // Todo lo que hace falta para retomar el razonamiento donde se quedó.
 // Viaja a la base de datos entre una tanda y la siguiente.
@@ -87,7 +113,7 @@ export function estadoInicial(entrada: Parte[]): EstadoAgente {
   return {
     mensajes: [{ role: "user", parts: entrada }],
     acciones: [],
-    gasto: { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 },
+    gasto: { llamadas: 0, tokensEntrada: 0, tokensSalida: 0, porModelo: {} },
     vuelta: 0,
     inicio: Date.now(),
     cortes: 0,
@@ -140,6 +166,10 @@ export async function ejecutarAgente(
         limiteMs: restante,
       });
     } catch (error) {
+      // El intento fallido también cuenta para el límite de ese modelo.
+      if (error instanceof ErrorAgente && error.modelo) {
+        sumarAlModelo(estado.gasto, error.modelo, { llamadas: 1 });
+      }
       // Que se acabe el tiempo no es un fallo: se retoma en otra tanda.
       if (error instanceof ErrorAgente && error.tiempoAgotado) {
         estado.cortes = (estado.cortes ?? 0) + 1;
@@ -153,6 +183,11 @@ export async function ejecutarAgente(
     estado.cortes = 0;
     estado.gasto.tokensEntrada += respuesta.consumo.entrada;
     estado.gasto.tokensSalida += respuesta.consumo.salida;
+    sumarAlModelo(estado.gasto, respuesta.modelo, {
+      llamadas: 1,
+      tokensEntrada: respuesta.consumo.entrada,
+      tokensSalida: respuesta.consumo.salida,
+    });
 
     // Sin llamadas a herramientas: el modelo ya terminó de pensar.
     if (respuesta.llamadas.length === 0) {

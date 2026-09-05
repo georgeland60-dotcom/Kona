@@ -323,6 +323,18 @@ Decisiones que conviene no romper:
 - **En un pedido, una línea con 2x1 se parte en dos** (lo pagado y el
   regalo a S/ 0). Guardar un solo precio unitario cobraría de menos,
   porque dentro de la línea las unidades valen distinto.
+- **El cupo gratis de Google es POR MODELO, y el agente lo trata así.**
+  Cuando Google corta el cupo diario de un modelo, no se para: lo anota
+  como agotado por hoy (`modelos.ts`), pasa al siguiente que acepte la
+  clave y sigue con el mismo pedido. Los agotados no se vuelven a
+  intentar hasta mañana, para no gastar un viaje en chocar con la misma
+  pared. En `/admin/datos` se ve cuál está trabajando, cuánto se le pidió
+  hoy a cada uno y cuál se quedó sin cupo y a qué hora.
+- **El contador propio no puede reemplazar a Google.** Nosotros contamos
+  lo que pedimos; el cupo lo lleva Google y su límite depende del modelo,
+  así que puede cortarnos con la barra casi vacía. Por eso lo que manda
+  en el panel es el estado por modelo y los frenos registrados, no el
+  porcentaje.
 - **El agente puede pensar hasta media hora, en tandas.** La función de
   Vercel se muere a los pocos minutos y, cuando eso pasa, no sale ningún
   mensaje: ni la respuesta ni el error. Así que el agente trabaja en

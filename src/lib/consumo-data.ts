@@ -38,7 +38,21 @@ export type DiaDeConsumo = {
     cuando: string; // ISO
     porDia: boolean; // true = cupo del día; false = límite por minuto
     detalle: string; // lo que dijo Google, textual
+    modelo?: string;
   };
+  // Desglose por modelo. El cupo gratis de Google es POR MODELO, así que
+  // el total del día no dice gran cosa: lo que importa es cuánto se le
+  // pidió a CADA uno, sobre todo desde que el agente cambia de modelo
+  // solo cuando uno se queda sin cupo.
+  porModelo?: Record<
+    string,
+    {
+      llamadas: number;
+      tokensEntrada: number;
+      tokensSalida: number;
+      frenos?: number;
+    }
+  >;
 };
 
 type Consumo = { dias: DiaDeConsumo[] };
@@ -56,6 +70,31 @@ function vacio(): Consumo {
 
 // Suma lo gastado en un mensaje. Nunca debe tumbar al agente: si falla,
 // se pierde la estadística, no el cambio que pidió la dueña.
+type GastoModelo = {
+  llamadas: number;
+  tokensEntrada: number;
+  tokensSalida: number;
+};
+
+// Suma en el día lo gastado por un modelo concreto.
+function sumarModelo(
+  dia: DiaDeConsumo,
+  modelo: string,
+  datos: Partial<GastoModelo> & { frenos?: number }
+): void {
+  if (!dia.porModelo) dia.porModelo = {};
+  const actual = dia.porModelo[modelo] ?? {
+    llamadas: 0,
+    tokensEntrada: 0,
+    tokensSalida: 0,
+  };
+  actual.llamadas += datos.llamadas ?? 0;
+  actual.tokensEntrada += datos.tokensEntrada ?? 0;
+  actual.tokensSalida += datos.tokensSalida ?? 0;
+  if (datos.frenos) actual.frenos = (actual.frenos ?? 0) + datos.frenos;
+  dia.porModelo[modelo] = actual;
+}
+
 export async function anotarConsumo(datos: {
   llamadas: number;
   tokensEntrada: number;
@@ -63,25 +102,32 @@ export async function anotarConsumo(datos: {
   // false cuando esto es la continuación de un mensaje que ya se contó:
   // un pedido largo son varias tandas, pero un solo mensaje.
   mensajeNuevo?: boolean;
+  porModelo?: Record<string, GastoModelo>;
 }): Promise<void> {
   try {
     const consumo = await readDoc<Consumo>("consumo", vacio);
     const fecha = hoy();
     const dia = consumo.dias.find((d) => d.fecha === fecha);
 
-    if (dia) {
-      dia.llamadas += datos.llamadas;
-      if (datos.mensajeNuevo !== false) dia.mensajes += 1;
-      dia.tokensEntrada += datos.tokensEntrada;
-      dia.tokensSalida += datos.tokensSalida;
-    } else {
-      consumo.dias.unshift({
+    let elDia = dia;
+    if (!elDia) {
+      elDia = {
         fecha,
-        llamadas: datos.llamadas,
-        mensajes: datos.mensajeNuevo === false ? 0 : 1,
-        tokensEntrada: datos.tokensEntrada,
-        tokensSalida: datos.tokensSalida,
-      });
+        llamadas: 0,
+        mensajes: 0,
+        tokensEntrada: 0,
+        tokensSalida: 0,
+      };
+      consumo.dias.unshift(elDia);
+    }
+
+    elDia.llamadas += datos.llamadas;
+    if (datos.mensajeNuevo !== false) elDia.mensajes += 1;
+    elDia.tokensEntrada += datos.tokensEntrada;
+    elDia.tokensSalida += datos.tokensSalida;
+
+    for (const [modelo, g] of Object.entries(datos.porModelo ?? {})) {
+      sumarModelo(elDia, modelo, g);
     }
 
     consumo.dias = consumo.dias
@@ -99,6 +145,7 @@ export async function anotarConsumo(datos: {
 export async function anotarFreno(datos: {
   porDia: boolean;
   detalle: string;
+  modelo?: string;
 }): Promise<void> {
   try {
     const consumo = await readDoc<Consumo>("consumo", vacio);
@@ -121,7 +168,9 @@ export async function anotarFreno(datos: {
       cuando: new Date().toISOString(),
       porDia: datos.porDia,
       detalle: datos.detalle.slice(0, 300),
+      modelo: datos.modelo,
     };
+    if (datos.modelo) sumarModelo(dia, datos.modelo, { frenos: 1 });
 
     consumo.dias = consumo.dias
       .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))

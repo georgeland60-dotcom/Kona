@@ -203,6 +203,32 @@ function cerrarComoSea(estado: EstadoAgente): Extract<
   };
 }
 
+// Lo gastado por cada modelo EN ESTA TANDA (el estado lleva el acumulado
+// de todo el pedido, y al panel solo le toca sumar lo nuevo).
+function gastoDeLaTanda(
+  ahora: GastoAgente,
+  antes: Record<string, { llamadas: number; tokensEntrada: number; tokensSalida: number } | undefined>
+): Record<string, { llamadas: number; tokensEntrada: number; tokensSalida: number }> {
+  const delta: Record<
+    string,
+    { llamadas: number; tokensEntrada: number; tokensSalida: number }
+  > = {};
+  for (const [modelo, v] of Object.entries(ahora.porModelo ?? {})) {
+    const a = antes[modelo] ?? {
+      llamadas: 0,
+      tokensEntrada: 0,
+      tokensSalida: 0,
+    };
+    const d = {
+      llamadas: v.llamadas - a.llamadas,
+      tokensEntrada: v.tokensEntrada - a.tokensEntrada,
+      tokensSalida: v.tokensSalida - a.tokensSalida,
+    };
+    if (d.llamadas || d.tokensEntrada || d.tokensSalida) delta[modelo] = d;
+  }
+  return delta;
+}
+
 // ---- El ciclo --------------------------------------------------------
 
 export async function atenderSesion(
@@ -210,6 +236,9 @@ export async function atenderSesion(
   presupuestoMs: number = PRESUPUESTO_TANDA_MS
 ): Promise<void> {
   const antes: GastoAgente = { ...sesion.estado.gasto };
+  const antesPorModelo: NonNullable<GastoAgente["porModelo"]> = JSON.parse(
+    JSON.stringify(sesion.estado.gasto.porModelo ?? {})
+  );
   // Un pedido largo se atiende en varias tandas, pero sigue siendo UN
   // mensaje: solo la primera lo cuenta como tal.
   const primeraTanda = sesion.estado.vuelta === 0;
@@ -246,13 +275,14 @@ export async function atenderSesion(
     tokensEntrada: sesion.estado.gasto.tokensEntrada - antes.tokensEntrada,
     tokensSalida: sesion.estado.gasto.tokensSalida - antes.tokensSalida,
     mensajeNuevo: primeraTanda,
+    porModelo: gastoDeLaTanda(sesion.estado.gasto, antesPorModelo),
   });
 
   if (fallo) {
     // Que Google nos frene se anota aparte: es la única señal fiable de
     // cómo está la cuota de verdad.
     if (fallo instanceof ErrorAgente && fallo.cuota) {
-      await anotarFreno(fallo.cuota);
+      await anotarFreno({ ...fallo.cuota, modelo: fallo.modelo });
     }
     throw fallo;
   }

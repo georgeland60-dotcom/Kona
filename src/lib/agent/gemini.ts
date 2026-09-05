@@ -10,7 +10,14 @@
 //  prompt.ts y las acciones permitidas en tools.ts.
 // =============================================================
 
-const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+import { agotadosHoy, marcarAgotado, marcarEnUso } from "@/lib/agent/modelos";
+import { anotarFreno } from "@/lib/consumo-data";
+
+// La dirección de la API. Se puede apuntar a otro sitio (un proxy, o un
+// servidor de mentira para probar sin gastar cuota) sin tocar código.
+const BASE =
+  process.env.GEMINI_BASE_URL ||
+  "https://generativelanguage.googleapis.com/v1beta/models";
 
 // Modelo preferido. Si no existe para la clave de quien instala (Google
 // va renombrando y retirando modelos), se descubre solo probando
@@ -53,6 +60,7 @@ export type LlamadaHerramienta = {
 export type Consumo = { entrada: number; salida: number };
 
 export type RespuestaModelo = {
+  modelo: string; // con cuál se respondió (puede cambiar solo si uno se agota)
   texto: string;
   llamadas: LlamadaHerramienta[];
   consumo: Consumo;
@@ -93,6 +101,9 @@ export class ErrorAgente extends Error {
   // se vea en el panel (nuestro contador solo sabe lo que pedimos
   // nosotros; el cupo lo lleva Google por su lado).
   cuota?: { porDia: boolean; detalle: string };
+  // Con qué modelo se estaba hablando, para poder contar el intento
+  // fallido en la columna correcta del panel.
+  modelo?: string;
   constructor(mensaje: string, tiempoAgotado = false) {
     super(mensaje);
     this.tiempoAgotado = tiempoAgotado;
@@ -315,69 +326,100 @@ export async function preguntarAlModelo(opciones: {
     }
   }
 
-  let modelo = modeloConfirmado ?? MODELO_PREFERIDO;
-  let res = await pedir(modelo);
+  // ---- Con qué modelo hablar ----------------------------------------
+  //
+  //  La capa gratuita es POR MODELO. Si el de siempre se quedó sin cupo,
+  //  no hay razón para dejar de trabajar: se pasa al siguiente que la
+  //  clave acepte. Los que ya se sabe agotados hoy ni se intentan, para
+  //  no gastar un viaje en chocar con la misma pared.
+  const sinCupo = await agotadosHoy();
+  const cola: string[] = [];
+  const sumar = (m?: string | null) => {
+    if (m && !cola.includes(m) && !sinCupo.has(m)) cola.push(m);
+  };
+  sumar(modeloConfirmado);
+  sumar(MODELO_PREFERIDO);
+  if (cola.length === 0) {
+    // Los de siempre están agotados: hay que ver qué más acepta la clave.
+    for (const m of ordenarModelos(await listarModelos(apiKey))) sumar(m);
+  }
+  if (cola.length === 0) {
+    const error = new ErrorAgente(
+      "Se acabó el cupo gratis de hoy en todos los modelos de IA disponibles. " +
+        "Se renueva solo de madrugada."
+    );
+    error.cuota = { porDia: true, detalle: "sin modelos con cupo" };
+    throw error;
+  }
 
-  // Límite por minuto: no es que se haya acabado la cuota, es que fueron
-  // muchas peticiones seguidas. Como el agente ya tiene tiempo de sobra,
-  // se espera lo que pide Google y se reintenta, en vez de rendirse.
-  for (let intento = 0; res.status === 429 && intento < 3; intento++) {
-    const cuota = leerCuota(await res.clone().text().catch(() => ""));
-    if (cuota.porDia) break;
+  let modelo = cola[0];
+  let res: Response | null = null;
+  let detalle = "";
 
-    // Google sugiere cuánto esperar; si no lo dice, unos segundos.
-    const espera = Math.min(Math.max(cuota.esperaMs || 8_000, 3_000), 60_000);
-    const margen = fin - Date.now();
-    if (espera + 10_000 > margen) break; // no cabe en esta tanda
-
-    await dormir(espera);
+  for (let i = 0; i < cola.length && i < 6; i++) {
+    modelo = cola[i];
     res = await pedir(modelo);
-  }
 
-  // 404 aquí no significa "escribiste mal el nombre": Google retira modelos
-  // y deja de servirlos a las claves nuevas, aunque sigan apareciendo en la
-  // lista de modelos. Por eso no basta con consultar la lista; hay que
-  // probar candidatos hasta dar con uno que responda.
-  if (res.status === 404 && !modeloConfirmado) {
-    const cuerpo404 = await res.clone().text().catch(() => "");
-
-    // 1º el reemplazo que la propia Google sugiere en el mensaje de error.
-    const candidatos: string[] = [];
-    const sugerido = modeloSugeridoPorGoogle(cuerpo404);
-    if (sugerido && sugerido !== modelo) candidatos.push(sugerido);
-
-    // 2º los de la lista, del mejor al peor.
-    for (const m of ordenarModelos(await listarModelos(apiKey))) {
-      if (m !== modelo && !candidatos.includes(m)) candidatos.push(m);
+    // Límite POR MINUTO: no es falta de cupo, son muchas peticiones
+    // seguidas. Se espera lo que pide Google y se reintenta igual.
+    for (let intento = 0; res.status === 429 && intento < 3; intento++) {
+      const cuota = leerCuota(await res.clone().text().catch(() => ""));
+      if (cuota.porDia) break;
+      const espera = Math.min(Math.max(cuota.esperaMs || 8_000, 3_000), 60_000);
+      if (espera + 10_000 > fin - Date.now()) break; // no cabe en esta tanda
+      await dormir(espera);
+      res = await pedir(modelo);
     }
 
-    // Probamos unos pocos: si los primeros fallan, el problema es otro.
-    for (const candidato of candidatos.slice(0, 4)) {
-      const intento = await pedir(candidato);
-      if (intento.ok) {
-        modelo = candidato;
-        res = intento;
-        break;
+    if (res.ok) break;
+    detalle = await res.clone().text().catch(() => "");
+
+    if (res.status === 429) {
+      const cuota = leerCuota(detalle);
+      if (cuota.porDia) {
+        // Sin cupo hasta mañana: queda anotado (para el panel y para no
+        // volver a intentarlo) y se sigue con el siguiente modelo.
+        await marcarAgotado(modelo, cuota.detalle);
+        // Queda registrado en el consumo del día aunque el pedido siga
+        // adelante con otro modelo: si no, el panel no mostraría nada y
+        // el corte sería invisible, que es justo lo que confunde.
+        await anotarFreno({ porDia: true, detalle: cuota.detalle, modelo });
+        sinCupo.add(modelo);
+        if (modeloConfirmado === modelo) modeloConfirmado = null;
       }
-      res = intento;
+      // Aunque sea el límite por minuto, otro modelo tiene su propio
+      // contador: probarlo es mejor que hacer esperar a la dueña.
+      if (i + 1 >= cola.length) {
+        for (const m of ordenarModelos(await listarModelos(apiKey))) sumar(m);
+      }
+      continue;
     }
 
-    if (!res.ok) {
-      const razon = mensajeDeGoogle(cuerpo404);
-      throw new ErrorAgente(
-        `Ningún modelo de IA aceptó la petición. Google dijo sobre "${MODELO_PREFERIDO}": ${razon || "sin detalle"}. ` +
-          "Abre /api/agent/setup?clave=…&probar=1 para ver el detalle completo."
-      );
+    // 404 no significa "escribiste mal el nombre": Google retira modelos
+    // y deja de servirlos a las claves nuevas, aunque sigan apareciendo
+    // en la lista. Hay que probar candidatos hasta dar con uno que sirva.
+    if (res.status === 404) {
+      sumar(modeloSugeridoPorGoogle(detalle));
+      for (const m of ordenarModelos(await listarModelos(apiKey))) sumar(m);
+      continue;
     }
+
+    break; // el resto de errores no se arreglan cambiando de modelo
   }
 
-  if (res.ok && modelo !== modeloConfirmado) {
-    // Nos quedamos con el que funcionó para los siguientes mensajes.
+  if (!res) {
+    throw new ErrorAgente("No pude hablar con la IA. Intenta de nuevo.");
+  }
+
+  if (res.ok) {
+    // Nos quedamos con el que funcionó para los siguientes mensajes, y
+    // queda anotado para que el panel muestre cuál está trabajando.
     modeloConfirmado = modelo;
+    await marcarEnUso(modelo);
   }
 
   if (!res.ok) {
-    const detalle = await res.text().catch(() => "");
+    if (!detalle) detalle = await res.text().catch(() => "");
     if (res.status === 429) {
       // Decir CUÁL límite se topó: no es lo mismo esperar un minuto que
       // esperar a mañana, y el mensaje de antes no lo distinguía.
@@ -393,6 +435,7 @@ export async function preguntarAlModelo(opciones: {
             (cuota.detalle || "sin detalle")
       );
       error.cuota = { porDia: cuota.porDia, detalle: cuota.detalle };
+      error.modelo = modelo;
       throw error;
     }
     if (res.status === 400 && detalle.includes("API key")) {
@@ -406,9 +449,11 @@ export async function preguntarAlModelo(opciones: {
     // Siempre el motivo real. Un código HTTP suelto no dice nada y obliga a
     // adivinar; el texto de Google suele señalar el problema exacto.
     const razon = mensajeDeGoogle(detalle);
-    throw new ErrorAgente(
+    const error = new ErrorAgente(
       `La IA rechazó la petición (${res.status})${razon ? `: ${razon}` : "."}`
     );
+    error.modelo = modelo;
+    throw error;
   }
 
   const data = (await res.json()) as GeminiRespuesta;
@@ -444,6 +489,7 @@ export async function preguntarAlModelo(opciones: {
   }
 
   return {
+    modelo,
     texto: texto.trim(),
     llamadas,
     partesCrudas: partes as unknown as Parte[],

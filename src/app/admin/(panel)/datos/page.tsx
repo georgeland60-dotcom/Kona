@@ -14,6 +14,7 @@ import {
   getConsumo,
   LIMITE_LLAMADAS_DIA,
 } from "@/lib/consumo-data";
+import { resumenModelos } from "@/lib/agent/modelos";
 
 // Siempre datos frescos: es una pantalla de consulta, no vale cachearla.
 export const dynamic = "force-dynamic";
@@ -44,15 +45,33 @@ export default async function DatosPage({
 }) {
   const { categoria, tipo } = await searchParams;
 
-  const [productos, pedidos, ventas, cambios, todos, consumo, dias] = await Promise.all([
-    getProducts({ includeInactive: true, raw: true }),
-    getOrders(),
-    getSalesSummary(),
-    getHistorial({ categoria, tipo, limite: 100 }),
-    getHistorial(),
-    resumirConsumo(),
-    getConsumo(),
-  ]);
+  const [productos, pedidos, ventas, cambios, todos, consumo, dias, modelos] =
+    await Promise.all([
+      getProducts({ includeInactive: true, raw: true }),
+      getOrders(),
+      getSalesSummary(),
+      getHistorial({ categoria, tipo, limite: 100 }),
+      getHistorial(),
+      resumirConsumo(),
+      getConsumo(),
+      resumenModelos(),
+    ]);
+
+  // El cupo gratis de Google es POR MODELO, así que el panel tiene que
+  // hablar de modelos, no de un total abstracto: cuál trabaja ahora,
+  // cuánto se le pidió hoy a cada uno y cuál se quedó sin cupo.
+  const agotadoHoy = new Map(modelos.agotados.map((a) => [a.modelo, a]));
+  const usoPorModelo = Object.entries(consumo.hoy.porModelo ?? {}).sort(
+    (a, b) => b[1].llamadas - a[1].llamadas
+  );
+  for (const a of modelos.agotados) {
+    if (!usoPorModelo.some(([m]) => m === a.modelo)) {
+      usoPorModelo.push([
+        a.modelo,
+        { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 },
+      ]);
+    }
+  }
 
   const bases = [
     {
@@ -144,7 +163,9 @@ export default async function DatosPage({
           <h2 className="text-lg font-semibold">Consumo de la IA</h2>
           <p className="text-muted text-sm">
             La capa gratuita de Google no son créditos que se gastan para
-            siempre: es un límite por día que se reinicia solo cada noche.
+            siempre: es un límite por día, POR MODELO, que se reinicia solo
+            cada noche. Si un modelo se queda sin cupo, el bot pasa solo al
+            siguiente y sigue trabajando.
           </p>
         </div>
 
@@ -197,7 +218,11 @@ export default async function DatosPage({
                 <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                   <p className="font-medium">
                     {consumo.hoy.ultimoFreno.porDia
-                      ? "Google cortó el cupo GRATIS del día"
+                      ? `Google cortó el cupo GRATIS del día${
+                          consumo.hoy.ultimoFreno.modelo
+                            ? ` de ${consumo.hoy.ultimoFreno.modelo}`
+                            : ""
+                        }`
                       : "Google frenó por exceso de peticiones seguidas"}
                     {consumo.hoy.frenos && consumo.hoy.frenos > 1
                       ? ` · ${consumo.hoy.frenos} veces hoy`
@@ -205,7 +230,7 @@ export default async function DatosPage({
                   </p>
                   <p className="mt-1 text-xs">
                     {consumo.hoy.ultimoFreno.porDia
-                      ? "El cupo diario es de Google y depende del modelo: puede cortarse aunque la barra de arriba esté casi vacía. Se renueva solo de madrugada."
+                      ? "El cupo diario es de Google y depende del modelo: puede cortarse aunque la barra de arriba esté casi vacía. El bot ya pasó al siguiente modelo disponible; este se renueva solo de madrugada."
                       : "Es el límite por minuto: se pasa en segundos. El bot ya espera y reintenta solo."}
                   </p>
                   {consumo.hoy.ultimoFreno.detalle && (
@@ -215,6 +240,47 @@ export default async function DatosPage({
                   )}
                 </div>
               ) : null}
+
+              {/* Lo que de verdad responde "¿me queda cupo?": el estado
+                  de cada modelo, porque el límite es de cada uno. */}
+              {usoPorModelo.length > 0 && (
+                <div className="mb-4 rounded-lg border border-line overflow-hidden">
+                  {usoPorModelo.map(([nombre, uso]) => {
+                    const agotado = agotadoHoy.get(nombre);
+                    const enUso = modelos.enUso === nombre && !agotado;
+                    return (
+                      <div
+                        key={nombre}
+                        className="flex items-center justify-between gap-3 px-3 py-2 border-b border-line last:border-b-0 text-sm flex-wrap"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{nombre}</p>
+                          <p className="text-xs text-muted">
+                            {uso.llamadas} consulta
+                            {uso.llamadas === 1 ? "" : "s"} hoy
+                            {uso.frenos
+                              ? ` · ${uso.frenos} freno${uso.frenos === 1 ? "" : "s"}`
+                              : ""}
+                          </p>
+                        </div>
+                        {agotado ? (
+                          <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded-full whitespace-nowrap">
+                            Sin cupo hoy · {fechaCorta(agotado.cuando)}
+                          </span>
+                        ) : enUso ? (
+                          <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full whitespace-nowrap">
+                            En uso
+                          </span>
+                        ) : (
+                          <span className="text-xs bg-soft text-muted px-2 py-1 rounded-full whitespace-nowrap">
+                            Disponible
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                 <div>
