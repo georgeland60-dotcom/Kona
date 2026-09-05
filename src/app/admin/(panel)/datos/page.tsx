@@ -350,7 +350,7 @@ export default async function DatosPage({
                           </span>
                         ) : (
                           <span className="text-xs bg-soft text-muted px-2 py-1 rounded-full whitespace-nowrap">
-                            {uso.llamadas > 0 ? "Usado hoy" : "Disponible"}
+                            Disponible
                           </span>
                         )}
                       </div>
