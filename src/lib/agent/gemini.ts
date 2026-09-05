@@ -395,6 +395,25 @@ export async function preguntarAlModelo(opciones: {
       continue;
     }
 
+    // 5xx: la IA está saturada o se cayó un momento. No es culpa del
+    // pedido ni de la cuota, así que rendirse a la primera es un error:
+    // se reintenta con una espera corta y, si sigue igual, se prueba con
+    // otro modelo, que tiene su propia carga.
+    if (res.status >= 500) {
+      for (let intento = 0; res.status >= 500 && intento < 2; intento++) {
+        const espera = 4_000 * (intento + 1);
+        if (espera + 10_000 > fin - Date.now()) break; // no cabe en la tanda
+        await dormir(espera);
+        res = await pedir(modelo);
+      }
+      if (res.ok) break;
+      detalle = await res.clone().text().catch(() => "");
+      if (i + 1 >= cola.length) {
+        for (const m of ordenarModelos(await listarModelos(apiKey))) sumar(m);
+      }
+      continue;
+    }
+
     // 404 no significa "escribiste mal el nombre": Google retira modelos
     // y deja de servirlos a las claves nuevas, aunque sigan apareciendo
     // en la lista. Hay que probar candidatos hasta dar con uno que sirva.
@@ -445,6 +464,16 @@ export async function preguntarAlModelo(opciones: {
       throw new ErrorAgente(
         "Google rechazó la clave GEMINI_API_KEY (sin permiso). Genera una nueva en aistudio.google.com/apikey."
       );
+    }
+    if (res.status >= 500) {
+      // Ya se reintentó y ya se probó con otro modelo: no queda nada por
+      // hacer de este lado.
+      const error = new ErrorAgente(
+        "La IA está saturada en este momento (le pasa a todo el mundo, suele durar poco). " +
+          "Ya lo reintenté varias veces y probé con otro modelo. Vuelve a pedírmelo en unos minutos."
+      );
+      error.modelo = modelo;
+      throw error;
     }
     // Siempre el motivo real. Un código HTTP suelto no dice nada y obliga a
     // adivinar; el texto de Google suele señalar el problema exacto.
