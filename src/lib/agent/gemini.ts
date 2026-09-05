@@ -86,9 +86,13 @@ type GeminiRespuesta = {
 };
 
 export class ErrorAgente extends Error {
-  // true = no fallo nada, simplemente se acabo el tiempo. Quien llama
-  // decide si aun asi puede dar una respuesta util con lo que ya tiene.
+  // true = no falló nada, simplemente se acabó el tiempo. Quien llama
+  // decide si aun así puede dar una respuesta útil con lo que ya tiene.
   tiempoAgotado: boolean;
+  // Cuando Google nos frena por límite de uso, para poder anotarlo y que
+  // se vea en el panel (nuestro contador solo sabe lo que pedimos
+  // nosotros; el cupo lo lleva Google por su lado).
+  cuota?: { porDia: boolean; detalle: string };
   constructor(mensaje: string, tiempoAgotado = false) {
     super(mensaje);
     this.tiempoAgotado = tiempoAgotado;
@@ -378,19 +382,18 @@ export async function preguntarAlModelo(opciones: {
       // Decir CUÁL límite se topó: no es lo mismo esperar un minuto que
       // esperar a mañana, y el mensaje de antes no lo distinguía.
       const cuota = leerCuota(detalle);
-      if (cuota.porDia) {
-        throw new ErrorAgente(
-          `Se acabó la cuota GRATIS DEL DÍA de la IA (límite de Google para el modelo "${modelo}"). ` +
+      const error = new ErrorAgente(
+        cuota.porDia
+          ? `Se acabó la cuota GRATIS DEL DÍA de la IA (límite de Google para el modelo "${modelo}"). ` +
             "Se renueva sola de madrugada. Google dijo: " +
             (cuota.detalle || "sin detalle")
-        );
-      }
-      throw new ErrorAgente(
-        "La IA está recibiendo muchas peticiones seguidas y me frenó por unos minutos " +
-          "(es el límite POR MINUTO de la capa gratuita, no se acabó la cuota del día). " +
-          "Espera un par de minutos y vuelve a pedírmelo. Google dijo: " +
-          (cuota.detalle || "sin detalle")
+          : "La IA está recibiendo muchas peticiones seguidas y me frenó por unos minutos " +
+            "(es el límite POR MINUTO de la capa gratuita, no se acabó la cuota del día). " +
+            "Espera un par de minutos y vuelve a pedírmelo. Google dijo: " +
+            (cuota.detalle || "sin detalle")
       );
+      error.cuota = { porDia: cuota.porDia, detalle: cuota.detalle };
+      throw error;
     }
     if (res.status === 400 && detalle.includes("API key")) {
       throw new ErrorAgente("La clave GEMINI_API_KEY no es válida.");

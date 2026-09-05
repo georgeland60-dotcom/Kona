@@ -126,6 +126,10 @@ export async function ejecutarAgente(
     }
 
     estado.vuelta += 1;
+    // Se cuenta el INTENTO, no el acierto: una petición que Google frena
+    // o que no llega a tiempo también gastó su lugar en el límite. Contar
+    // solo las que salen bien deja fuera justo las que causan el problema.
+    estado.gasto.llamadas += 1;
 
     let respuesta;
     try {
@@ -147,7 +151,6 @@ export async function ejecutarAgente(
     }
 
     estado.cortes = 0;
-    estado.gasto.llamadas += 1;
     estado.gasto.tokensEntrada += respuesta.consumo.entrada;
     estado.gasto.tokensSalida += respuesta.consumo.salida;
 

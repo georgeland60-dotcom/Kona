@@ -24,10 +24,21 @@ export const LIMITE_LLAMADAS_MINUTO = 10;
 
 export type DiaDeConsumo = {
   fecha: string; // AAAA-MM-DD
-  llamadas: number; // peticiones a la IA
+  llamadas: number; // peticiones a la IA (intentos, hayan salido bien o no)
   mensajes: number; // mensajes de Telegram atendidos
   tokensEntrada: number;
   tokensSalida: number;
+  // Veces que Google nos frenó por límite de uso. Esto es lo único que
+  // dice la verdad sobre la cuota: nuestro contador cuenta lo que pedimos
+  // nosotros, pero el cupo lo lleva Google por su cuenta y su límite
+  // depende del modelo. Sin esto, el panel puede marcar "0,3% usado"
+  // mientras el bot dice que se acabó, y no hay forma de entenderlo.
+  frenos?: number;
+  ultimoFreno?: {
+    cuando: string; // ISO
+    porDia: boolean; // true = cupo del día; false = límite por minuto
+    detalle: string; // lo que dijo Google, textual
+  };
 };
 
 type Consumo = { dias: DiaDeConsumo[] };
@@ -79,6 +90,45 @@ export async function anotarConsumo(datos: {
     await writeDoc("consumo", consumo);
   } catch {
     // El contador es un extra: no vale la pena romper nada por él.
+  }
+}
+
+// Anota que Google nos frenó. Se guarda aparte del consumo porque
+// responde a otra pregunta: no "cuánto llevo gastado" sino "¿me está
+// frenando Google, y por qué?".
+export async function anotarFreno(datos: {
+  porDia: boolean;
+  detalle: string;
+}): Promise<void> {
+  try {
+    const consumo = await readDoc<Consumo>("consumo", vacio);
+    const fecha = hoy();
+    let dia = consumo.dias.find((d) => d.fecha === fecha);
+
+    if (!dia) {
+      dia = {
+        fecha,
+        llamadas: 0,
+        mensajes: 0,
+        tokensEntrada: 0,
+        tokensSalida: 0,
+      };
+      consumo.dias.unshift(dia);
+    }
+
+    dia.frenos = (dia.frenos ?? 0) + 1;
+    dia.ultimoFreno = {
+      cuando: new Date().toISOString(),
+      porDia: datos.porDia,
+      detalle: datos.detalle.slice(0, 300),
+    };
+
+    consumo.dias = consumo.dias
+      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
+      .slice(0, MAX_DIAS);
+    await writeDoc("consumo", consumo);
+  } catch {
+    // Igual que el contador: es un extra, no puede romper nada.
   }
 }
 

@@ -21,7 +21,8 @@ import {
 } from "@/lib/agent/run";
 import { guardarSesion, type Sesion } from "@/lib/agent/sesion";
 import { guardarPlan } from "@/lib/agent/pending";
-import { anotarConsumo } from "@/lib/consumo-data";
+import { ErrorAgente } from "@/lib/agent/gemini";
+import { anotarConsumo, anotarFreno } from "@/lib/consumo-data";
 import { isPersistent } from "@/lib/kv";
 import {
   enviarMensaje,
@@ -225,21 +226,37 @@ export async function atenderSesion(
       }, CADA_MS)
     : undefined;
 
-  let resultado: ResultadoAgente;
+  let resultado: ResultadoAgente | undefined;
+  let fallo: unknown;
   try {
     resultado = await ejecutarAgente(sesion.estado, { presupuestoMs });
+  } catch (error) {
+    fallo = error;
   } finally {
     if (latido) clearInterval(latido);
   }
 
-  // El consumo se anota por tanda: si la siguiente se cayera, lo gastado
-  // hasta aquí igual queda contado.
+  // El consumo se anota SIEMPRE, salga bien o mal. Antes esto vivía
+  // después del cálculo y un error se lo saltaba: se perdían justo los
+  // mensajes que más gastaron, que son los que revientan la cuota, y el
+  // panel quedaba marcando casi cero mientras el bot decía que no había
+  // más cupo.
   await anotarConsumo({
     llamadas: sesion.estado.gasto.llamadas - antes.llamadas,
     tokensEntrada: sesion.estado.gasto.tokensEntrada - antes.tokensEntrada,
     tokensSalida: sesion.estado.gasto.tokensSalida - antes.tokensSalida,
     mensajeNuevo: primeraTanda,
   });
+
+  if (fallo) {
+    // Que Google nos frene se anota aparte: es la única señal fiable de
+    // cómo está la cuota de verdad.
+    if (fallo instanceof ErrorAgente && fallo.cuota) {
+      await anotarFreno(fallo.cuota);
+    }
+    throw fallo;
+  }
+  if (!resultado) return;
 
   if (resultado.tipo !== "pendiente") {
     await entregar(sesion, resultado);

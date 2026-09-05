@@ -169,6 +169,15 @@ export default async function DatosPage({
                     : `${consumo.porcentajeDelDia.toFixed(1)}% de la cuota`}
                 </p>
               </div>
+              <div>
+                <p className="text-xs text-muted mb-2">
+                  Este contador cuenta lo que pedimos nosotros, contra un
+                  límite de referencia. El cupo de verdad lo lleva Google y
+                  cambia según el modelo, así que puede frenarnos antes de
+                  que la barra se llene: si eso pasa, sale avisado aquí
+                  abajo.
+                </p>
+              </div>
 
               <div className="h-2 rounded-full bg-soft overflow-hidden mb-4">
                 <div
@@ -178,6 +187,34 @@ export default async function DatosPage({
                   }}
                 />
               </div>
+
+              {/* Lo único que dice la verdad sobre la cuota. La barra de
+                  arriba cuenta lo que pedimos NOSOTROS, contra un límite
+                  de referencia; el cupo real lo lleva Google y depende
+                  del modelo, así que puede frenarnos con la barra casi
+                  vacía. Cuando eso pasa, aquí queda escrito. */}
+              {consumo.hoy.ultimoFreno ? (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-medium">
+                    {consumo.hoy.ultimoFreno.porDia
+                      ? "Google cortó el cupo GRATIS del día"
+                      : "Google frenó por exceso de peticiones seguidas"}
+                    {consumo.hoy.frenos && consumo.hoy.frenos > 1
+                      ? ` · ${consumo.hoy.frenos} veces hoy`
+                      : ""}
+                  </p>
+                  <p className="mt-1 text-xs">
+                    {consumo.hoy.ultimoFreno.porDia
+                      ? "El cupo diario es de Google y depende del modelo: puede cortarse aunque la barra de arriba esté casi vacía. Se renueva solo de madrugada."
+                      : "Es el límite por minuto: se pasa en segundos. El bot ya espera y reintenta solo."}
+                  </p>
+                  {consumo.hoy.ultimoFreno.detalle && (
+                    <p className="mt-1 text-xs text-amber-800/80">
+                      Google dijo: {consumo.hoy.ultimoFreno.detalle}
+                    </p>
+                  )}
+                </div>
+              ) : null}
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                 <div>
