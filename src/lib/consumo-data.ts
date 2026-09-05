@@ -11,6 +11,7 @@
 // =============================================================
 
 import { readDoc, writeDoc } from "@/lib/kv";
+import { hoyEnLima } from "@/lib/fechas";
 
 // El tope diario de cada modelo NO se pone aquí a mano: Google no lo
 // publica y varía según el modelo, así que cualquier número escrito
@@ -55,8 +56,11 @@ type Consumo = { dias: DiaDeConsumo[] };
 // Un mes de historial alcanza y no crece sin control.
 const MAX_DIAS = 31;
 
+// El día de la TIENDA, en hora de Perú. Con la fecha en UTC, "lo de hoy"
+// cambiaba a las 7 de la tarde de Lima: a esa hora el contador se ponía
+// en cero y el día siguiente aparecía con consumo antes de empezar.
 function hoy(): string {
-  return new Date().toISOString().slice(0, 10);
+  return hoyEnLima();
 }
 
 function vacio(): Consumo {

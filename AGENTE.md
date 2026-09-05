@@ -340,6 +340,15 @@ Decisiones que conviene no romper:
   intentar hasta mañana, para no gastar un viaje en chocar con la misma
   pared. En `/admin/datos` se ve cuál está trabajando, cuánto se le pidió
   hoy a cada uno y cuál se quedó sin cupo y a qué hora.
+- **Hay dos calendarios y no son el mismo** (`fechas.ts`). El día de la
+  TIENDA es el de Lima: "lo de hoy" tiene que cambiar a medianoche en
+  Perú, no a las 7 de la tarde, que es cuando cambia el día en UTC — y
+  era lo que pasaba, así que el contador se ponía en cero a mitad de la
+  tarde. El día del LÍMITE es el de Google, que cuenta en hora del
+  Pacífico: su tope se reinicia a las 2 o 3 de la madrugada de Lima según
+  la época del año, no a medianoche. Por eso un modelo puede seguir
+  topado cuando en Perú ya es "mañana", y el panel dice la hora exacta a
+  la que vuelve a estar libre.
 - **El tope de cada modelo no se inventa: se mide.** Google no publica
   cuántas consultas al día admite cada modelo, así que cualquier número
   escrito a mano en el código sería mentira (y lo fue: el panel decía

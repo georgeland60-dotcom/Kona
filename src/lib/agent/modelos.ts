@@ -20,6 +20,7 @@
 // =============================================================
 
 import { readDoc, writeDoc } from "@/lib/kv";
+import { diaDeGoogle, siguenEnElMismoDiaDeGoogle } from "@/lib/fechas";
 
 type Agotado = {
   fecha: string; // AAAA-MM-DD en el que se agotó
@@ -43,8 +44,13 @@ function vacio(): EstadoModelos {
   return { agotados: {}, limites: {} };
 }
 
+// El día que cuenta aquí es el de GOOGLE (hora del Pacífico), no el
+// nuestro: es él quien lleva la cuenta de las consultas y quien decide
+// cuándo se reinicia. Usar el día de aquí hacía que un corte de anoche
+// siguiera pareciendo vigente cuando Google ya había reiniciado, y al
+// revés.
 function hoy(): string {
-  return new Date().toISOString().slice(0, 10);
+  return diaDeGoogle();
 }
 
 // Un cachecito para no ir a la base en cada llamada al modelo. Dura poco
@@ -69,10 +75,9 @@ async function guardar(valor: EstadoModelos): Promise<void> {
 // renueva solo.
 export async function agotadosHoy(): Promise<Set<string>> {
   const estado = await estadoModelos();
-  const fecha = hoy();
   return new Set(
     Object.entries(estado.agotados)
-      .filter(([, a]) => a.fecha === fecha)
+      .filter(([, a]) => siguenEnElMismoDiaDeGoogle(a.cuando))
       .map(([modelo]) => modelo)
   );
 }
@@ -133,11 +138,10 @@ export async function resumenModelos(): Promise<{
   limites: Record<string, LimiteObservado>;
 }> {
   const estado = await estadoModelos();
-  const fecha = hoy();
   return {
     enUso: estado.enUso,
     agotados: Object.entries(estado.agotados)
-      .filter(([, a]) => a.fecha === fecha)
+      .filter(([, a]) => siguenEnElMismoDiaDeGoogle(a.cuando))
       .map(([modelo, a]) => ({
         modelo,
         cuando: a.cuando,

@@ -27,6 +27,7 @@ import {
   anotarFreno,
   consultasAtendidasHoy,
 } from "@/lib/consumo-data";
+import { diaDeGoogle } from "@/lib/fechas";
 import {
   anotarLimiteObservado,
   modelosSinLimiteMedido,
@@ -248,7 +249,8 @@ async function medirTopes(): Promise<void> {
     const pendientes = await modelosSinLimiteMedido(
       agotados.map((a) => a.modelo)
     );
-    const fecha = new Date().toISOString().slice(0, 10);
+    // El tope se mide contra el día de Google, que es quien lo cuenta.
+    const fecha = diaDeGoogle();
 
     for (const modelo of pendientes) {
       const consultas = await consultasAtendidasHoy(modelo);

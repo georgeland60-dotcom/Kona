@@ -11,6 +11,7 @@ import { formatPrice } from "@/lib/format";
 import { isPersistent } from "@/lib/kv";
 import { resumirConsumo, getConsumo } from "@/lib/consumo-data";
 import { resumenModelos } from "@/lib/agent/modelos";
+import { reinicioEnHoraDeLima } from "@/lib/fechas";
 import { modeloPreferido } from "@/lib/agent/gemini";
 
 // Siempre datos frescos: es una pantalla de consulta, no vale cachearla.
@@ -58,6 +59,11 @@ export default async function DatosPage({
   // de modelos y no de un total abstracto: cuál trabaja ahora, cuánto se
   // le pidió hoy a cada uno, y cuál llegó a su tope.
   const agotadoHoy = new Map(modelos.agotados.map((a) => [a.modelo, a]));
+  // Google cuenta las consultas en hora del Pacífico, así que su tope no
+  // se reinicia a medianoche de Lima sino un par de horas después. Decir
+  // la hora exacta evita la pregunta de "ya pasó la medianoche, ¿por qué
+  // sigue topado?".
+  const horaDeReinicio = reinicioEnHoraDeLima();
 
   type UsoModelo = {
     llamadas: number;
@@ -79,7 +85,9 @@ export default async function DatosPage({
   // poder ver CUÁL modelo va a atender y cómo está.
   for (const a of modelos.agotados) asegurar(a.modelo);
   asegurar(modelos.enUso);
-  if (usoPorModelo.length === 0) asegurar(modeloPreferido());
+  // El preferido siempre aparece: es el que se va a intentar primero en
+  // el próximo mensaje, aunque hoy no se haya usado.
+  asegurar(modeloPreferido());
 
   // Consultas del día que no tienen modelo anotado (son de antes de que
   // se empezara a registrar). Se muestran aparte para que los números
@@ -198,7 +206,9 @@ export default async function DatosPage({
           <h2 className="text-lg font-semibold">Consumo de la IA</h2>
           <p className="text-muted text-sm">
             No son créditos que se gastan para siempre: es un límite de
-            consultas por día, POR MODELO, que se reinicia solo cada noche.
+            consultas por día, POR MODELO, que se reinicia solo. Google lo
+            cuenta en su horario, así que el tope vuelve a cero a las{" "}
+            <strong>{horaDeReinicio}</strong> hora de Perú, no a medianoche.
             Si un modelo llega a su tope, el bot pasa solo al siguiente y
             sigue trabajando.
           </p>
@@ -242,7 +252,7 @@ export default async function DatosPage({
                   </p>
                   <p className="mt-1 text-xs">
                     {consumo.hoy.ultimoFreno.porDia
-                      ? "El tope diario lo pone Google y depende del modelo. El bot ya pasó al siguiente modelo disponible; este se renueva solo de madrugada. Con este corte queda medido cuántas consultas aguanta."
+                      ? `El tope diario lo pone Google y depende del modelo. El bot ya pasó al siguiente modelo disponible; este vuelve a estar libre a las ${horaDeReinicio} (hora de Perú). Con este corte queda medido cuántas consultas aguanta.`
                       : "Es el límite por minuto: se pasa en segundos. El bot ya espera y reintenta solo."}
                   </p>
                   {consumo.hoy.ultimoFreno.detalle && (
@@ -332,7 +342,7 @@ export default async function DatosPage({
                         </div>
                         {agotado ? (
                           <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded-full whitespace-nowrap">
-                            Al tope hoy · {fechaCorta(agotado.cuando)}
+                            Al tope · libre {horaDeReinicio}
                           </span>
                         ) : enUso ? (
                           <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full whitespace-nowrap">

@@ -14,6 +14,7 @@ import { getRules, getSeasons } from "@/lib/promos-data";
 import { categories } from "@/data/categories";
 import type { DiscountRule } from "@/lib/types";
 import { store } from "@/config/store";
+import { hoyEnLima } from "@/lib/fechas";
 
 const REGLAS = `
 Eres el asistente de la tienda online "${store.name}" (${store.tagline}, Perú).
@@ -182,7 +183,7 @@ async function contextoTienda(): Promise<string> {
           )
           .join("\n");
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyEnLima();
 
   return `
 ## Estado de la tienda ahora mismo (${hoy})

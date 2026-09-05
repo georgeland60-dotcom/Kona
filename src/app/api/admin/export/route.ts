@@ -9,6 +9,7 @@
 // =============================================================
 
 import { isLoggedIn } from "@/lib/auth";
+import { hoyEnLima } from "@/lib/fechas";
 import { getProducts } from "@/lib/store-data";
 import { getOrders } from "@/lib/orders-data";
 import { getHistorial } from "@/lib/historial-data";
@@ -134,7 +135,7 @@ export async function GET(req: Request) {
   }
 
   const filas = await fuente();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyEnLima();
 
   // Sin datos igual devolvemos un archivo, con la cabecera, para que no
   // parezca que la descarga falló.
