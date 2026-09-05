@@ -47,9 +47,24 @@ export type ResultadoAgente =
 // proponer). Con 4 vueltas alcanza de sobra y acota el gasto.
 const MAX_VUELTAS = 4;
 
+// Cuánto puede durar TODO el razonamiento.
+//
+// Esto no es una preferencia: la función que atiende Telegram se muere
+// sola a los 60 segundos y, cuando eso pasa, la dueña no recibe nada. Ni
+// la respuesta ni un aviso: silencio, que es lo peor que puede hacer un
+// asistente. Así que se corta antes, a tiempo para poder contestar.
+const PRESUPUESTO_MS = 45_000;
+
+// Por debajo de esto no vale la pena empezar otra vuelta: no daría tiempo
+// de terminarla y solo gastaría cuota.
+const MINIMO_POR_VUELTA_MS = 9_000;
+
 export async function ejecutarAgente(
-  entrada: Parte[]
+  entrada: Parte[],
+  opciones: { presupuestoMs?: number } = {}
 ): Promise<ResultadoAgente> {
+  const fin = Date.now() + (opciones.presupuestoMs ?? PRESUPUESTO_MS);
+  let agotado = false;
   const instruccion = await construirInstruccion();
   const herramientas = declaracionesParaModelo();
   const mensajes: Mensaje[] = [{ role: "user", parts: entrada }];
@@ -57,11 +72,29 @@ export async function ejecutarAgente(
   const gasto: GastoAgente = { llamadas: 0, tokensEntrada: 0, tokensSalida: 0 };
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
-    const respuesta = await preguntarAlModelo({
-      instruccion,
-      mensajes,
-      herramientas,
-    });
+    const restante = fin - Date.now();
+    if (restante < MINIMO_POR_VUELTA_MS) {
+      agotado = true;
+      break;
+    }
+
+    let respuesta;
+    try {
+      respuesta = await preguntarAlModelo({
+        instruccion,
+        mensajes,
+        herramientas,
+        limiteMs: restante,
+      });
+    } catch (error) {
+      // Que se acabe el tiempo no es un fallo del que haya que huir: si ya
+      // hay algo que proponer, se propone; y si no, se dice claramente.
+      if (error instanceof ErrorAgente && error.tiempoAgotado) {
+        agotado = true;
+        break;
+      }
+      throw error;
+    }
 
     gasto.llamadas += 1;
     gasto.tokensEntrada += respuesta.consumo.entrada;
@@ -141,12 +174,24 @@ export async function ejecutarAgente(
     mensajes.push({ role: "user", parts: respuestas });
   }
 
-  // Se acabaron las vueltas. Si alcanzó a armar un plan, lo mostramos.
+  // Se acabaron las vueltas (o el tiempo). Si alcanzó a armar un plan, lo
+  // mostramos igual: es mejor eso que no decir nada.
   if (acciones.length > 0) {
     return {
       tipo: "plan",
-      texto: "Esto es lo que entendí:",
+      texto: agotado
+        ? "Me demoré más de lo normal, así que revisa bien la lista antes de confirmar."
+        : "Esto es lo que entendí:",
       acciones,
+      gasto,
+    };
+  }
+  if (agotado) {
+    return {
+      tipo: "respuesta",
+      texto:
+        "Se me hizo largo pensarlo y corté para no dejarte esperando sin respuesta. " +
+        "Vuelve a mandármelo, o pídemelo en dos partes más simples.",
       gasto,
     };
   }

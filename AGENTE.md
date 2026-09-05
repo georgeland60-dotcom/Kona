@@ -323,6 +323,16 @@ Decisiones que conviene no romper:
 - **En un pedido, una línea con 2x1 se parte en dos** (lo pagado y el
   regalo a S/ 0). Guardar un solo precio unitario cobraría de menos,
   porque dentro de la línea las unidades valen distinto.
+- **El agente tiene un presupuesto de tiempo y siempre contesta**: la
+  función de Vercel se muere a los 60 segundos y, cuando eso pasa, no sale
+  ningún mensaje: ni la respuesta ni el error. Quedarse en silencio es lo
+  peor que puede hacer un asistente, porque no se sabe si está pensando o
+  si se cayó. Así que el razonamiento se corta a los 45 segundos, cada
+  llamada a la IA lleva su propio límite, y si se acaba el tiempo se
+  responde igual: con el plan que alcanzó a armar, o diciendo que se
+  demoró y que lo pida más simple.
+- **Se avisa "déjame ver…" apenas llega el mensaje**, y ese mismo mensaje
+  se edita después con la respuesta. Así nunca hay un hueco de silencio.
 - **El plan se guarda con un código de un solo uso** (`pending.ts`), así que
   apretar Confirmar dos veces no aplica los cambios dos veces.
 - El audio se le manda a Gemini tal cual, sin transcribirlo antes: entiende

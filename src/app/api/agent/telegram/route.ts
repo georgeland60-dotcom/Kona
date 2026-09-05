@@ -26,9 +26,15 @@ import {
   mostrarEscribiendo,
   descargarAudio,
   escapar,
+  type Boton,
 } from "@/lib/agent/telegram";
 
 // El agente puede tardar unos segundos (piensa y consulta el catálogo).
+// Pasado este tiempo, Vercel MATA la función sin avisar a nadie: no se
+// manda ni la respuesta ni un error, y la dueña se queda esperando algo
+// que ya no va a llegar. Por eso el agente trabaja con un presupuesto de
+// tiempo más corto (ver PRESUPUESTO_MS en run.ts) y siempre contesta
+// antes de que llegue este límite.
 export const maxDuration = 60;
 
 // ---- Forma de lo que manda Telegram ---------------------------------
@@ -195,7 +201,23 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
     return;
   }
 
+  // Un aviso inmediato, que luego se convierte en la respuesta. Sin esto
+  // el silencio es ambiguo: no se sabe si está pensando o si se cayó.
   await mostrarEscribiendo(chatId);
+  const pensando = await enviarMensaje(chatId, "🤔 Déjame ver…", undefined, {
+    responderA: enGrupo ? mensaje.message_id : undefined,
+  });
+
+  // Responder es lo mismo que editar ese aviso; si no se pudo enviar (o
+  // Telegram no dio el id), se manda un mensaje nuevo.
+  const responder = async (cuerpo: string, botones?: Boton[]) => {
+    if (pensando) await editarMensaje(chatId, pensando, cuerpo, botones);
+    else
+      await enviarMensaje(chatId, cuerpo, botones, {
+        responderA: enGrupo ? mensaje.message_id : undefined,
+      });
+  };
+
   const resultado = await ejecutarAgente(partes);
 
   // Dejamos anotado lo que costó, para poder ver el consumo en el panel
@@ -207,11 +229,7 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
   });
 
   if (resultado.tipo === "respuesta") {
-    // En un grupo colgamos la respuesta del mensaje original, para que se
-    // vea a cuál de las dos personas le estamos contestando.
-    await enviarMensaje(chatId, escapar(resultado.texto), undefined, {
-      responderA: enGrupo ? mensaje.message_id : undefined,
-    });
+    await responder(escapar(resultado.texto));
     return;
   }
 
@@ -221,24 +239,19 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
   // Si el plan no se pudo guardar, el botón "Confirmar" fallaría al
   // apretarlo. Preferimos decirlo ahora y no ofrecer un botón inútil.
   if (!codigo) {
-    await enviarMensaje(
-      chatId,
+    await responder(
       "⚠️ Entendí lo que quieres, pero <b>no puedo guardarlo</b>: falta conectar la base de datos.\n\n" +
-        "Hay que agregar Upstash Redis (gratis) desde Vercel → Storage. Está explicado en AGENTE.md.",
-      undefined,
-      { responderA: enGrupo ? mensaje.message_id : undefined }
+        "Hay que agregar Upstash Redis (gratis) desde Vercel → Storage. Está explicado en AGENTE.md."
     );
     return;
   }
 
-  await enviarMensaje(
-    chatId,
+  await responder(
     textoDelPlan(resultado.texto, resultado.acciones, enGrupo ? quien : undefined),
     [
       { texto: "✅ Confirmar", dato: `ok:${codigo}` },
       { texto: "✖️ Cancelar", dato: `no:${codigo}` },
-    ],
-    { responderA: enGrupo ? mensaje.message_id : undefined }
+    ]
   );
 }
 

@@ -21,6 +21,10 @@ const MODELO_PREFERIDO = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 // preguntar la lista en cada mensaje.
 let modeloConfirmado: string | null = null;
 
+// Lo mismo con el "piensa poco": si el modelo no lo acepta, se deja de
+// mandar y no se vuelve a intentar en toda la vida del proceso.
+let pensarPoco = true;
+
 // ---- Forma de los mensajes que se le mandan al modelo ---------------
 
 // Los modelos Gemini 3 devuelven una "firma de razonamiento" pegada a cada
@@ -81,7 +85,15 @@ type GeminiRespuesta = {
   };
 };
 
-export class ErrorAgente extends Error {}
+export class ErrorAgente extends Error {
+  // true = no fallo nada, simplemente se acabo el tiempo. Quien llama
+  // decide si aun asi puede dar una respuesta util con lo que ya tiene.
+  tiempoAgotado: boolean;
+  constructor(mensaje: string, tiempoAgotado = false) {
+    super(mensaje);
+    this.tiempoAgotado = tiempoAgotado;
+  }
+}
 
 // Extrae el texto legible del error que devuelve Google, que viene
 // envuelto en JSON. Si no se puede leer, devuelve cadena vacía.
@@ -172,15 +184,18 @@ export function ordenarModelos(nombres: string[]): string[] {
 
 // ---- Llamada al modelo ----------------------------------------------
 
-function cuerpoPeticion(opciones: {
-  instruccion: string;
-  mensajes: Mensaje[];
-  herramientas: Array<{
-    name: string;
-    description: string;
-    parameters?: Record<string, unknown>;
-  }>;
-}): string {
+function cuerpoPeticion(
+  opciones: {
+    instruccion: string;
+    mensajes: Mensaje[];
+    herramientas: Array<{
+      name: string;
+      description: string;
+      parameters?: Record<string, unknown>;
+    }>;
+  },
+  pensarPoco: boolean
+): string {
   return JSON.stringify({
     systemInstruction: { parts: [{ text: opciones.instruccion }] },
     contents: opciones.mensajes,
@@ -190,8 +205,21 @@ function cuerpoPeticion(opciones: {
       // Temperatura baja: queremos precisión con precios, no creatividad.
       temperature: 0.1,
       maxOutputTokens: 2048,
+      // Los Gemini 3 "piensan" antes de responder, y por defecto piensan
+      // mucho: en un pedido con varias condiciones eso son decenas de
+      // segundos por vuelta, y la función se queda sin tiempo antes de
+      // contestar. Aquí no hace falta filosofar: las decisiones difíciles
+      // están en el prompt y en las herramientas.
+      ...(pensarPoco ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
     },
   });
+}
+
+// ¿El error que devolvió Google es por el thinkingConfig? Los modelos que
+// no lo aceptan responden 400 nombrando el campo. Si pasa, se reintenta
+// sin él en vez de dejar al agente mudo.
+function esQuejaDePensamiento(cuerpo: string): boolean {
+  return /thinking/i.test(cuerpo);
 }
 
 export async function preguntarAlModelo(opciones: {
@@ -202,6 +230,10 @@ export async function preguntarAlModelo(opciones: {
     description: string;
     parameters?: Record<string, unknown>;
   }>;
+  // Cuánto se puede esperar como máximo. Sin esto, una respuesta lenta se
+  // come el tiempo de la función entera y la dueña no recibe NADA: ni la
+  // respuesta ni un aviso. Mejor cortar a tiempo y avisar.
+  limiteMs?: number;
 }): Promise<RespuestaModelo> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -210,7 +242,7 @@ export async function preguntarAlModelo(opciones: {
     );
   }
 
-  const cuerpo = cuerpoPeticion(opciones);
+  let cuerpo = cuerpoPeticion(opciones, pensarPoco);
 
   async function pedir(modelo: string): Promise<Response> {
     try {
@@ -222,8 +254,14 @@ export async function preguntarAlModelo(opciones: {
         },
         cache: "no-store",
         body: cuerpo,
+        ...(opciones.limiteMs
+          ? { signal: AbortSignal.timeout(opciones.limiteMs) }
+          : {}),
       });
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+        throw new ErrorAgente("La IA se está demorando más de la cuenta.", true);
+      }
       throw new ErrorAgente(
         "No pude conectarme con la IA. Intenta de nuevo en un momento."
       );
@@ -232,6 +270,16 @@ export async function preguntarAlModelo(opciones: {
 
   let modelo = modeloConfirmado ?? MODELO_PREFERIDO;
   let res = await pedir(modelo);
+
+  // Si el modelo no entiende el "piensa poco", se reintenta sin eso.
+  if (res.status === 400 && pensarPoco) {
+    const detalle400 = await res.clone().text().catch(() => "");
+    if (esQuejaDePensamiento(detalle400)) {
+      pensarPoco = false;
+      cuerpo = cuerpoPeticion(opciones, false);
+      res = await pedir(modelo);
+    }
+  }
 
   // 404 aquí no significa "escribiste mal el nombre": Google retira modelos
   // y deja de servirlos a las claves nuevas, aunque sigan apareciendo en la
@@ -305,7 +353,17 @@ export async function preguntarAlModelo(opciones: {
     throw new ErrorAgente("La IA bloqueó el mensaje. Reformúlalo, por favor.");
   }
 
-  const partes = data.candidates?.[0]?.content?.parts ?? [];
+  const candidato = data.candidates?.[0];
+  const partes = candidato?.content?.parts ?? [];
+
+  // Se quedó sin espacio para responder (normalmente porque "pensó" de
+  // más). Decirlo es mejor que devolver un turno vacío, que aguas abajo
+  // se convertiría en un "Listo." que no significa nada.
+  if (partes.length === 0 && candidato?.finishReason === "MAX_TOKENS") {
+    throw new ErrorAgente(
+      "Me enredé pensando y me quedé sin espacio para responder. ¿Me lo pides más simple o en dos partes?"
+    );
+  }
   const llamadas: LlamadaHerramienta[] = [];
   let texto = "";
 

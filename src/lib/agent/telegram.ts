@@ -41,13 +41,16 @@ export function escapar(texto: string): string {
 
 export type Boton = { texto: string; dato: string };
 
+// Devuelve el id del mensaje enviado (o null si no se pudo), para poder
+// editarlo después: así el aviso de "pensando" se convierte en la
+// respuesta en vez de dejar dos mensajes.
 export async function enviarMensaje(
   chatId: number,
   texto: string,
   botones?: Boton[],
   opciones?: { responderA?: number }
-): Promise<void> {
-  await llamar("sendMessage", {
+): Promise<number | null> {
+  const res = await llamar<{ message_id?: number }>("sendMessage", {
     chat_id: chatId,
     text: texto,
     parse_mode: "HTML",
@@ -74,20 +77,31 @@ export async function enviarMensaje(
         }
       : {}),
   });
+  return res?.message_id ?? null;
 }
 
-// Reemplaza el texto de un mensaje ya enviado y le quita los botones.
-// Se usa al confirmar, para que no se pueda apretar dos veces.
+// Reemplaza el texto de un mensaje ya enviado. Sin botones se los quita,
+// que es lo que se usa al confirmar para que no se pueda apretar dos veces.
 export async function editarMensaje(
   chatId: number,
   messageId: number,
-  texto: string
+  texto: string,
+  botones?: Boton[]
 ): Promise<void> {
   await llamar("editMessageText", {
     chat_id: chatId,
     message_id: messageId,
     text: texto,
     parse_mode: "HTML",
+    ...(botones && botones.length > 0
+      ? {
+          reply_markup: {
+            inline_keyboard: [
+              botones.map((b) => ({ text: b.texto, callback_data: b.dato })),
+            ],
+          },
+        }
+      : {}),
   });
 }
 
