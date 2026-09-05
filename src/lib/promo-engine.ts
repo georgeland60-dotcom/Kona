@@ -151,6 +151,49 @@ function cantidadRelevante(
   }, 0);
 }
 
+// ---- Precio de vitrina ----------------------------------------------
+
+// Lo que se muestra en el catálogo por UNA unidad.
+//
+// Tiene que salir de aquí, del mismo sitio que el carrito, o pasa lo que
+// pasó: la vitrina calculaba por su cuenta, no entendía los filtros, y
+// una promoción hecha para UN producto rebajaba toda la tienda en pantalla
+// mientras el carrito cobraba el precio entero. Mostrar un precio y cobrar
+// otro es lo peor que puede hacer una tienda.
+//
+// No todas las promociones se pueden mostrar en la vitrina, y está bien:
+//  - un 2x1 no baja el precio de la unidad (se ve al llevar dos),
+//  - un descuento del total tampoco (se ve en el carrito),
+//  - uno por cantidad se activa recién al llevar varias.
+// Ninguna de esas se pinta como precio rebajado.
+export function precioVitrina(
+  producto: Product,
+  reglas: DiscountRule[],
+  ahora: Date = new Date()
+): number {
+  let mejor = producto.price;
+
+  for (const regla of reglas) {
+    if (!vigente(regla, ahora)) continue;
+    if (regla.tipo === "bogo" || regla.tipo === "carrito") continue;
+    if (!aplicaAlProducto(regla, producto)) continue;
+
+    if (regla.tipo === "escalonado") {
+      // Solo si hay un escalón que ya aplique llevando una sola unidad.
+      const tramo = tramoPara(regla.tramos ?? [], 1);
+      if (!tramo) continue;
+      const candidato = aplicar(tramo.kind, tramo.value, producto.price);
+      if (candidato < mejor) mejor = candidato;
+      continue;
+    }
+
+    const candidato = aplicar(regla.kind, regla.value, producto.price);
+    if (candidato < mejor) mejor = candidato;
+  }
+
+  return redondear(mejor);
+}
+
 // ---- Descuentos de carrito ------------------------------------------
 
 // Reparte un descuento del total entre las unidades que lo generaron.

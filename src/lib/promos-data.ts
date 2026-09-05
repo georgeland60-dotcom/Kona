@@ -10,6 +10,7 @@
 
 import { banners as seedBanners } from "@/data/banners";
 import type { Banner, DiscountRule, Product, SeasonBlock } from "@/lib/types";
+import { precioVitrina } from "@/lib/promo-engine";
 import { readDoc, writeDoc } from "@/lib/kv";
 
 type PromosData = {
@@ -197,41 +198,24 @@ export async function getLiveRules(): Promise<DiscountRule[]> {
   return rules.filter((r) => ruleIsLive(r, now));
 }
 
-// ¿Esta regla aplica a este producto?
-function ruleMatchesProduct(rule: DiscountRule, product: Product): boolean {
-  if (rule.scope === "all") return true;
-  if (rule.scope === "category") return product.category === rule.target;
-  if (rule.scope === "product") return product.id === rule.target;
-  return false;
-}
-
-// Precio que cobra una regla sobre un precio base.
-function applyRule(rule: DiscountRule, base: number): number {
-  if (rule.kind === "percent") {
-    return base * (1 - rule.value / 100);
-  }
-  return base - rule.value;
-}
-
 export type Priced = {
   price: number; // precio final a cobrar
   oldPrice?: number; // precio anterior tachado (si hay descuento)
   discounted: boolean;
 };
 
-// Calcula el precio final de un producto aplicando la MEJOR regla vigente
-// (la que más conviene al cliente). Función pura: recibe las reglas ya
-// filtradas como vigentes.
+// Calcula el precio que se MUESTRA de un producto.
+//
+// El cálculo vive en el motor de promociones (promo-engine), el mismo que
+// usa el carrito. No es un detalle: cuando la vitrina tenía su propia
+// versión, no entendía los filtros por lista ni las exclusiones, y una
+// promoción de un solo producto se veía aplicada a toda la tienda aunque
+// el carrito cobrara el precio entero.
 export function priceFor(product: Product, liveRules: DiscountRule[]): Priced {
   const base = product.price;
-  let best = base;
-  for (const rule of liveRules) {
-    if (!ruleMatchesProduct(rule, product)) continue;
-    const candidate = applyRule(rule, base);
-    if (candidate < best) best = candidate;
-  }
-  if (best < base) {
-    const price = Math.max(1, Math.round(best));
+  const price = precioVitrina(product, liveRules);
+
+  if (price < base) {
     return { price, oldPrice: product.oldPrice ?? base, discounted: true };
   }
   return { price: base, oldPrice: product.oldPrice, discounted: false };

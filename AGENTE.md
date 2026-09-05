@@ -301,6 +301,16 @@ Decisiones que conviene no romper:
 - **Los precios se leen siempre en crudo** (`raw: true`), nunca con los
   descuentos ya aplicados. Si no, cada cambio de precio iría acumulando
   descuentos sobre descuentos.
+- **La vitrina, el carrito y el cobro usan el MISMO motor**
+  (`promo-engine.ts`). La vitrina tenía su propio cálculo y costó caro: no
+  entendía los filtros por lista, así que una promoción hecha para un solo
+  producto se veía aplicada a TODA la tienda, mientras el carrito cobraba
+  el precio entero. Mostrar un precio y cobrar otro es lo peor que puede
+  hacer una tienda; por eso hay un solo sitio donde se calcula.
+- **En la vitrina no se pinta lo que depende del carrito**: un 2x1, un
+  descuento del total o uno por cantidad no bajan el precio de una unidad
+  suelta, así que no se muestran como precio rebajado. Aparecen cuando
+  corresponde, en el carrito.
 - **El carrito y el cobro usan la MISMA función** (`preciarPedido`), no dos
   parecidas. Es lo único que garantiza que no se muestre un precio y se
   cobre otro. `promo-engine.ts` es puro a propósito (recibe productos y

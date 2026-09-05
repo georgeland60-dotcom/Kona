@@ -9,7 +9,11 @@
 //  promociones no se sumen por la puerta de atrás.
 // =============================================================
 
-import { preciarCarrito, repartirDescuento } from "../src/lib/promo-engine.ts";
+import {
+  preciarCarrito,
+  precioVitrina,
+  repartirDescuento,
+} from "../src/lib/promo-engine.ts";
 import type { DiscountRule, Product } from "../src/lib/types.ts";
 
 let fallos = 0;
@@ -118,5 +122,48 @@ ok("vencida no aplica", !r.descuentoCarrito, r.descuentoCarrito);
 // 15. Carrito sin nada relacionado -> no rompe.
 r = preciarCarrito([], productos, [reglaCarrito()]);
 ok("carrito vacío", r.total === 0 && !r.descuentoCarrito, r);
+
+// ---- Precio de vitrina (lo que se ve en el catálogo) ----------------
+// Lo que se MUESTRA tiene que salir del mismo cálculo que lo que se
+// COBRA. Aquí se comprueba justamente eso.
+
+// 16. Una regla para UN producto no puede rebajar toda la tienda.
+const soloBag: DiscountRule = {
+  id: "v1", name: "15% labiales", scope: "all", kind: "percent", value: 15,
+  active: true, filtro: { productos: ["p1"] },
+};
+ok("la vitrina respeta el filtro (el elegido baja)", precioVitrina(bag, [soloBag]) === 98, precioVitrina(bag, [soloBag]));
+ok("la vitrina respeta el filtro (los demás NO)", precioVitrina(jean, [soloBag]) === 189, precioVitrina(jean, [soloBag]));
+ok("y coincide con lo que cobra el carrito", (() => {
+  const r = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [soloBag]);
+  return r.total === precioVitrina(jean, [soloBag]);
+})());
+
+// 17. Exclusiones.
+const todoMenos: DiscountRule = {
+  id: "v2", name: "50% menos jeans", scope: "all", kind: "percent", value: 50,
+  active: true, filtro: { todos: true, excluirProductos: ["p2"] },
+};
+ok("la exclusión manda en la vitrina", precioVitrina(jean, [todoMenos]) === 189 && precioVitrina(bag, [todoMenos]) === 58, [precioVitrina(jean, [todoMenos]), precioVitrina(bag, [todoMenos])]);
+
+// 18. Un 2x1 y un descuento del total NO se pintan como precio rebajado.
+ok("el 2x1 no cambia el precio de vitrina", precioVitrina(bag, [bogo]) === 115, precioVitrina(bag, [bogo]));
+ok("el descuento del total tampoco", precioVitrina(bag, [reglaCarrito()]) === 115, precioVitrina(bag, [reglaCarrito()]));
+
+// 19. Precio fijo: deja el producto en ese precio, no le resta.
+const fijo: DiscountRule = {
+  id: "v3", name: "todo a 59", scope: "all", kind: "precio_fijo", value: 59, active: true,
+};
+ok("precio fijo se muestra como tal", precioVitrina(jean, [fijo]) === 59, precioVitrina(jean, [fijo]));
+
+// 20. Por cantidad: no se muestra rebajado si hace falta llevar varias.
+const desde3: DiscountRule = {
+  id: "v4", name: "3+ 20%", scope: "all", kind: "percent", value: 0, active: true,
+  tipo: "escalonado", tramos: [{ desde: 3, kind: "percent", value: 20 }],
+};
+ok("el escalonado no se pinta con una sola unidad", precioVitrina(jean, [desde3]) === 189, precioVitrina(jean, [desde3]));
+
+// 21. Regla apagada o vencida.
+ok("apagada no se muestra", precioVitrina(bag, [{ ...soloBag, active: false }]) === 115);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);
