@@ -12,9 +12,14 @@
 
 import { readDoc, writeDoc } from "@/lib/kv";
 
-// Límites de la capa gratuita de Gemini Flash. Si Google los cambia,
-// se ajustan aquí y el panel se actualiza solo.
-export const LIMITE_LLAMADAS_DIA = 1500;
+// Límites de la capa gratuita de Gemini Flash. OJO: cada modelo tiene el
+// suyo y Google los cambia sin avisar, así que esto es una referencia
+// para el panel, no una verdad absoluta: el que manda es Google, y
+// cuando frena una petición lo dice en el mensaje de error. Se puede
+// ajustar sin tocar código con GEMINI_LIMITE_DIA.
+export const LIMITE_LLAMADAS_DIA = Number(
+  process.env.GEMINI_LIMITE_DIA || 1500
+);
 export const LIMITE_LLAMADAS_MINUTO = 10;
 
 export type DiaDeConsumo = {
@@ -44,6 +49,9 @@ export async function anotarConsumo(datos: {
   llamadas: number;
   tokensEntrada: number;
   tokensSalida: number;
+  // false cuando esto es la continuación de un mensaje que ya se contó:
+  // un pedido largo son varias tandas, pero un solo mensaje.
+  mensajeNuevo?: boolean;
 }): Promise<void> {
   try {
     const consumo = await readDoc<Consumo>("consumo", vacio);
@@ -52,14 +60,14 @@ export async function anotarConsumo(datos: {
 
     if (dia) {
       dia.llamadas += datos.llamadas;
-      dia.mensajes += 1;
+      if (datos.mensajeNuevo !== false) dia.mensajes += 1;
       dia.tokensEntrada += datos.tokensEntrada;
       dia.tokensSalida += datos.tokensSalida;
     } else {
       consumo.dias.unshift({
         fecha,
         llamadas: datos.llamadas,
-        mensajes: 1,
+        mensajes: datos.mensajeNuevo === false ? 0 : 1,
         tokensEntrada: datos.tokensEntrada,
         tokensSalida: datos.tokensSalida,
       });

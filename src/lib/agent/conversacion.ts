@@ -209,6 +209,9 @@ export async function atenderSesion(
   presupuestoMs: number = PRESUPUESTO_TANDA_MS
 ): Promise<void> {
   const antes: GastoAgente = { ...sesion.estado.gasto };
+  // Un pedido largo se atiende en varias tandas, pero sigue siendo UN
+  // mensaje: solo la primera lo cuenta como tal.
+  const primeraTanda = sesion.estado.vuelta === 0;
 
   // Aviso periódico de que sigue vivo. Es un "toque" al mismo mensaje,
   // así que no llena el chat.
@@ -235,6 +238,7 @@ export async function atenderSesion(
     llamadas: sesion.estado.gasto.llamadas - antes.llamadas,
     tokensEntrada: sesion.estado.gasto.tokensEntrada - antes.tokensEntrada,
     tokensSalida: sesion.estado.gasto.tokensSalida - antes.tokensSalida,
+    mensajeNuevo: primeraTanda,
   });
 
   if (resultado.tipo !== "pendiente") {

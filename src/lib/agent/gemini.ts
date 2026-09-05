@@ -106,6 +106,60 @@ function mensajeDeGoogle(cuerpo: string): string {
   }
 }
 
+// ---- Cuota agotada (429) --------------------------------------------
+//
+//  Google devuelve 429 por dos motivos MUY distintos y hay que
+//  distinguirlos, porque la salida es distinta:
+//   - por minuto: son unas pocas peticiones seguidas. Se espera y ya.
+//   - por día: hasta mañana no hay nada que hacer.
+//  El cuerpo del error trae el dato exacto y cuánto conviene esperar.
+
+type Cuota = {
+  porDia: boolean;
+  esperaMs: number;
+  detalle: string;
+};
+
+function leerCuota(cuerpo: string): Cuota {
+  let porDia = false;
+  let esperaMs = 0;
+  let detalle = "";
+
+  try {
+    const j = JSON.parse(cuerpo) as {
+      error?: {
+        message?: string;
+        details?: Array<{
+          "@type"?: string;
+          retryDelay?: string;
+          violations?: Array<{ quotaId?: string; quotaMetric?: string }>;
+        }>;
+      };
+    };
+    detalle = (j.error?.message ?? "").slice(0, 200);
+
+    for (const d of j.error?.details ?? []) {
+      if (d.retryDelay) {
+        const segundos = Number(String(d.retryDelay).replace(/[^0-9.]/g, ""));
+        if (Number.isFinite(segundos)) esperaMs = Math.round(segundos * 1000);
+      }
+      for (const v of d.violations ?? []) {
+        const texto = `${v.quotaId ?? ""} ${v.quotaMetric ?? ""}`;
+        if (/perday|per_day|daily/i.test(texto)) porDia = true;
+      }
+    }
+    if (/per day|daily limit/i.test(detalle)) porDia = true;
+  } catch {
+    detalle = cuerpo.slice(0, 200);
+  }
+
+  return { porDia, esperaMs, detalle };
+}
+
+function dormir(ms: number): Promise<void> {
+  return new Promise((listo) => setTimeout(listo, ms));
+}
+
 // ---- Elegir un modelo que la clave sí tenga -------------------------
 
 type ModeloListado = {
@@ -232,6 +286,9 @@ export async function preguntarAlModelo(opciones: {
 
   const cuerpo = cuerpoPeticion(opciones);
 
+  // Todo lo que sigue (esperas de cuota incluidas) tiene que caber aquí.
+  const fin = Date.now() + (opciones.limiteMs ?? 10 * 60 * 1000);
+
   async function pedir(modelo: string): Promise<Response> {
     try {
       return await fetch(`${BASE}/${modelo}:generateContent`, {
@@ -242,9 +299,7 @@ export async function preguntarAlModelo(opciones: {
         },
         cache: "no-store",
         body: cuerpo,
-        ...(opciones.limiteMs
-          ? { signal: AbortSignal.timeout(opciones.limiteMs) }
-          : {}),
+        signal: AbortSignal.timeout(Math.max(1_000, fin - Date.now())),
       });
     } catch (e) {
       if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
@@ -258,6 +313,22 @@ export async function preguntarAlModelo(opciones: {
 
   let modelo = modeloConfirmado ?? MODELO_PREFERIDO;
   let res = await pedir(modelo);
+
+  // Límite por minuto: no es que se haya acabado la cuota, es que fueron
+  // muchas peticiones seguidas. Como el agente ya tiene tiempo de sobra,
+  // se espera lo que pide Google y se reintenta, en vez de rendirse.
+  for (let intento = 0; res.status === 429 && intento < 3; intento++) {
+    const cuota = leerCuota(await res.clone().text().catch(() => ""));
+    if (cuota.porDia) break;
+
+    // Google sugiere cuánto esperar; si no lo dice, unos segundos.
+    const espera = Math.min(Math.max(cuota.esperaMs || 8_000, 3_000), 60_000);
+    const margen = fin - Date.now();
+    if (espera + 10_000 > margen) break; // no cabe en esta tanda
+
+    await dormir(espera);
+    res = await pedir(modelo);
+  }
 
   // 404 aquí no significa "escribiste mal el nombre": Google retira modelos
   // y deja de servirlos a las claves nuevas, aunque sigan apareciendo en la
@@ -304,8 +375,21 @@ export async function preguntarAlModelo(opciones: {
   if (!res.ok) {
     const detalle = await res.text().catch(() => "");
     if (res.status === 429) {
+      // Decir CUÁL límite se topó: no es lo mismo esperar un minuto que
+      // esperar a mañana, y el mensaje de antes no lo distinguía.
+      const cuota = leerCuota(detalle);
+      if (cuota.porDia) {
+        throw new ErrorAgente(
+          `Se acabó la cuota GRATIS DEL DÍA de la IA (límite de Google para el modelo "${modelo}"). ` +
+            "Se renueva sola de madrugada. Google dijo: " +
+            (cuota.detalle || "sin detalle")
+        );
+      }
       throw new ErrorAgente(
-        "Se acabó la cuota gratuita de la IA por ahora. Espera unos minutos y vuelve a intentar."
+        "La IA está recibiendo muchas peticiones seguidas y me frenó por unos minutos " +
+          "(es el límite POR MINUTO de la capa gratuita, no se acabó la cuota del día). " +
+          "Espera un par de minutos y vuelve a pedírmelo. Google dijo: " +
+          (cuota.detalle || "sin detalle")
       );
     }
     if (res.status === 400 && detalle.includes("API key")) {
