@@ -2,12 +2,19 @@
 //  CAPA DE DATOS DE PEDIDOS (ventas)
 //  Guarda los pedidos en el documento "orders". Dónde acaban (base KV
 //  o disco local) lo decide lib/kv.ts.
-//  Al marcar un pedido como "pagado" se descuenta el stock.
+//  El stock se RESERVA al crear el pedido, no al pagarlo: si se esperara
+//  al pago, dos clientas podrían comprar la última unidad a la vez y las
+//  dos se irían convencidas de que la tienen. Lo que se reserva y no se
+//  paga se suelta solo pasado un tiempo.
 // =============================================================
 
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
-import { adjustStock } from "@/lib/store-data";
-import { readDoc, writeDoc } from "@/lib/kv";
+import {
+  descontarStock,
+  devolverStock,
+  type Faltante,
+} from "@/lib/store-data";
+import { conCandado, readDoc, writeDoc } from "@/lib/kv";
 
 type OrdersData = {
   orders: Order[];
@@ -27,29 +34,102 @@ function makeId(seq: number): string {
   return `PED-${String(seq).padStart(4, "0")}`;
 }
 
-// Crea un pedido nuevo (estado inicial "pendiente" salvo que se indique otro).
+// Cuánto aguanta un pedido sin pagar antes de soltar lo que tenía
+// reservado. Quien fue a pagar con tarjeta y no volvió, no vuelve; el de
+// WhatsApp se está coordinando por chat y merece más margen.
+const CADUCA_MS: Record<Order["method"], number> = {
+  mercadopago: 45 * 60 * 1000,
+  whatsapp: 24 * 60 * 60 * 1000,
+};
+
+// ¿Hay algo reservado que ya caducó?
+function hayAbandonados(orders: Order[]): boolean {
+  const ahora = Date.now();
+  return orders.some(
+    (o) =>
+      o.status === "pendiente" &&
+      o.stockApplied &&
+      ahora - new Date(o.createdAt).getTime() >=
+        (CADUCA_MS[o.method] ?? CADUCA_MS.whatsapp)
+  );
+}
+
+// Suelta lo reservado por pedidos que llevan demasiado tiempo esperando.
+//
+// Se llama desde donde se MIRA el stock (al preciar el carrito), no solo
+// desde donde se descuenta: si solo se limpiara al crear un pedido, las
+// unidades abandonadas no se verían disponibles y nadie podría llegar a
+// crear el pedido que las liberaría. Se quedarían atascadas para siempre.
+export async function liberarAbandonados(): Promise<void> {
+  const { orders } = await readOrders();
+  if (!hayAbandonados(orders)) return; // lo normal: no se escribe nada
+
+  await conCandado("stock", async () => {
+    const data = await readOrders();
+    await soltarAbandonados(data);
+    await writeOrders(data);
+  });
+}
+
+async function soltarAbandonados(data: OrdersData): Promise<void> {
+  const ahora = Date.now();
+
+  for (const pedido of data.orders) {
+    if (pedido.status !== "pendiente" || !pedido.stockApplied) continue;
+    const limite = CADUCA_MS[pedido.method] ?? CADUCA_MS.whatsapp;
+    if (ahora - new Date(pedido.createdAt).getTime() < limite) continue;
+
+    await devolverStock(pedido.items);
+    pedido.stockApplied = false;
+    pedido.stockLiberado = new Date().toISOString();
+  }
+}
+
+export type ResultadoPedido =
+  | { ok: true; order: Order }
+  | { ok: false; faltantes: Faltante[] };
+
+// Crea un pedido nuevo y le RESERVA el stock.
+//
+// Todo dentro de un candado: comprobar si hay, descontar y guardar tiene
+// que ser una sola cosa indivisible. Si no, dos compras simultáneas de la
+// última unidad leen las dos "queda 1" y las dos creen habérsela llevado.
 export async function createOrder(input: {
   items: OrderItem[];
   total: number;
   method: Order["method"];
   status?: OrderStatus;
   customer?: Order["customer"];
-}): Promise<Order> {
-  const data = await readOrders();
-  data.seq += 1;
-  const order: Order = {
-    id: makeId(data.seq),
-    createdAt: new Date().toISOString(),
-    items: input.items,
-    total: input.total,
-    method: input.method,
-    status: input.status ?? "pendiente",
-    customer: input.customer,
-    stockApplied: false,
-  };
-  data.orders.push(order);
-  await writeOrders(data);
-  return order;
+}): Promise<ResultadoPedido> {
+  return conCandado("stock", async () => {
+    const data = await readOrders();
+    await soltarAbandonados(data);
+
+    // Los regalos de un 2x1 van a precio 0 pero también salen del
+    // almacén: se reserva por unidades, no por lo que se cobra.
+    const reserva = await descontarStock(input.items);
+    if (!reserva.ok) {
+      // Aunque no se cree el pedido, lo soltado por caducidad sí se
+      // guarda: ese stock ya volvió al inventario.
+      await writeOrders(data);
+      return { ok: false, faltantes: reserva.faltantes };
+    }
+
+    data.seq += 1;
+    const order: Order = {
+      id: makeId(data.seq),
+      createdAt: new Date().toISOString(),
+      items: input.items,
+      total: input.total,
+      method: input.method,
+      status: input.status ?? "pendiente",
+      customer: input.customer,
+      stockApplied: true,
+    };
+    data.orders.push(order);
+    await writeOrders(data);
+    return { ok: true, order };
+  });
 }
 
 export async function getOrders(opts?: {
@@ -68,33 +148,39 @@ export async function getOrderById(id: string): Promise<Order | undefined> {
   return orders.find((o) => o.id === id);
 }
 
-// Descuenta del inventario las unidades de un pedido (una sola vez).
-async function applyStock(order: Order): Promise<void> {
-  if (order.stockApplied) return;
-  for (const item of order.items) {
-    if (item.sku) await adjustStock(item.productId, item.sku, -item.qty);
-  }
-}
-
-// Cambia el estado de un pedido. Si pasa a "pagado", descuenta stock.
+// Cambia el estado de un pedido, moviendo el stock según corresponda:
+//  - cancelado: lo reservado vuelve al inventario.
+//  - pagado: ya estaba reservado desde que se creó; solo se vuelve a
+//    descontar si se había soltado por caducidad.
 export async function setOrderStatus(
   id: string,
   status: OrderStatus,
   extra?: { mpPaymentId?: string }
 ): Promise<Order | undefined> {
-  const data = await readOrders();
-  const order = data.orders.find((o) => o.id === id);
-  if (!order) return undefined;
+  return conCandado("stock", async () => {
+    const data = await readOrders();
+    const order = data.orders.find((o) => o.id === id);
+    if (!order) return undefined;
 
-  if (status === "pagado" && !order.stockApplied) {
-    await applyStock(order);
-    order.stockApplied = true;
-  }
-  order.status = status;
-  if (extra?.mpPaymentId) order.mpPaymentId = extra.mpPaymentId;
+    if (status === "cancelado" && order.stockApplied) {
+      await devolverStock(order.items);
+      order.stockApplied = false;
+    }
 
-  await writeOrders(data);
-  return order;
+    if (status === "pagado" && !order.stockApplied) {
+      // Se había soltado por caducidad y la clienta pagó igual. Se
+      // descuenta lo que se pueda: si otra se llevó la última unidad
+      // mientras tanto, queda en cero y hay que hablarlo con ella.
+      await descontarStock(order.items);
+      order.stockApplied = true;
+    }
+
+    order.status = status;
+    if (extra?.mpPaymentId) order.mpPaymentId = extra.mpPaymentId;
+
+    await writeOrders(data);
+    return order;
+  });
 }
 
 // ---- Métricas derivadas para el dashboard ---------------------------

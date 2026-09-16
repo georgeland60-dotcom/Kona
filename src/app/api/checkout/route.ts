@@ -43,13 +43,29 @@ export async function POST(req: Request) {
   }
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
 
-  // Registramos el pedido como "pendiente" antes de mandar a pagar.
-  const order = await createOrder({
+  // Registramos el pedido como "pendiente" antes de mandar a pagar. Eso
+  // le RESERVA el stock: mientras esté pagando, nadie más se lleva esas
+  // unidades. Si no vuelve, se sueltan solas al rato.
+  const resultado = await createOrder({
     items,
     total,
     method: "mercadopago",
     status: "pendiente",
   });
+
+  if (!resultado.ok) {
+    const detalle = resultado.faltantes
+      .map((f) => `${f.nombre}: quedan ${f.disponibles}`)
+      .join(", ");
+    return NextResponse.json(
+      {
+        error: `Se agotó algo mientras terminabas la compra (${detalle}). Ajusta el carrito y vuelve a intentar.`,
+      },
+      { status: 409 }
+    );
+  }
+
+  const order = resultado.order;
 
   const client = new MercadoPagoConfig({ accessToken: token });
   const preference = new Preference(client);

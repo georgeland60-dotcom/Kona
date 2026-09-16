@@ -59,7 +59,10 @@ export type Order = {
   method: OrderMethod;
   status: OrderStatus;
   customer?: { name?: string; phone?: string; email?: string };
-  stockApplied?: boolean; // true = ya se descontó el stock de este pedido
+  // true = este pedido tiene stock reservado (se reserva al crearlo).
+  stockApplied?: boolean;
+  // Cuándo se soltó lo reservado por llevar demasiado tiempo sin pagar.
+  stockLiberado?: string;
   mpPaymentId?: string; // id del pago en Mercado Pago (si aplica)
 };
 

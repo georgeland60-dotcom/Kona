@@ -12,6 +12,7 @@
 
 import { getProducts } from "@/lib/store-data";
 import { getRules } from "@/lib/promos-data";
+import { liberarAbandonados } from "@/lib/orders-data";
 import { preciarCarrito, type CarritoPreciado } from "@/lib/promo-engine";
 import type { OrderItem } from "@/lib/types";
 
@@ -28,6 +29,11 @@ type IncomingItem = {
 export async function preciarPedido(
   incoming: IncomingItem[]
 ): Promise<CarritoPreciado> {
+  // Antes de mirar el stock, se suelta lo que quedó reservado por
+  // pedidos abandonados. Si no, esas unidades no se verían libres nunca:
+  // nadie podría comprarlas, y por tanto nadie dispararía su liberación.
+  await liberarAbandonados();
+
   const [productos, reglas] = await Promise.all([
     // En crudo: los precios base, sin descuentos ya aplicados. Si no,
     // el motor descontaría sobre un precio ya descontado.

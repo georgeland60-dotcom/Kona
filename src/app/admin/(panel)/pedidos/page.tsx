@@ -103,6 +103,17 @@ export default async function PedidosPage({
                   >
                     {o.status}
                   </span>
+                  {/* Un pedido pendiente tiene el stock apartado: hasta
+                      que se pague o se cancele, nadie más puede comprar
+                      esas unidades. Y si llevó demasiado tiempo sin
+                      pagarse, ese stock ya volvió a la tienda. */}
+                  {o.status === "pendiente" && (
+                    <span className="block text-[11px] text-muted mt-1">
+                      {o.stockApplied
+                        ? "stock apartado"
+                        : "stock liberado (tardó demasiado)"}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

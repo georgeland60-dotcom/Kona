@@ -53,25 +53,54 @@ export default function CartDrawer() {
   };
 
   // Arma el mensaje del pedido y lo abre en WhatsApp
-  const checkout = () => {
+  const checkout = async () => {
     if (items.length === 0) return;
+    setPayError(null);
 
-    // Registramos el pedido (pendiente) para que la dueña lo vea en el panel.
-    fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        method: "whatsapp",
-        items: items.map((i) => ({
-          productId: i.product.id,
-          sku: skuOf(i.product, i.size),
-          name: i.product.name,
-          price: i.product.price,
-          qty: i.qty,
-          size: i.size,
-        })),
-      }),
-    }).catch(() => {});
+    // La pestaña se abre ANTES de esperar al servidor: si se abriera
+    // después, el navegador lo tomaría por una ventana emergente y la
+    // bloquearía. Si el pedido falla, se cierra.
+    const pestana = window.open("", "_blank");
+
+    // Registramos el pedido (pendiente): es lo que le reserva el stock y
+    // lo que hace que la dueña lo vea en el panel.
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method: "whatsapp",
+          items: items.map((i) => ({
+            productId: i.product.id,
+            sku: skuOf(i.product, i.size),
+            name: i.product.name,
+            price: i.product.price,
+            qty: i.qty,
+            size: i.size,
+          })),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const faltan = (data.faltantes ?? [])
+          .map(
+            (f: { producto: string; quedan: number }) =>
+              `${f.producto}: quedan ${f.quedan}`
+          )
+          .join(", ");
+        pestana?.close();
+        setPayError(
+          faltan
+            ? `Se agotó algo mientras terminabas (${faltan}). Ajusta el carrito.`
+            : (data.error ?? "No se pudo registrar el pedido.")
+        );
+        return;
+      }
+    } catch {
+      // Sin conexión con nuestro servidor no vamos a dejar a la clienta
+      // sin poder escribir: el pedido se coordina igual por WhatsApp.
+    }
 
     const lineas = items.map((i) => {
       const talla = i.size ? ` (Talla ${i.size})` : "";
@@ -89,7 +118,8 @@ export default function CartDrawer() {
     const url = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(
       mensaje
     )}`;
-    window.open(url, "_blank");
+    if (pestana) pestana.location.href = url;
+    else window.open(url, "_blank");
   };
 
   return (

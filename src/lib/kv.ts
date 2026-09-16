@@ -81,6 +81,83 @@ export async function readDoc<T>(key: string, fallback: () => T): Promise<T> {
   }
 }
 
+// ---- Candado ---------------------------------------------------------
+//
+//  Para lo que NO puede pasar dos veces a la vez: descontar stock.
+//  Sin esto, dos compras simultáneas de la última unidad leen "queda 1"
+//  las dos, las dos restan, y se vende algo que no existe. El síntoma
+//  aparece al despachar, cuando ya no hay nada que hacer.
+//
+//  Es un candado sencillo (SET NX con caducidad): sirve porque el único
+//  que escribe es esta misma aplicación y las secciones que protege
+//  duran milisegundos. Si el proceso se muere con el candado puesto, la
+//  caducidad lo suelta sola.
+
+const CANDADO_MS = 10_000;
+
+// Cola local, para cuando no hay base KV (desarrollo en la laptop, o un
+// servidor único). Encadena los trabajos del mismo nombre para que no se
+// pisen dentro de este proceso. No sustituye al candado de la base: en
+// producción hay varias máquinas y cada una tiene su cola.
+const colas = new Map<string, Promise<unknown>>();
+
+function enCola<T>(nombre: string, trabajo: () => Promise<T>): Promise<T> {
+  const anterior = colas.get(nombre) ?? Promise.resolve();
+  const turno = anterior.then(trabajo, trabajo);
+  // La cola sigue aunque un trabajo falle: un error no puede atascar la
+  // tienda entera.
+  colas.set(
+    nombre,
+    turno.catch(() => undefined)
+  );
+  return turno;
+}
+
+export async function conCandado<T>(
+  nombre: string,
+  trabajo: () => Promise<T>
+): Promise<T> {
+  if (!isPersistent()) return enCola(nombre, trabajo);
+
+  const clave = `kona:candado:${nombre}`;
+  const intervalos = [0, 60, 120, 240, 480, 900, 1500];
+
+  for (const espera of intervalos) {
+    if (espera > 0) await new Promise((listo) => setTimeout(listo, espera));
+    let puesto = false;
+    try {
+      const res = await kvCommand([
+        "SET",
+        clave,
+        String(Date.now()),
+        "NX",
+        "PX",
+        String(CANDADO_MS),
+      ]);
+      puesto = res === "OK";
+    } catch {
+      // Si la base falla, es mejor seguir que dejar la tienda sin vender.
+      return enCola(nombre, trabajo);
+    }
+
+    if (!puesto) continue;
+
+    try {
+      return await trabajo();
+    } finally {
+      try {
+        await kvCommand(["DEL", clave]);
+      } catch {
+        // Da igual: caduca solo.
+      }
+    }
+  }
+
+  // Alguien lo tiene tomado demasiado tiempo. Seguir sin candado es peor
+  // que fallar: es justo el caso que se quería evitar.
+  throw new Error("No se pudo tomar el candado de stock");
+}
+
 // ---- Listas ----------------------------------------------------------
 //
 //  Para cosas que LLEGAN DE A VARIAS Y A LA VEZ, como las fotos de un

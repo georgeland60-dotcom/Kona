@@ -154,6 +154,81 @@ export async function adjustStock(
   }
 }
 
+// Descuenta de una vez el stock de un pedido entero.
+//
+// De una vez a propósito: hacerlo producto por producto son varias
+// lecturas y escrituras del inventario, y entre una y otra se cuela
+// cualquier otra compra. Devuelve lo que NO se pudo servir, para que
+// quien llama decida (aquí: no se crea el pedido).
+export type Faltante = {
+  productId: string;
+  sku: string;
+  nombre: string;
+  pedidas: number;
+  disponibles: number;
+};
+
+export async function descontarStock(
+  items: Array<{ productId: string; sku?: string; name: string; qty: number }>
+): Promise<{ ok: boolean; faltantes: Faltante[] }> {
+  const data = await readStore();
+  const faltantes: Faltante[] = [];
+
+  // Primero se comprueba TODO y solo después se descuenta: así un pedido
+  // de tres cosas no deja dos descontadas y una sin servir.
+  const aDescontar: Array<{ variante: { stock: number }; qty: number }> = [];
+  const pedidoPorSku = new Map<string, number>();
+
+  for (const item of items) {
+    if (!item.sku) continue;
+    pedidoPorSku.set(item.sku, (pedidoPorSku.get(item.sku) ?? 0) + item.qty);
+  }
+
+  for (const [sku, qty] of pedidoPorSku) {
+    const item = items.find((i) => i.sku === sku)!;
+    const producto = data.products.find((p) => p.id === item.productId);
+    const variante = producto?.variants.find((v) => v.sku === sku);
+
+    if (!variante || variante.stock < qty) {
+      faltantes.push({
+        productId: item.productId,
+        sku,
+        nombre: item.name,
+        pedidas: qty,
+        disponibles: variante?.stock ?? 0,
+      });
+      continue;
+    }
+    aDescontar.push({ variante, qty });
+  }
+
+  if (faltantes.length > 0) return { ok: false, faltantes };
+
+  for (const { variante, qty } of aDescontar) variante.stock -= qty;
+  await writeStore(data);
+  return { ok: true, faltantes: [] };
+}
+
+// Devuelve al inventario lo que tenía reservado un pedido.
+export async function devolverStock(
+  items: Array<{ productId: string; sku?: string; qty: number }>
+): Promise<void> {
+  const data = await readStore();
+  let tocado = false;
+
+  for (const item of items) {
+    if (!item.sku) continue;
+    const producto = data.products.find((p) => p.id === item.productId);
+    const variante = producto?.variants.find((v) => v.sku === item.sku);
+    if (variante) {
+      variante.stock += item.qty;
+      tocado = true;
+    }
+  }
+
+  if (tocado) await writeStore(data);
+}
+
 // Fija el stock de una variante a un valor exacto.
 export async function setStock(
   productId: string,

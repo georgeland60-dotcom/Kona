@@ -312,6 +312,19 @@ Decisiones que conviene no romper:
   descuento del total o uno por cantidad no bajan el precio de una unidad
   suelta, así que no se muestran como precio rebajado. Aparecen cuando
   corresponde, en el carrito.
+- **El stock se APARTA al crear el pedido, no al pagarlo.** Si se
+  esperara al pago, dos clientas podrían comprar la última unidad a la
+  vez y las dos se irían convencidas de tenerla. Comprobar, descontar y
+  guardar ocurre dentro de un candado (`conCandado` en `kv.ts`), porque
+  si no dos compras simultáneas leen las dos "queda 1" y las dos restan.
+  Probado con seis compras a la vez de la última unidad: una pasa, cinco
+  reciben "se agotó mientras terminabas".
+- **Lo apartado y no pagado se suelta solo**: 45 minutos para el que fue
+  a pagar con tarjeta y no volvió, 24 horas para el de WhatsApp, que se
+  está coordinando por chat. La limpieza corre al MIRAR el stock (al
+  preciar el carrito) y no solo al crear un pedido: si solo se limpiara
+  al crear, esas unidades no se verían libres y nadie podría llegar a
+  crear el pedido que las liberaría. Se quedarían atascadas para siempre.
 - **Nunca se cobra más de lo que hay.** El tope de stock se aplica en el
   motor, junto al precio, no en el navegador: el carrito guardado puede
   traer un stock viejo y una petición se puede falsear. La línea lleva lo
