@@ -27,6 +27,9 @@ export type Sesion = {
   quien: string;
   estado: EstadoAgente;
   creadoEn: number;
+  // true si llegó una foto que no se pudo guardar. Se arrastra para
+  // poder avisarlo junto con la respuesta, en vez de callarlo.
+  fotoFallida?: boolean;
 };
 
 type Almacen = { sesiones: Record<string, Sesion> };

@@ -59,6 +59,7 @@ propone, tú decides.
 | Productos | dar de alta uno nuevo CON SUS FOTOS, ocultarlo, volver a mostrarlo, destacarlo en el inicio |
 | Stock | fijar las unidades, por talla o de todas |
 | Temporada | crear bloques como "Verano 2026" y meter o sacar productos |
+| Categorías | crear una nueva cuando entra algo que no encaja ("Calzado" para unas botas) |
 
 ### Lo que NO puede hacer (a propósito)
 
@@ -408,6 +409,26 @@ Decisiones que vale la pena conocer:
   parecidos: dar de alta dos veces lo mismo se descubre tarde y mal.
 - Cambiar la foto de un producto que YA existe sigue siendo cosa de
   `/admin`: por Telegram solo se cargan al darlo de alta.
+- **Las fotos de un álbum llegan en mensajes distintos y casi a la vez.**
+  Por eso el buzón es una lista en la base (añadido atómico) y no un
+  documento que se lee y se reescribe: así dos fotos simultáneas no se
+  pisan. Y cuando una foto trae pie de foto, se espera un par de
+  segundos antes de pensar, para que lleguen sus hermanas.
+- **Si una foto no se puede guardar, el texto que venía con ella NO se
+  tira**: se sigue adelante y se avisa arriba de la respuesta. Perder el
+  pedido entero por una foto sería peor.
+
+### Categorías
+
+Las de siempre viven en `data/categories.ts` y las nuevas se guardan en
+la base (`categorias-data.ts`); el menú de la tienda las junta. El
+asistente puede crear una, pero se propone y se confirma como cualquier
+otro cambio: si el producto encaja en una que ya existe, tiene
+instrucción de usar esa y no inventar una por modelo.
+
+Al aplicar el plan, crear la categoría va SIEMPRE primero, aunque el
+modelo la haya puesto después: si el mismo plan da de alta el producto
+en esa categoría, cuando le toque el turno tiene que existir.
 
 ### Probar el motor de precios
 

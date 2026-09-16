@@ -11,7 +11,7 @@
 
 import { getProducts } from "@/lib/store-data";
 import { getRules, getSeasons } from "@/lib/promos-data";
-import { categories } from "@/data/categories";
+import { getCategorias } from "@/lib/categorias-data";
 import type { DiscountRule } from "@/lib/types";
 import { store } from "@/config/store";
 import { hoyEnLima } from "@/lib/fechas";
@@ -45,6 +45,8 @@ Solo cambios comerciales, mediante las herramientas que tienes:
   mostrarlo, destacarlo.
 - Stock: fijar las unidades disponibles.
 - Temporada: crear bloques como "Verano" y meter o sacar productos de ellos.
+- Categorías: crear una nueva cuando entre algo que no encaja en ninguna
+  ("Calzado" para unas botas). Se propone y ella confirma, como todo.
 
 ## Lo que NO puedes hacer (di que no y explica por qué, con amabilidad)
 - Cambiar el diseño, los colores, los textos fijos, el menú o la estructura
@@ -82,11 +84,19 @@ entra. Estas son las reglas:
    cortas, cada una empezando con "-", sobre tela, fit y detalles. No
    inventes materiales ni medidas: solo lo que ella dijo. Si no dijo
    nada, créalo sin descripción y sugiérele que te la dicte.
-7. Antes de proponer, comprueba con "buscar_productos" si ya existe algo
+7. CATEGORÍA QUE NO EXISTE: si lo que sube no encaja en ninguna de la
+   lista, NO lo fuerces a una que no le corresponde ni te quedes sin
+   hacer nada. Dilo y propón crearla: "no tengo categoría para botas,
+   ¿creo 'Calzado'?". Si ella dice que sí (o si en su mensaje ya lo pide
+   claramente), manda las DOS acciones juntas en el mismo plan: primero
+   "crear_categoria" y después "agregar_producto" con ese slug. Antes de
+   proponer una categoría nueva, mira bien la lista: "botines" van en
+   "Calzado", no en una categoría por cada modelo.
+8. Antes de proponer, comprueba con "buscar_productos" si ya existe algo
    con ese nombre. Si el nuevo es el mismo modelo en otro color, el
    nombre tiene que distinguirlos ("Blusa Ares Rosa" vs "Blusa Ares
    Verde").
-8. Si entra en oferta desde el primer día, usa "precio_anterior" (el
+9. Si entra en oferta desde el primer día, usa "precio_anterior" (el
    precio tachado), no un descuento aparte.
 
 ## Cómo trabajar (importante)
@@ -183,10 +193,11 @@ function describirValor(r: DiscountRule): string {
 // Foto del estado actual de la tienda, para que el agente hable con datos
 // reales y no con suposiciones.
 async function contextoTienda(): Promise<string> {
-  const [productos, reglas, temporadas] = await Promise.all([
+  const [productos, reglas, temporadas, categorias] = await Promise.all([
     getProducts({ includeInactive: true, raw: true }),
     getRules(),
     getSeasons(),
+    getCategorias(),
   ]);
 
   const visibles = productos.filter((p) => p.active !== false);
@@ -229,7 +240,7 @@ async function contextoTienda(): Promise<string> {
 Productos: ${visibles.length} visibles y ${productos.length - visibles.length} ocultos. Precios ${rangoPrecios}.
 
 Categorías válidas (usa el slug exacto):
-${categories.map((c) => `- ${c.slug} (${c.name})`).join("\n")}
+${categorias.map((c) => `- ${c.slug} (${c.name})`).join("\n")}
 
 Colecciones especiales ya existentes: "nuevos-ingresos" (bloque Nuevos Ingresos) y "sale" (bloque Sale).
 

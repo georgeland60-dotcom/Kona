@@ -81,6 +81,64 @@ export async function readDoc<T>(key: string, fallback: () => T): Promise<T> {
   }
 }
 
+// ---- Listas ----------------------------------------------------------
+//
+//  Para cosas que LLEGAN DE A VARIAS Y A LA VEZ, como las fotos de un
+//  producto: si cada una se guardara leyendo el documento entero y
+//  volviéndolo a escribir, dos que lleguen juntas se pisan y una se
+//  pierde. Con una lista el añadido es atómico y eso no puede pasar.
+
+export async function listaAgregar(
+  key: string,
+  valor: string,
+  vigenciaSegundos: number
+): Promise<number> {
+  if (isPersistent()) {
+    const total = (await kvCommand(["RPUSH", `kona:${key}`, valor])) as number;
+    // Que se limpie sola: una foto de hace horas no es de este producto.
+    try {
+      await kvCommand(["EXPIRE", `kona:${key}`, String(vigenciaSegundos)]);
+    } catch {
+      // Si no se pudo poner la caducidad, se limpia al usarse.
+    }
+    return typeof total === "number" ? total : 1;
+  }
+
+  const actual = await listaLeer(key);
+  const nueva = [...actual, valor];
+  await writeDoc(`lista-${key}`, { valores: nueva, guardadaEn: Date.now() });
+  return nueva.length;
+}
+
+export async function listaLeer(key: string): Promise<string[]> {
+  if (isPersistent()) {
+    try {
+      const valores = await kvCommand(["LRANGE", `kona:${key}`, "0", "-1"]);
+      return Array.isArray(valores) ? (valores as string[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  const doc = await readDoc<{ valores?: string[] } | null>(
+    `lista-${key}`,
+    () => null
+  );
+  return doc?.valores ?? [];
+}
+
+export async function listaBorrar(key: string): Promise<void> {
+  if (isPersistent()) {
+    try {
+      await kvCommand(["DEL", `kona:${key}`]);
+    } catch {
+      // Si no se pudo borrar, caduca sola por el EXPIRE.
+    }
+    return;
+  }
+  await writeDoc(`lista-${key}`, { valores: [], guardadaEn: Date.now() });
+}
+
 // Guarda un documento JSON. Devuelve true si realmente quedó guardado.
 // Devuelve false cuando el disco es de solo lectura y no hay KV: así
 // quien llama puede avisar en vez de fingir que se guardó.

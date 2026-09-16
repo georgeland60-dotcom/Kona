@@ -32,7 +32,11 @@ import {
   deleteSeason,
   nextSeasonId,
 } from "@/lib/promos-data";
-import { categories } from "@/data/categories";
+import {
+  buscarCategoria,
+  crearCategoria,
+  getCategorias,
+} from "@/lib/categorias-data";
 import type { TipoCambio } from "@/lib/historial-data";
 import type {
   Product,
@@ -177,6 +181,17 @@ function soles(n: number): string {
   return `S/ ${n}`;
 }
 
+// Mensaje para cuando la categoría no existe. Ahora se pueden crear, así
+// que el aviso lo dice: antes era un callejón sin salida.
+async function noExisteCategoria(ref: string): Promise<string> {
+  const todas = await getCategorias();
+  return (
+    `No existe la categoría "${ref}". Las que hay son: ` +
+    `${todas.map((c) => c.slug).join(", ")}. ` +
+    `Si de verdad hace falta una nueva, créala con "crear_categoria" y luego repite esto.`
+  );
+}
+
 // ---- HERRAMIENTAS DE LECTURA ----------------------------------------
 
 const buscarProductos: Tool = {
@@ -249,11 +264,14 @@ const listarCategorias: Tool = {
   descripcion: "Lista las categorías disponibles de la tienda con su slug.",
   parametros: { type: "OBJECT", properties: {} },
   resumen: async () => "Listar categorías",
-  ejecutar: async () => ({
-    ok: true,
-    mensaje: `${categories.length} categorías.`,
-    datos: categories.map((c) => ({ slug: c.slug, nombre: c.name })),
-  }),
+  ejecutar: async () => {
+    const todas = await getCategorias();
+    return {
+      ok: true,
+      mensaje: `${todas.length} categorías.`,
+      datos: todas.map((c) => ({ slug: c.slug, nombre: c.name })),
+    };
+  },
 };
 
 const listarDescuentos: Tool = {
@@ -330,17 +348,11 @@ async function armarFiltro(args: ToolArgs): Promise<FiltroArmado> {
     return { ok: true, descripcion: "" };
   }
 
-  const resolverCats = (nombres: string[]): string[] | string => {
+  const resolverCats = async (nombres: string[]): Promise<string[] | string> => {
     const slugs: string[] = [];
     for (const n of nombres) {
-      const cat = categories.find(
-        (c) => c.slug === n || normalizar(c.name) === normalizar(n)
-      );
-      if (!cat) {
-        return `No existe la categoría "${n}". Las válidas son: ${categories
-          .map((c) => c.slug)
-          .join(", ")}.`;
-      }
+      const cat = await buscarCategoria(n);
+      if (!cat) return noExisteCategoria(n);
       slugs.push(cat.slug);
     }
     return slugs;
@@ -360,9 +372,9 @@ async function armarFiltro(args: ToolArgs): Promise<FiltroArmado> {
     return { ids, nombres };
   };
 
-  const ci = resolverCats(catsIncluir);
+  const ci = await resolverCats(catsIncluir);
   if (typeof ci === "string") return { ok: false, mensaje: ci };
-  const ce = resolverCats(catsExcluir);
+  const ce = await resolverCats(catsExcluir);
   if (typeof ce === "string") return { ok: false, mensaje: ce };
   const pi = await resolverProds(prodsIncluir);
   if (typeof pi === "string") return { ok: false, mensaje: pi };
@@ -523,6 +535,37 @@ const crearBogo: Tool = {
   },
 };
 
+// ---- CATEGORÍAS ------------------------------------------------------
+
+const crearCategoriaTool: Tool = {
+  nombre: "crear_categoria",
+  leer: false,
+  descripcion:
+    "Crea una categoría nueva en el menú de la tienda (ej 'Calzado'). Úsala SOLO cuando la dueña quiera subir algo que no encaja en ninguna de las que ya hay, y dilo antes: ella confirma igual que cualquier otro cambio. Si el producto encaja en una categoría existente, usa esa.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      nombre: {
+        type: "STRING",
+        description:
+          "Nombre como se verá en el menú, en singular o plural según el resto: 'Calzado', 'Accesorios', 'Maquillaje'.",
+      },
+    },
+    required: ["nombre"],
+  },
+  resumen: async (args) =>
+    `Crear la categoría "${texto(args, "nombre")}" en el menú de la tienda`,
+  ejecutar: async (args) => {
+    const resultado = await crearCategoria(texto(args, "nombre"));
+    if (!resultado.ok) return { ok: false, mensaje: resultado.mensaje };
+
+    return {
+      ok: true,
+      mensaje: `Categoría "${resultado.categoria.name}" creada (slug ${resultado.categoria.slug}). Ya aparece en el menú de la tienda.`,
+    };
+  },
+};
+
 // ---- DESCUENTO SOBRE EL TOTAL DE LA COMPRA --------------------------
 //  Otra familia distinta: no baja el precio de un producto, baja el total
 //  del carrito, y casi siempre viene condicionado ("si llevan tal cosa")
@@ -553,15 +596,11 @@ async function armarCondicion(
 
   const slugs: string[] = [];
   for (const n of refsCat) {
-    const cat = categories.find(
-      (c) => c.slug === n || normalizar(c.name) === normalizar(n)
-    );
+    const cat = await buscarCategoria(n);
     if (!cat) {
       return {
         ok: false,
-        mensaje: `No existe la categoría "${n}". Las válidas son: ${categories
-          .map((c) => c.slug)
-          .join(", ")}.`,
+        mensaje: await noExisteCategoria(n),
       };
     }
     slugs.push(cat.slug);
@@ -813,15 +852,11 @@ const crearDescuento: Tool = {
     let objetivo: string | undefined;
     if (!f.filtro && alcance === "category") {
       const slug = texto(args, "objetivo");
-      const cat = categories.find(
-        (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
-      );
+      const cat = await buscarCategoria(slug);
       if (!cat) {
         return {
           ok: false,
-          mensaje: `No existe la categoría "${slug}". Las válidas son: ${categories
-            .map((c) => c.slug)
-            .join(", ")}.`,
+          mensaje: await noExisteCategoria(slug),
         };
       }
       objetivo = cat.slug;
@@ -1033,15 +1068,11 @@ const crearDescuentoEscalonado: Tool = {
     let objetivo: string | undefined;
     if (alcance === "category") {
       const slug = texto(args, "objetivo");
-      const cat = categories.find(
-        (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
-      );
+      const cat = await buscarCategoria(slug);
       if (!cat) {
         return {
           ok: false,
-          mensaje: `No existe la categoría "${slug}". Las válidas son: ${categories
-            .map((c) => c.slug)
-            .join(", ")}.`,
+          mensaje: await noExisteCategoria(slug),
         };
       }
       objetivo = cat.slug;
@@ -1378,17 +1409,11 @@ const agregarProducto: Tool = {
       };
     }
 
-    const cat = categories.find(
-      (c) =>
-        c.slug === slugCategoria ||
-        normalizar(c.name) === normalizar(slugCategoria)
-    );
+    const cat = await buscarCategoria(slugCategoria);
     if (!cat) {
       return {
         ok: false,
-        mensaje: `No existe la categoría "${slugCategoria}". Las válidas son: ${categories
-          .map((c) => c.slug)
-          .join(", ")}.`,
+        mensaje: await noExisteCategoria(slugCategoria),
       };
     }
 
@@ -1832,6 +1857,7 @@ export const HERRAMIENTAS: Tool[] = [
   listarDescuentos,
   listarTemporadas,
   // escritura
+  crearCategoriaTool,
   crearDescuento,
   crearDescuentoEscalonado,
   crearBogo,
@@ -1854,6 +1880,7 @@ export const HERRAMIENTAS: Tool[] = [
 // De qué trata cada herramienta. Es una de las dos formas de filtrar el
 // historial en el panel.
 const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
+  crear_categoria: "productos",
   crear_descuento: "descuentos",
   crear_descuento_escalonado: "descuentos",
   crear_promocion_2x1: "ofertas",
@@ -1894,9 +1921,7 @@ export async function categoriaAfectada(
     const alcance = texto(args, "alcance", "all");
     if (alcance === "category") {
       const slug = texto(args, "objetivo");
-      const cat = categories.find(
-        (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
-      );
+      const cat = await buscarCategoria(slug);
       return cat?.slug ?? slug ?? "todas";
     }
     if (alcance === "product") {
@@ -1909,9 +1934,7 @@ export async function categoriaAfectada(
   // Alta de producto: la categoría viene escrita en el propio pedido.
   if (limpio === "agregar_producto") {
     const slug = texto(args, "categoria");
-    const cat = categories.find(
-      (c) => c.slug === slug || normalizar(c.name) === normalizar(slug)
-    );
+    const cat = await buscarCategoria(slug);
     return cat?.slug ?? slug ?? "todas";
   }
 

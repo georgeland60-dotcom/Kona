@@ -194,35 +194,51 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
   // mandar tres fotos y después escribir qué producto es, que es como se
   // hace de verdad.
   const foto = fotoDelMensaje(mensaje);
+  let fotoFallida = false;
+
   if (foto) {
     await mostrarEscribiendo(chatId);
     const bajada = await descargarFoto(foto);
     const url = bajada ? await guardarImagen(bajada.bytes, bajada.mime) : null;
 
-    if (!url) {
-      await enviarMensaje(
-        chatId,
-        "No pude guardar esa foto. ¿Me la mandas otra vez?",
-        undefined,
-        { responderA: enGrupo ? mensaje.message_id : undefined }
-      );
-      return;
+    if (url) {
+      const cuantas = await anotarFoto(chatId, url);
+      console.log(`[agente] foto guardada (${cuantas}) en chat ${chatId}`);
+
+      // Si la foto viene sin texto, no hay nada que pensar todavía: se
+      // acusa recibo y se espera la descripción.
+      if (!texto) {
+        await enviarMensaje(
+          chatId,
+          `📸 Foto guardada (${cuantas} en total). Cuando me digas qué producto es, se la pongo.\n\n` +
+            "<i>Para darlo de alta necesito: nombre, precio, categoría y tallas.</i>",
+          undefined,
+          { responderA: enGrupo ? mensaje.message_id : undefined }
+        );
+        return;
+      }
+    } else {
+      // No se pudo con la foto. Eso NO puede tirar a la basura el texto
+      // que venía con ella: se sigue adelante y se avisa al final.
+      fotoFallida = true;
+      console.log(`[agente] no se pudo guardar la foto en chat ${chatId}`);
+
+      if (!texto) {
+        await enviarMensaje(
+          chatId,
+          "No pude guardar esa foto. ¿Me la mandas otra vez?",
+          undefined,
+          { responderA: enGrupo ? mensaje.message_id : undefined }
+        );
+        return;
+      }
     }
 
-    const cuantas = await anotarFoto(chatId, url);
-
-    // Si la foto viene sin texto, no hay nada que pensar todavía: se
-    // acusa recibo y se espera la descripción.
-    if (!texto) {
-      await enviarMensaje(
-        chatId,
-        `📸 Foto guardada (${cuantas} en total). Cuando me digas qué producto es, se la pongo.\n\n` +
-          "<i>Para darlo de alta necesito: nombre, precio, categoría y tallas.</i>",
-        undefined,
-        { responderA: enGrupo ? mensaje.message_id : undefined }
-      );
-      return;
-    }
+    // Cuando se mandan varias fotos juntas, Telegram las entrega en
+    // mensajes distintos y casi a la vez, y el pie de foto viene solo en
+    // una. Sin esta pausa el agente podría armar el producto con las que
+    // hayan llegado hasta ese milisegundo.
+    await new Promise((listo) => setTimeout(listo, 2500));
   }
 
   // Armamos lo que le vamos a dar a la IA: el texto, el audio, o los dos.
@@ -264,6 +280,7 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
   await atenderSesion({
     chatId,
     avisoId,
+    fotoFallida,
     responderA: enGrupo ? mensaje.message_id : undefined,
     enGrupo,
     quien,

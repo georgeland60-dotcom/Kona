@@ -154,12 +154,20 @@ async function engancharFotos(
   }
 }
 
+// Si una foto no se pudo guardar, se dice arriba del todo: callarlo haría
+// que la dueña creyera que el producto quedó con su imagen.
+function avisoDeFoto(sesion: Sesion): string {
+  return sesion.fotoFallida
+    ? "⚠️ Una de las fotos no se pudo guardar; el producto va sin ella.\n\n"
+    : "";
+}
+
 async function entregar(
   sesion: Sesion,
   resultado: Extract<ResultadoAgente, { tipo: "respuesta" | "plan" }>
 ): Promise<void> {
   if (resultado.tipo === "respuesta") {
-    await responder(sesion, escapar(resultado.texto));
+    await responder(sesion, avisoDeFoto(sesion) + escapar(resultado.texto));
     return;
   }
 
@@ -184,7 +192,8 @@ async function entregar(
 
   await responder(
     sesion,
-    textoDelPlan(
+    avisoDeFoto(sesion) +
+      textoDelPlan(
       resultado.texto,
       resultado.acciones,
       sesion.enGrupo ? sesion.quien : undefined

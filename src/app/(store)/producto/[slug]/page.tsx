@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProducts, getProductBySlug } from "@/lib/store-data";
-import { categories } from "@/data/categories";
+import { getCategorias } from "@/lib/categorias-data";
 import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/product/AddToCartButton";
 import ProductGallery from "@/components/product/ProductGallery";
@@ -33,7 +33,9 @@ export default async function ProductPage({
 
   if (!product || product.active === false) notFound();
 
-  const categoria = categories.find((c) => c.slug === product.category);
+  const categoria = (await getCategorias()).find(
+    (c) => c.slug === product.category
+  );
   const relacionados = (await getProducts())
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4);

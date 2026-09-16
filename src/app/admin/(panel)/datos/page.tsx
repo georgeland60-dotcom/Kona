@@ -6,7 +6,8 @@ import {
   contarPor,
   TIPOS_CAMBIO,
 } from "@/lib/historial-data";
-import { categories } from "@/data/categories";
+import { getCategorias } from "@/lib/categorias-data";
+import type { Category } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import { isPersistent } from "@/lib/kv";
 import { resumirConsumo, getConsumo } from "@/lib/consumo-data";
@@ -17,12 +18,14 @@ import { modeloPreferido } from "@/lib/agent/gemini";
 // Siempre datos frescos: es una pantalla de consulta, no vale cachearla.
 export const dynamic = "force-dynamic";
 
-const nombreCategoria = (slug: string) =>
+// Las categorías ya no son una lista fija en el código (se pueden crear
+// desde el asistente), así que hay que pasarlas.
+const nombreCategoria = (slug: string, categorias: Category[]) =>
   slug === "todas"
     ? "Toda la tienda"
     : slug === "varias"
       ? "Varias categorías"
-      : (categories.find((c) => c.slug === slug)?.name ?? slug);
+      : (categorias.find((c) => c.slug === slug)?.name ?? slug);
 
 function fechaCorta(iso: string): string {
   const d = new Date(iso);
@@ -43,8 +46,17 @@ export default async function DatosPage({
 }) {
   const { categoria, tipo } = await searchParams;
 
-  const [productos, pedidos, ventas, cambios, todos, consumo, dias, modelos] =
-    await Promise.all([
+  const [
+    productos,
+    pedidos,
+    ventas,
+    cambios,
+    todos,
+    consumo,
+    dias,
+    modelos,
+    categorias,
+  ] = await Promise.all([
       getProducts({ includeInactive: true, raw: true }),
       getOrders(),
       getSalesSummary(),
@@ -53,6 +65,7 @@ export default async function DatosPage({
       resumirConsumo(),
       getConsumo(),
       resumenModelos(),
+      getCategorias(),
     ]);
 
   // El límite de Google es POR MODELO, así que el panel tiene que hablar
@@ -442,7 +455,7 @@ export default async function DatosPage({
                 href={enlaceFiltro({ categoria: c.clave })}
                 className={chip(categoria === c.clave)}
               >
-                {nombreCategoria(c.clave)} ({c.total})
+                {nombreCategoria(c.clave, categorias)} ({c.total})
               </Link>
             ))}
           </div>
@@ -499,7 +512,7 @@ export default async function DatosPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {nombreCategoria(c.categoria)}
+                      {nombreCategoria(c.categoria, categorias)}
                     </td>
                     <td className="px-4 py-3">
                       <p className={c.ok ? "" : "text-muted line-through"}>

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { categories } from "@/data/categories";
+import { getCategorias } from "@/lib/categorias-data";
 import ProductForm from "@/components/admin/ProductForm";
 
-export default function NuevoProductoPage() {
+export default async function NuevoProductoPage() {
+  const categorias = await getCategorias();
   return (
     <div>
       <Link
@@ -12,7 +13,7 @@ export default function NuevoProductoPage() {
         ← Productos
       </Link>
       <h1 className="text-2xl font-semibold mt-2 mb-6">Nuevo producto</h1>
-      <ProductForm categories={categories} />
+      <ProductForm categories={categorias} />
     </div>
   );
 }

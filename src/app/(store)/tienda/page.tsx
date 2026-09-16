@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
-import { categories } from "@/data/categories";
+import { getCategorias } from "@/lib/categorias-data";
 import { homeCollections } from "@/data/collections";
 import { getSeasonBySlug } from "@/lib/promos-data";
 import ProductGrid from "@/components/product/ProductGrid";
@@ -12,7 +12,10 @@ export default async function TiendaPage({
 }) {
   const { cat } = await searchParams;
 
-  const products = await getProducts();
+  const [products, categorias] = await Promise.all([
+    getProducts(),
+    getCategorias(),
+  ]);
   // el filtro acepta tanto categorías como colecciones transversales
   // (ej. "nuevos-ingresos", "sale"), que viven en el campo collections.
   const filtrados = cat
@@ -26,7 +29,7 @@ export default async function TiendaPage({
   const coleccionActual = homeCollections.find((c) => c.slug === cat);
   const temporadaActual = cat ? await getSeasonBySlug(cat) : undefined;
   const categoriaActual =
-    categories.find((c) => c.slug === cat) ??
+    categorias.find((c) => c.slug === cat) ??
     (coleccionActual
       ? { slug: coleccionActual.slug, name: coleccionActual.title }
       : temporadaActual
@@ -56,7 +59,7 @@ export default async function TiendaPage({
         >
           Todo
         </Link>
-        {categories.map((c) => (
+        {categorias.map((c) => (
           <Link
             key={c.slug}
             href={`/tienda?cat=${c.slug}`}

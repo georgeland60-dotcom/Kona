@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getRules } from "@/lib/promos-data";
 import { getProducts } from "@/lib/store-data";
-import { categories } from "@/data/categories";
+import { getCategorias } from "@/lib/categorias-data";
 import { deleteRuleAction } from "@/app/admin/promos-actions";
 import type { DiscountRule } from "@/lib/types";
 
@@ -92,12 +92,13 @@ function describeWindow(rule: DiscountRule): string {
 }
 
 export default async function DescuentosPage() {
-  const [rules, products] = await Promise.all([
+  const [rules, products, categorias] = await Promise.all([
     getRules(),
     getProducts({ includeInactive: true, raw: true }),
+    getCategorias(),
   ]);
   const catName = (slug: string) =>
-    categories.find((c) => c.slug === slug)?.name || slug || "—";
+    categorias.find((c) => c.slug === slug)?.name || slug || "—";
   const prodName = (id: string) =>
     products.find((p) => p.id === id)?.name || id || "—";
 

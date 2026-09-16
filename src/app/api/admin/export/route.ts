@@ -13,7 +13,7 @@ import { hoyEnLima } from "@/lib/fechas";
 import { getProducts } from "@/lib/store-data";
 import { getOrders } from "@/lib/orders-data";
 import { getHistorial } from "@/lib/historial-data";
-import { categories } from "@/data/categories";
+import { getCategorias } from "@/lib/categorias-data";
 
 type Fila = Record<string, string | number>;
 
@@ -41,11 +41,19 @@ function fecha(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("es-PE");
 }
 
-const nombreCategoria = (slug: string) =>
-  categories.find((c) => c.slug === slug)?.name ?? slug;
+// Se resuelve con la lista de categorías del momento, que ahora puede
+// crecer desde el asistente.
+async function nombradorDeCategorias(): Promise<(slug: string) => string> {
+  const categorias = await getCategorias();
+  return (slug: string) =>
+    categorias.find((c) => c.slug === slug)?.name ?? slug;
+}
 
 async function filasProductos(): Promise<Fila[]> {
-  const productos = await getProducts({ includeInactive: true, raw: true });
+  const [productos, nombreCategoria] = await Promise.all([
+    getProducts({ includeInactive: true, raw: true }),
+    nombradorDeCategorias(),
+  ]);
   return productos.map((p) => ({
     id: p.id,
     nombre: p.name,
@@ -100,7 +108,10 @@ async function filasVentas(): Promise<Fila[]> {
 }
 
 async function filasCambios(): Promise<Fila[]> {
-  const cambios = await getHistorial();
+  const [cambios, nombreCategoria] = await Promise.all([
+    getHistorial(),
+    nombradorDeCategorias(),
+  ]);
   return cambios.map((c) => ({
     fecha: fecha(c.fecha),
     quien: c.quien,

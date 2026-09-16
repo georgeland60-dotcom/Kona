@@ -4,10 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { store } from "@/config/store";
-import { categories } from "@/data/categories";
+import type { Category } from "@/lib/types";
 import { useCart } from "@/components/cart/CartContext";
 
-export default function Header() {
+export default function Header({ categorias }: { categorias: Category[] }) {
   const { count, setOpen } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [prodOpen, setProdOpen] = useState(false);
@@ -82,7 +82,7 @@ export default function Header() {
               </Link>
               <div className="absolute left-0 top-full pt-3 hidden group-hover:block">
                 <div className="bg-background border border-line rounded-lg shadow-lg py-2 w-52 normal-case tracking-normal">
-                  {categories.map((c) => (
+                  {categorias.map((c) => (
                     <Link
                       key={c.slug}
                       href={`/tienda?cat=${c.slug}`}
@@ -153,7 +153,7 @@ export default function Header() {
             </button>
             {prodOpen && (
               <div className="pl-4 flex flex-col gap-0.5 border-l border-line ml-1">
-                {categories.map((c) => (
+                {categorias.map((c) => (
                   <Link
                     key={c.slug}
                     href={`/tienda?cat=${c.slug}`}

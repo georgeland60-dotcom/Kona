@@ -352,7 +352,16 @@ export async function aplicarPlan(
     });
   };
 
-  for (const accion of acciones) {
+  // Crear una categoría va SIEMPRE primero: si el mismo plan da de alta
+  // un producto en esa categoría, cuando le toque el turno la categoría
+  // ya tiene que existir. El modelo suele ponerlas en orden, pero no se
+  // puede depender de eso.
+  const ordenadas = [
+    ...acciones.filter((a) => a.herramienta.includes("crear_categoria")),
+    ...acciones.filter((a) => !a.herramienta.includes("crear_categoria")),
+  ];
+
+  for (const accion of ordenadas) {
     const herramienta = buscarHerramienta(accion.herramienta);
     if (!herramienta || herramienta.leer) {
       const mensaje = `No pude ejecutar "${accion.resumen}".`;
