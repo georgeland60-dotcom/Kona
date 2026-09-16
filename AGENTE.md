@@ -449,6 +449,34 @@ Al aplicar el plan, crear la categoría va SIEMPRE primero, aunque el
 modelo la haya puesto después: si el mismo plan da de alta el producto
 en esa categoría, cuando le toque el turno tiene que existir.
 
+## Kona Assistant (el que atiende a las clientas)
+
+Burbuja abajo a la derecha en toda la tienda. Recomienda prendas del
+catálogo y ayuda con la talla. Es OTRA cosa que el asistente de la
+dueña, y la diferencia manda sobre todo el diseño:
+
+- **No tiene herramientas. Ninguna.** No es que tenga prohibido cambiar
+  precios: es que no existe la posibilidad. Da igual lo que le escriban,
+  porque atiende a cualquiera que entre a la web.
+- **Solo habla de lo que existe.** Se le pasa el catálogo resumido (una
+  línea por producto, con el precio de hoy y las tallas CON STOCK), y
+  las prendas que recomienda se comprueban contra el catálogo antes de
+  mostrarlas: si inventa un slug o recomienda algo agotado, esa tarjeta
+  no sale.
+- **Usa los modelos livianos** (`orden: "economico"`), y no fija el
+  modelo de la dueña. Así una tarde con mucha gente no se come el cupo
+  que ella necesita para cambiar un precio. Como usan modelos distintos,
+  en `/admin/datos` se ve por separado lo que gasta cada uno.
+- **Dos frenos**, y los dos fallan del lado amable: 15 mensajes por
+  persona cada 10 minutos y un tope diario para el asistente
+  (`ASISTENTE_LIMITE_PERSONA` y `ASISTENTE_LIMITE_DIA`). Al llegar al
+  tope no se rompe nada: dice que ahora no puede y ofrece WhatsApp.
+- **Sobre las tallas es honesto**: aconseja con lo que sabe (la
+  descripción de la prenda y la talla habitual de la clienta), pero NO
+  tiene tabla de medidas, así que cuando le piden centímetros lo dice y
+  manda a WhatsApp en vez de inventar un número. Si algún día se cargan
+  las medidas por categoría, el consejo mejora solo.
+
 ### Probar el motor de precios
 
 El motor (`src/lib/promo-engine.ts`) es una función pura, así que se puede

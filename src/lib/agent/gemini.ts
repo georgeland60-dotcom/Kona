@@ -243,11 +243,26 @@ function modeloSugeridoPorGoogle(cuerpo: string): string | null {
 }
 
 // Modelos ordenados de mejor a peor para nuestro caso.
-export function ordenarModelos(nombres: string[]): string[] {
+export function ordenarModelos(
+  nombres: string[],
+  criterio: "mejor" | "economico" = "mejor"
+): string[] {
+  // Para "económico" mandan los más livianos (lite, 8b), que son los que
+  // Google deja usar con más holgura. Entre ellos, el más nuevo. Si la
+  // clave no tiene ninguno, se siguen usando los normales.
+  const liviano = (n: string) => /lite|8b/.test(n.toLowerCase());
+
   return nombres
     .map((nombre) => ({ nombre, punto: puntuar(nombre) }))
     .filter((m) => m.punto >= 0)
-    .sort((a, b) => b.punto - a.punto)
+    .sort((a, b) => {
+      if (criterio === "economico") {
+        const la = liviano(a.nombre) ? 1 : 0;
+        const lb = liviano(b.nombre) ? 1 : 0;
+        if (la !== lb) return lb - la;
+      }
+      return b.punto - a.punto;
+    })
     .map((m) => m.nombre);
 }
 
@@ -261,12 +276,21 @@ function cuerpoPeticion(opciones: {
     description: string;
     parameters?: Record<string, unknown>;
   }>;
+  maximoSalida?: number;
 }): string {
+  // Sin herramientas no se manda el campo: un "tools" vacío hace que la
+  // API rechace la petición entera.
+  const conHerramientas = opciones.herramientas.length > 0;
+
   return JSON.stringify({
     systemInstruction: { parts: [{ text: opciones.instruccion }] },
     contents: opciones.mensajes,
-    tools: [{ functionDeclarations: opciones.herramientas }],
-    toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+    ...(conHerramientas
+      ? {
+          tools: [{ functionDeclarations: opciones.herramientas }],
+          toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+        }
+      : {}),
     generationConfig: {
       // Temperatura baja: queremos precisión con precios, no creatividad.
       temperature: 0.1,
@@ -274,7 +298,7 @@ function cuerpoPeticion(opciones: {
       // del mismo presupuesto que la respuesta. Con poco margen se quedan
       // sin espacio y devuelven un turno vacío, así que se les da aire:
       // el tiempo ya no es problema (el agente puede seguir en otra tanda).
-      maxOutputTokens: 8192,
+      maxOutputTokens: opciones.maximoSalida ?? 8192,
     },
   });
 }
@@ -291,6 +315,15 @@ export async function preguntarAlModelo(opciones: {
   // come el tiempo de la función entera y la dueña no recibe NADA: ni la
   // respuesta ni un aviso. Mejor cortar a tiempo y avisar.
   limiteMs?: number;
+  // Con qué modelos hablar primero.
+  //  - "mejor" (por defecto): el más capaz. Es lo que toca cuando se
+  //    están cambiando precios y hay dinero de por medio.
+  //  - "economico": los más ligeros primero. Para el asistente de la
+  //    tienda, que atiende a cualquiera que entre: así una tarde con
+  //    mucha gente no se come el cupo que necesita la dueña.
+  orden?: "mejor" | "economico";
+  // Cuántos tokens como máximo puede gastar la respuesta.
+  maximoSalida?: number;
 }): Promise<RespuestaModelo> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -337,8 +370,19 @@ export async function preguntarAlModelo(opciones: {
   const sumar = (m?: string | null) => {
     if (m && !cola.includes(m) && !sinCupo.has(m)) cola.push(m);
   };
-  sumar(modeloConfirmado);
-  sumar(MODELO_PREFERIDO);
+  const economico = opciones.orden === "economico";
+
+  if (economico) {
+    // Para el asistente de la tienda: primero los ligeros, y solo si no
+    // queda ninguno se recurre a los buenos.
+    for (const m of ordenarModelos(await listarModelos(apiKey), "economico")) {
+      sumar(m);
+    }
+  } else {
+    sumar(modeloConfirmado);
+    sumar(MODELO_PREFERIDO);
+  }
+
   if (cola.length === 0) {
     // Los de siempre están agotados: hay que ver qué más acepta la clave.
     for (const m of ordenarModelos(await listarModelos(apiKey))) sumar(m);
@@ -439,9 +483,13 @@ export async function preguntarAlModelo(opciones: {
 
   if (res.ok) {
     // Nos quedamos con el que funcionó para los siguientes mensajes, y
-    // queda anotado para que el panel muestre cuál está trabajando.
-    modeloConfirmado = modelo;
-    await marcarEnUso(modelo);
+    // queda anotado para que el panel muestre cuál está trabajando. El
+    // asistente de la tienda no fija el modelo de la dueña: usa los
+    // suyos y no debe arrastrarla a un modelo más flojo.
+    if (!economico) {
+      modeloConfirmado = modelo;
+      await marcarEnUso(modelo);
+    }
   }
 
   if (!res.ok) {

@@ -158,6 +158,45 @@ export async function conCandado<T>(
   throw new Error("No se pudo tomar el candado de stock");
 }
 
+// ---- Contadores ------------------------------------------------------
+//
+//  Para llevar la cuenta de cuánto se usa algo en una ventana de tiempo
+//  (por ejemplo, cuántos mensajes manda una misma persona en diez
+//  minutos). Se incrementa de forma atómica, así que aunque lleguen
+//  varias peticiones a la vez la cuenta no se descuadra.
+
+export async function contar(
+  key: string,
+  vigenciaSegundos: number
+): Promise<number> {
+  if (isPersistent()) {
+    try {
+      const valor = (await kvCommand(["INCR", `kona:${key}`])) as number;
+      if (valor === 1) {
+        // Recién creado: se le pone la caducidad de la ventana.
+        await kvCommand(["EXPIRE", `kona:${key}`, String(vigenciaSegundos)]);
+      }
+      return typeof valor === "number" ? valor : 1;
+    } catch {
+      // Si la base falla, no se bloquea a nadie: es un límite, no un
+      // candado. Perder una cuenta es menos grave que dejar sin atender.
+      return 1;
+    }
+  }
+
+  const doc = await readDoc<{ valor: number; hasta: number } | null>(
+    `contador-${key}`,
+    () => null
+  );
+  const ahora = Date.now();
+  const valor = doc && doc.hasta > ahora ? doc.valor + 1 : 1;
+  await writeDoc(`contador-${key}`, {
+    valor,
+    hasta: doc && doc.hasta > ahora ? doc.hasta : ahora + vigenciaSegundos * 1000,
+  });
+  return valor;
+}
+
 // ---- Listas ----------------------------------------------------------
 //
 //  Para cosas que LLEGAN DE A VARIAS Y A LA VEZ, como las fotos de un
