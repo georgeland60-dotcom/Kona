@@ -15,7 +15,8 @@
 
 import { preguntarAlModelo, ErrorAgente } from "@/lib/agent/gemini";
 import { catalogoParaAsistente } from "@/lib/asistente/catalogo";
-import { instruccionAsistente } from "@/lib/asistente/prompt";
+import { fichaDeProducto, instruccionAsistente } from "@/lib/asistente/prompt";
+import { guiaDeProducto, guiaEnTexto, modeloEnTexto } from "@/lib/tallas";
 import { huellaDe, permitirConsulta } from "@/lib/asistente/limites";
 import { anotarConsumo } from "@/lib/consumo-data";
 import type { Product } from "@/lib/types";
@@ -27,6 +28,23 @@ const MAX_HISTORIA = 8;
 const MAX_SUGERENCIAS = 3;
 
 type MensajeCliente = { rol: "cliente" | "asistente"; texto: string };
+
+// La prenda que la clienta está mirando (o la que eligió de las
+// recomendadas). Solo de esa se mandan las medidas: las de todo el
+// catálogo no caben, y hasta que no hay una elegida no hacen falta.
+function fichaDe(producto: Product | undefined): string | undefined {
+  if (!producto) return undefined;
+  const guia = guiaDeProducto(producto);
+
+  return fichaDeProducto({
+    nombre: producto.name,
+    precio: producto.price,
+    tallas: producto.variants.filter((v) => v.stock > 0).map((v) => v.size),
+    guia: guia ? guiaEnTexto(guia) : undefined,
+    guiaEstimada: guia?.estimada,
+    modelo: modeloEnTexto(producto),
+  });
+}
 
 type Sugerencia = {
   slug: string;
@@ -68,9 +86,12 @@ function aTarjeta(p: Product): Sugerencia {
 }
 
 export async function POST(req: Request) {
-  let cuerpo: { mensajes?: MensajeCliente[] };
+  let cuerpo: { mensajes?: MensajeCliente[]; producto?: string };
   try {
-    cuerpo = (await req.json()) as { mensajes?: MensajeCliente[] };
+    cuerpo = (await req.json()) as {
+      mensajes?: MensajeCliente[];
+      producto?: string;
+    };
   } catch {
     return Response.json({ error: "Mensaje ilegible" }, { status: 400 });
   }
@@ -95,9 +116,13 @@ export async function POST(req: Request) {
 
   const { texto: catalogo, productos } = await catalogoParaAsistente();
 
+  const elegida = cuerpo.producto
+    ? productos.find((p) => p.slug === cuerpo.producto)
+    : undefined;
+
   try {
     const respuesta = await preguntarAlModelo({
-      instruccion: instruccionAsistente(catalogo),
+      instruccion: instruccionAsistente(catalogo, fichaDe(elegida)),
       mensajes: mensajes.map((m) => ({
         role: m.rol === "cliente" ? ("user" as const) : ("model" as const),
         parts: [{ text: m.texto }],

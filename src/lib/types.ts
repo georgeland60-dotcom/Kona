@@ -13,6 +13,25 @@ export type Variant = {
   stock: number; // unidades disponibles de esa talla
 };
 
+// Las medidas de UNA talla de UNA prenda, en centímetros.
+//
+// Se guardan como pares nombre/valor y no con campos fijos porque cada
+// prenda se mide distinto: una blusa por busto, largo y manga; un
+// pantalón por cintura, cadera y tiro; unas botas por el largo del pie.
+// Obligar a todas al mismo molde dejaría medidas vacías o inventadas.
+export type MedidaTalla = {
+  talla: string; // "S", "M", "38"...
+  medidas: Record<string, number>; // { busto: 92, largo: 62 }
+};
+
+// La referencia de quien sale en las fotos. Es lo que de verdad ayuda a
+// decidir: "la modelo mide 1.68 y usa M" dice más que cualquier tabla.
+export type ModeloFoto = {
+  talla: string;
+  altura?: number; // en cm
+  medidas?: Record<string, number>;
+};
+
 export type Product = {
   id: string;
   slug: string; // para la URL del producto, ej: "vestido-lino-beige"
@@ -28,6 +47,10 @@ export type Product = {
   onSale?: boolean; // true = aparece en seccion Sale
   oldPrice?: number; // precio anterior (tachado) si esta en oferta
   active?: boolean; // false = oculto en la tienda (borrador)
+  // Guía de tallas de ESTA prenda. Cada producto tiene la suya: el mismo
+  // "M" no mide igual en una blusa de gasa que en una chompa.
+  guiaTallas?: MedidaTalla[];
+  modeloFoto?: ModeloFoto;
 };
 
 // Formato "semilla" fácil de escribir a mano en data/products.ts.

@@ -471,11 +471,43 @@ dueña, y la diferencia manda sobre todo el diseño:
   persona cada 10 minutos y un tope diario para el asistente
   (`ASISTENTE_LIMITE_PERSONA` y `ASISTENTE_LIMITE_DIA`). Al llegar al
   tope no se rompe nada: dice que ahora no puede y ofrece WhatsApp.
-- **Sobre las tallas es honesto**: aconseja con lo que sabe (la
-  descripción de la prenda y la talla habitual de la clienta), pero NO
-  tiene tabla de medidas, así que cuando le piden centímetros lo dice y
-  manda a WhatsApp en vez de inventar un número. Si algún día se cargan
-  las medidas por categoría, el consejo mejora solo.
+- **Va por pasos, no de charla abierta**: primero entiende la ocasión
+  (una pregunta, con opciones), después enseña hasta 3 prendas, y solo
+  cuando hay una elegida habla de tallas. Antes de eso la talla no
+  significa nada, porque cada prenda se mide distinto.
+- **La talla se trabaja con datos de ESA prenda.** Cuando hay una
+  elegida (o cuando la clienta está en su ficha, que el asistente lo
+  sabe por la dirección de la página), se le pasa su guía de medidas y
+  la referencia de la modelo. Del catálogo entero no: no cabrían, y
+  hasta que no hay una elegida no hacen falta.
+- **Tono de marca**: Kona va de sentirse cómoda, así que el asistente NO
+  opina sobre el cuerpo de nadie ni sobre cómo "queda" una prenda. Están
+  prohibidas las palabras del tipo favorece, estiliza, disimula, marca o
+  "tipo de cuerpo". Informa, y decide ella. Al preguntar la talla lo
+  hace con cariño, sin exigir medidas del cuerpo y sin insistir nunca.
+
+### Guía de tallas: una por prenda
+
+Cada producto tiene la suya (`guiaTallas`), porque una "M" no mide igual
+en una blusa de gasa que en una chompa, y cada prenda se mide por lo
+suyo: busto/largo/manga una superior, cintura/cadera/tiro una inferior,
+largo del pie un calzado. Por eso son pares nombre/valor y no campos
+fijos: obligar a todas al mismo molde deja medidas vacías o inventadas.
+
+Mientras una prenda no traiga las suyas, la tienda muestra unas
+REFERENCIALES calculadas por categoría y talla (`tallas.ts`), siempre
+marcadas como tales y con la oferta de medirla por WhatsApp. Una medida
+inventada que se presenta como exacta termina en una devolución.
+
+Lo mismo con la modelo de las fotos: si la prenda trae su dato
+(`modeloFoto`: talla, altura y medidas), se dice en concreto; si no, se
+da la referencia general de la tienda (`store.modeloReferencia`) dicha
+como lo que es, un "en general". Afirmar de una foto concreta algo que
+no se sabe es justo lo que hace que luego no calce.
+
+Las dos cosas se piden al dar de alta un producto por Telegram, como
+opcionales pero recomendadas, y el bot avisa cuando el producto queda
+sin ellas.
 
 ### Probar el motor de precios
 

@@ -19,6 +19,16 @@ export const store = {
   // con la variable NEXT_PUBLIC_WHATSAPP.
   whatsapp: process.env.NEXT_PUBLIC_WHATSAPP || "51987654321",
 
+  // Referencia de las modelos de las fotos, para ayudar con la talla.
+  //
+  // Es lo que se usa MIENTRAS una prenda no traiga la suya: cada producto
+  // puede llevar la talla y las medidas exactas de quien posa, y esas
+  // mandan. Esto es el "en general" de la tienda, y se dice como tal.
+  modeloReferencia: {
+    talla: "M",
+    altura: 168, // cm
+  },
+
   // Moneda
   currency: "PEN",
   currencySymbol: "S/",

@@ -49,6 +49,7 @@ import type {
   Filtro,
   BogoConfig,
   CondicionCarrito,
+  MedidaTalla,
 } from "@/lib/types";
 
 // ---- Tipos -----------------------------------------------------------
@@ -1278,6 +1279,42 @@ function leerTallas(args: ToolArgs): string[] {
   return tallas.slice(0, 12);
 }
 
+// Medidas escritas como las dicta una persona: "busto 92, largo 62" o
+// "busto 92 cm / largo 62". Se acepta cualquiera de las dos.
+function leerMedidas(bruto: unknown): Record<string, number> {
+  const medidas: Record<string, number> = {};
+  if (typeof bruto !== "string") return medidas;
+
+  // La coma separa medidas ("busto 92, largo 62") pero también es la
+  // coma decimal ("23,7"). Solo separa cuando no va seguida de un dígito.
+  for (const trozo of bruto.split(/[;/]|,(?!\d)/)) {
+    const m = trozo.trim().match(/^([a-zA-ZáéíóúÁÉÍÓÚñÑ _]+)\s*[:=]?\s*([\d.,]+)/);
+    if (!m) continue;
+    const campo = normalizar(m[1]).replace(/\s+/g, "_");
+    const valor = Number(m[2].replace(",", "."));
+    if (campo && Number.isFinite(valor)) medidas[campo] = valor;
+  }
+  return medidas;
+}
+
+// La guía de tallas de la prenda: qué mide cada talla.
+function leerGuiaTallas(args: ToolArgs): MedidaTalla[] {
+  const bruto = args["guia_tallas"];
+  if (!Array.isArray(bruto)) return [];
+
+  const guia: MedidaTalla[] = [];
+  for (const fila of bruto) {
+    if (!fila || typeof fila !== "object") continue;
+    const o = fila as Record<string, unknown>;
+    const talla = String(o.talla ?? o.size ?? "").trim();
+    const medidas = leerMedidas(o.medidas ?? o.medida);
+    if (talla && Object.keys(medidas).length > 0) {
+      guia.push({ talla, medidas });
+    }
+  }
+  return guia;
+}
+
 // Stock por talla, cuando no todas tienen lo mismo.
 function leerStockPorTalla(args: ToolArgs): Map<string, number> {
   const mapa = new Map<string, number>();
@@ -1368,6 +1405,36 @@ const agregarProducto: Tool = {
         type: "BOOLEAN",
         description:
           "true = publicarlo aunque no tenga foto. Por defecto solo se publica si tiene foto; si no, queda como borrador.",
+      },
+      modelo_talla: {
+        type: "STRING",
+        description:
+          "Qué talla lleva puesta quien sale en las fotos. Es el dato que más ayuda a elegir talla.",
+      },
+      modelo_altura: {
+        type: "NUMBER",
+        description: "Cuánto mide la modelo, en centímetros. Ej: 168.",
+      },
+      modelo_medidas: {
+        type: "STRING",
+        description:
+          "Medidas de la modelo, si se saben: 'busto 86, cintura 66, cadera 94'.",
+      },
+      guia_tallas: {
+        type: "ARRAY",
+        description:
+          "Medidas DE LA PRENDA por talla, en centímetros. Cada prenda se mide por lo suyo: una blusa por busto/largo/manga, un pantalón por cintura/cadera/tiro.",
+        items: {
+          type: "OBJECT",
+          properties: {
+            talla: { type: "STRING", description: "S, M, 38..." },
+            medidas: {
+              type: "STRING",
+              description: "'busto 92, largo 62, manga 58'",
+            },
+          },
+          required: ["talla", "medidas"],
+        },
       },
     },
     required: ["nombre", "precio", "categoria", "tallas"],
@@ -1466,6 +1533,11 @@ const agregarProducto: Tool = {
     const colecciones = ["nuevos-ingresos"];
     if (anterior !== undefined) colecciones.push("sale");
 
+    const guiaTallas = leerGuiaTallas(args);
+    const modeloTalla = texto(args, "modelo_talla");
+    const modeloMedidas = leerMedidas(args["modelo_medidas"]);
+    const modeloAltura = numero(args, "modelo_altura");
+
     const producto: Product = {
       id: await nextProductId(),
       slug,
@@ -1481,6 +1553,18 @@ const agregarProducto: Tool = {
         ? { oldPrice: Math.round(anterior), onSale: true }
         : {}),
       ...(booleano(args, "destacado", false) ? { featured: true } : {}),
+      ...(guiaTallas.length > 0 ? { guiaTallas } : {}),
+      ...(modeloTalla
+        ? {
+            modeloFoto: {
+              talla: modeloTalla,
+              ...(modeloAltura ? { altura: Math.round(modeloAltura) } : {}),
+              ...(Object.keys(modeloMedidas).length > 0
+                ? { medidas: modeloMedidas }
+                : {}),
+            },
+          }
+        : {}),
     };
 
     await upsertProduct(producto);
@@ -1495,6 +1579,16 @@ const agregarProducto: Tool = {
     }
     if (!producto.description) {
       avisos.push("No tiene descripción; conviene ponerle una.");
+    }
+    if (guiaTallas.length === 0) {
+      avisos.push(
+        "Sin medidas por talla: la tienda mostrará unas referenciales. Si me las dictas, las pongo exactas."
+      );
+    }
+    if (!modeloTalla) {
+      avisos.push(
+        "No sé qué talla usa la modelo de las fotos; es el dato que más ayuda a elegir talla."
+      );
     }
     const similares = parecidos(nombre, existentes);
     if (similares.length > 0) {

@@ -4,6 +4,7 @@ import { getProducts, getProductBySlug } from "@/lib/store-data";
 import { getCategorias } from "@/lib/categorias-data";
 import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/product/AddToCartButton";
+import GuiaTallas from "@/components/product/GuiaTallas";
 import ProductGallery from "@/components/product/ProductGallery";
 import ProductGrid from "@/components/product/ProductGrid";
 import TrackView from "@/components/TrackView";
@@ -106,6 +107,8 @@ export default async function ProductPage({
             })()}
 
           <AddToCartButton product={product} />
+
+          <GuiaTallas product={product} />
 
           <div className="mt-8 text-sm text-muted space-y-1">
             <p>· Envios a todo Lima</p>

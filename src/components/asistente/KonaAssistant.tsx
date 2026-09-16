@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { formatPrice } from "@/lib/format";
 import { store } from "@/config/store";
 
@@ -32,17 +33,35 @@ type Mensaje = {
 const SALUDO: Mensaje = {
   rol: "asistente",
   texto:
-    "¡Hola! Soy el asistente de Kona 👋 Cuéntame qué buscas (una ocasión, un color, un presupuesto) y te digo qué te puede quedar bien. También te ayudo con la talla.",
+    "¡Hola! Soy el asistente de Kona 👋 Dime para qué ocasión buscas y te muestro opciones. Cuando elijas una prenda, te paso sus medidas y la talla de la modelo para que vayas segura.",
 };
 
-const ATAJOS = [
-  "Busco algo para una boda",
-  "¿Qué talla me queda?",
+// Atajos distintos según dónde esté: en una ficha lo que se pregunta es
+// por esa prenda; en el resto de la tienda, qué llevar.
+const ATAJOS_TIENDA = [
+  "Algo para una ocasión especial",
   "Algo cómodo para diario",
+  "Lo más nuevo",
+];
+
+const ATAJOS_PRODUCTO = [
+  "¿Qué talla me conviene?",
+  "¿Qué talla usa la modelo?",
+  "¿De qué tela es?",
 ];
 
 export default function KonaAssistant() {
+  const ruta = usePathname();
+  // Si está en una ficha, el asistente ya sabe de qué prenda se habla:
+  // no hace falta que ella lo escriba ni que él lo adivine.
+  const productoDeLaRuta = ruta?.startsWith("/producto/")
+    ? ruta.replace("/producto/", "").split("/")[0]
+    : undefined;
+
   const [abierto, setAbierto] = useState(false);
+  // La prenda de la que se está hablando: la de la ficha, o la que ella
+  // elija de las recomendadas.
+  const [elegida, setElegida] = useState<string | undefined>(undefined);
   const [mensajes, setMensajes] = useState<Mensaje[]>([SALUDO]);
   const [texto, setTexto] = useState("");
   const [pensando, setPensando] = useState(false);
@@ -53,9 +72,12 @@ export default function KonaAssistant() {
     if (abierto) finRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes, abierto, pensando]);
 
-  const preguntar = async (pregunta: string) => {
+  const preguntar = async (pregunta: string, sobre?: string) => {
     const limpio = pregunta.trim();
     if (!limpio || pensando) return;
+
+    const producto = sobre ?? elegida ?? productoDeLaRuta;
+    if (sobre) setElegida(sobre);
 
     const conmigo: Mensaje[] = [...mensajes, { rol: "cliente", texto: limpio }];
     setMensajes(conmigo);
@@ -68,6 +90,7 @@ export default function KonaAssistant() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mensajes: conmigo.map((m) => ({ rol: m.rol, texto: m.texto })),
+          producto,
         }),
       });
       const data = await res.json();
@@ -141,11 +164,14 @@ export default function KonaAssistant() {
                 {m.productos && m.productos.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {m.productos.map((p) => (
-                      <Link
+                      <div
                         key={p.slug}
+                        className="border border-line rounded-xl p-2 hover:border-foreground transition"
+                      >
+                      <Link
                         href={`/producto/${p.slug}`}
                         onClick={() => setAbierto(false)}
-                        className="flex gap-3 items-center border border-line rounded-xl p-2 hover:border-foreground transition"
+                        className="flex gap-3 items-center"
                       >
                         <div className="w-12 h-16 placeholder-box rounded-lg overflow-hidden flex-shrink-0">
                           {p.imagen ? (
@@ -178,6 +204,21 @@ export default function KonaAssistant() {
                           )}
                         </div>
                       </Link>
+                      {/* El paso natural después de elegir: la talla. Al
+                          tocarlo, el asistente ya sabe de qué prenda se
+                          habla y saca su guía. */}
+                      <button
+                        onClick={() =>
+                          preguntar(
+                            `Me gusta ${p.nombre}, ¿qué talla me conviene?`,
+                            p.slug
+                          )
+                        }
+                        className="mt-2 w-full text-xs border border-line rounded-full py-1.5 hover:border-foreground transition"
+                      >
+                        Ayúdame con la talla
+                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -187,7 +228,7 @@ export default function KonaAssistant() {
             {/* Atajos, solo al principio: después estorban. */}
             {mensajes.length === 1 && !pensando && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {ATAJOS.map((a) => (
+                {(productoDeLaRuta ? ATAJOS_PRODUCTO : ATAJOS_TIENDA).map((a) => (
                   <button
                     key={a}
                     onClick={() => preguntar(a)}
