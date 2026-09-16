@@ -13,6 +13,22 @@
   --soft: #f9fafb; /* fondo gris muy claro para secciones */
 }
 
+/* ====== PALETA DEL DISENO v3 ======
+   Tokens NUEVOS, usados solo por la pagina /v3. No tocan los de arriba,
+   asi que el inicio actual y /v2 se ven exactamente igual que antes.
+   Aqui hay mas color: el fondo es crema tibia en vez de blanco puro y
+   cada bloque de categoria tiene su propio color. */
+:root {
+  --v3-ink: #2e1a47; /* ciruela profunda: el color de las letras */
+  --v3-ink-soft: #6b5b73; /* lila grisacea para textos de apoyo */
+  --v3-cream: #fff7f2; /* fondo tibio (mas color que el blanco) */
+  --v3-primary: #c2185b; /* fucsia vivo de la marca */
+  --v3-coral: #ff6f5e;
+  --v3-amber: #ffb020;
+  --v3-teal: #06a98d;
+  --v3-lilac: #7c4dff;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -23,6 +39,16 @@
   --color-soft: var(--soft);
   --font-sans: var(--font-jost);
   --font-script: var(--font-sacramento);
+
+  /* colores del diseno v3 (generan clases como text-v3-ink, bg-v3-coral) */
+  --color-v3-ink: var(--v3-ink);
+  --color-v3-ink-soft: var(--v3-ink-soft);
+  --color-v3-cream: var(--v3-cream);
+  --color-v3-primary: var(--v3-primary);
+  --color-v3-coral: var(--v3-coral);
+  --color-v3-amber: var(--v3-amber);
+  --color-v3-teal: var(--v3-teal);
+  --color-v3-lilac: var(--v3-lilac);
 }
 
 body {
@@ -47,4 +73,27 @@ body {
 }
 .animate-marquee {
   animation: marquee 22s linear infinite;
+}
+
+/* Entrada suave del pop-up de promociones (diseno v3) */
+@keyframes v3-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-v3-pop-in {
+  animation: v3-pop-in 0.35s ease-out both;
+}
+
+/* Si la persona prefiere menos movimiento, no animamos nada. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-v3-pop-in {
+    animation: none;
+  }
 }
