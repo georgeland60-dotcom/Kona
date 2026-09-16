@@ -56,7 +56,7 @@ propone, tú decides.
 | Precio fijo | "todas las carteras a 59" |
 | Precios | cambiar el precio de lista de un producto |
 | Ofertas | poner o sacar de oferta, con precio tachado, y meterlo al bloque Sale |
-| Productos | dar de alta uno nuevo, ocultarlo, volver a mostrarlo, destacarlo en el inicio |
+| Productos | dar de alta uno nuevo CON SUS FOTOS, ocultarlo, volver a mostrarlo, destacarlo en el inicio |
 | Stock | fijar las unidades, por talla o de todas |
 | Temporada | crear bloques como "Verano 2026" y meter o sacar productos |
 
@@ -381,6 +381,33 @@ Decisiones que conviene no romper:
   apretar Confirmar dos veces no aplica los cambios dos veces.
 - El audio se le manda a Gemini tal cual, sin transcribirlo antes: entiende
   el OGG de Telegram directamente y eso ahorra un servicio (y su costo).
+
+### Dar de alta productos por Telegram
+
+Se mandan las fotos (una o varias, en cualquier orden) y luego se escribe
+qué producto es. Las fotos quedan esperando a nombre de ese chat durante
+dos horas y se enganchan solas al crear el producto.
+
+Decisiones que vale la pena conocer:
+
+- **Sin foto, el producto se crea OCULTO.** En una tienda de ropa una
+  ficha sin imagen no vende y queda mal; es preferible un borrador que se
+  publica cuando llega la foto. Se puede forzar la publicación, pero hay
+  que pedirlo.
+- **Las fotos se guardan en la misma base** (`imagenes.ts`) y se sirven
+  por `/api/imagen/<id>` con caché eterna: la foto de un producto no
+  cambia, así que el CDN la guarda y la base se consulta una sola vez. No
+  hay que contratar ni configurar nada aparte. Si algún día son
+  demasiadas, se cambia el sitio donde se guardan en ese archivo y el
+  resto del código ni se entera.
+- **La ficha mínima es nombre, precio, categoría y tallas.** El agente
+  tiene instrucción de pedir lo que falte TODO JUNTO, en un solo mensaje,
+  y de no inventar nunca el precio. El stock, si no se dice, es 10 por
+  talla y lo avisa.
+- **Se rechaza el duplicado exacto** (mismo nombre) y se avisa de los
+  parecidos: dar de alta dos veces lo mismo se descubre tarde y mal.
+- Cambiar la foto de un producto que YA existe sigue siendo cosa de
+  `/admin`: por Telegram solo se cargan al darlo de alta.
 
 ### Probar el motor de precios
 

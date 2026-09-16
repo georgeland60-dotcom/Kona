@@ -1217,45 +1217,165 @@ const marcarOferta: Tool = {
 
 // ---- ALTA Y BAJA DE PRODUCTOS ---------------------------------------
 
+// ---- ALTA DE PRODUCTOS ----------------------------------------------
+//  Es la acción con más piezas: un producto mal dado de alta se ve en la
+//  tienda para siempre. Así que aquí se valida de verdad, y lo que no se
+//  puede validar se avisa.
+
+// Tallas escritas como las escribe la gente ("s, m, l", "unica", "38").
+// Se normalizan para que el inventario no acabe con "M", "m" y " M ".
+function leerTallas(args: ToolArgs): string[] {
+  const brutas = lista(args, "tallas");
+  const vistas = new Set<string>();
+  const tallas: string[] = [];
+
+  for (const bruta of brutas) {
+    const limpia = bruta.trim();
+    if (!limpia) continue;
+    const normal = normalizar(limpia);
+    const talla =
+      normal === "unica" || normal === "u" || normal === "un"
+        ? "Única"
+        : limpia.length <= 3
+          ? limpia.toUpperCase()
+          : limpia.charAt(0).toUpperCase() + limpia.slice(1);
+    if (vistas.has(normalizar(talla))) continue;
+    vistas.add(normalizar(talla));
+    tallas.push(talla);
+  }
+
+  return tallas.slice(0, 12);
+}
+
+// Stock por talla, cuando no todas tienen lo mismo.
+function leerStockPorTalla(args: ToolArgs): Map<string, number> {
+  const mapa = new Map<string, number>();
+  const bruto = args["stock_por_talla"];
+  if (!Array.isArray(bruto)) return mapa;
+
+  for (const item of bruto) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const talla = String(o.talla ?? o.size ?? "").trim();
+    const cantidad = Number(o.cantidad ?? o.stock ?? o.unidades);
+    if (!talla || !Number.isFinite(cantidad)) continue;
+    mapa.set(normalizar(talla), Math.max(0, Math.floor(cantidad)));
+  }
+  return mapa;
+}
+
+// Productos que se parecen al nuevo. No bloquea (puede ser el mismo
+// modelo en otro color, que es legítimo), pero avisa: dar de alta dos
+// veces lo mismo se descubre tarde y mal.
+function parecidos(nombre: string, productos: Product[]): string[] {
+  const palabras = normalizar(nombre).split(" ").filter((p) => p.length > 2);
+  if (palabras.length === 0) return [];
+  const raiz = palabras.slice(0, 2).join(" ");
+
+  return productos
+    .filter((p) => normalizar(p.name).includes(raiz))
+    .map((p) => `"${p.name}" (${soles(p.price)})`)
+    .slice(0, 3);
+}
+
 const agregarProducto: Tool = {
   nombre: "agregar_producto",
   leer: false,
   descripcion:
-    "Da de alta un producto nuevo en la tienda. La foto no se puede subir por Telegram: el producto se crea sin foto y se le agrega después desde el panel /admin.",
+    "Da de alta un producto nuevo. Antes de usarla, asegúrate de tener nombre, precio, categoría y tallas: si falta algo, pregúntalo. Las fotos que la dueña haya mandado por Telegram se enganchan solas. Si no hay ninguna foto, el producto se crea OCULTO (borrador) para que no aparezca en la tienda sin imagen.",
   parametros: {
     type: "OBJECT",
     properties: {
-      nombre: { type: "STRING", description: "Nombre del producto." },
-      precio: { type: "NUMBER", description: "Precio en soles." },
+      nombre: {
+        type: "STRING",
+        description:
+          "Nombre tal como se verá en la tienda, ej 'Blusa Lila Manga Larga'.",
+      },
+      precio: { type: "NUMBER", description: "Precio de venta en soles." },
       categoria: {
         type: "STRING",
-        description: "Slug de la categoría. Usa 'listar_categorias' si dudas.",
+        description: "Slug exacto de la categoría. Usa 'listar_categorias' si dudas.",
       },
       tallas: {
         type: "ARRAY",
         items: { type: "STRING" },
-        description: "Tallas, ej ['S','M','L']. Si no hay, se usa 'Única'.",
+        description:
+          "Tallas disponibles, ej ['S','M','L']. Para accesorios o maquillaje usa ['Única'].",
       },
       stock: {
         type: "NUMBER",
-        description: "Unidades por talla. Por defecto 10.",
+        description: "Unidades de CADA talla. Por defecto 10.",
       },
-      descripcion: { type: "STRING", description: "Descripción del producto." },
+      stock_por_talla: {
+        type: "ARRAY",
+        description:
+          "Solo si cada talla tiene una cantidad distinta. Ej: [{talla:'S',cantidad:3},{talla:'M',cantidad:5}].",
+        items: {
+          type: "OBJECT",
+          properties: {
+            talla: { type: "STRING" },
+            cantidad: { type: "NUMBER" },
+          },
+          required: ["talla", "cantidad"],
+        },
+      },
+      descripcion: {
+        type: "STRING",
+        description:
+          "Ficha corta del producto: tela, fit y detalles. De 2 a 4 frases separadas por ' -', al estilo del resto del catálogo: '-Tela lino stretch -Manga corta con pliegues -Falda de bobos'.",
+      },
+      precio_anterior: {
+        type: "NUMBER",
+        description:
+          "Solo si entra en oferta desde el primer día: el precio tachado. Debe ser mayor que el precio de venta.",
+      },
+      destacado: {
+        type: "BOOLEAN",
+        description: "true = aparece en Favoritos del inicio.",
+      },
+      publicar: {
+        type: "BOOLEAN",
+        description:
+          "true = publicarlo aunque no tenga foto. Por defecto solo se publica si tiene foto; si no, queda como borrador.",
+      },
     },
-    required: ["nombre", "precio", "categoria"],
+    required: ["nombre", "precio", "categoria", "tallas"],
   },
   resumen: async (args) => {
-    const tallas = lista(args, "tallas");
-    return `Crear producto "${texto(args, "nombre")}" a ${soles(numero(args, "precio") ?? 0)} en categoría "${texto(args, "categoria")}"${tallas.length ? ` · tallas ${tallas.join("/")}` : ""}`;
+    const tallas = leerTallas(args);
+    const fotos = lista(args, "fotos").length;
+    const partes = [
+      `Crear producto "${texto(args, "nombre")}"`,
+      `a ${soles(numero(args, "precio") ?? 0)}`,
+      `en "${texto(args, "categoria")}"`,
+    ];
+    if (tallas.length) partes.push(`· tallas ${tallas.join("/")}`);
+    partes.push(
+      fotos > 0
+        ? `· con ${fotos} foto${fotos === 1 ? "" : "s"}`
+        : "· SIN foto (queda oculto)"
+    );
+    return partes.join(" ");
   },
   ejecutar: async (args) => {
-    const nombre = texto(args, "nombre");
+    const nombre = texto(args, "nombre").replace(/\s+/g, " ").trim();
     const precio = numero(args, "precio");
     const slugCategoria = texto(args, "categoria");
 
-    if (!nombre) return { ok: false, mensaje: "Falta el nombre del producto." };
+    if (nombre.length < 3) {
+      return { ok: false, mensaje: "El nombre del producto es muy corto." };
+    }
+    if (nombre.length > 80) {
+      return { ok: false, mensaje: "El nombre es demasiado largo (máximo 80 letras)." };
+    }
     if (precio === undefined || precio <= 0) {
       return { ok: false, mensaje: "El precio debe ser mayor que cero." };
+    }
+    if (precio > 5000) {
+      return {
+        ok: false,
+        mensaje: `${soles(Math.round(precio))} es un precio fuera de lo normal para la tienda. Si es correcto, dímelo otra vez confirmando el número.`,
+      };
     }
 
     const cat = categories.find(
@@ -1272,20 +1392,54 @@ const agregarProducto: Tool = {
       };
     }
 
-    const slug = slugificar(nombre);
-    const existentes = await getProducts({ includeInactive: true, raw: true });
-    if (existentes.some((p) => p.slug === slug)) {
+    const anterior = numero(args, "precio_anterior");
+    if (anterior !== undefined && anterior <= precio) {
       return {
         ok: false,
-        mensaje: `Ya existe un producto con el nombre "${nombre}". Ponle un nombre distinto o edita el que ya está.`,
+        mensaje: `El precio anterior (${soles(anterior)}) tiene que ser mayor que el de venta (${soles(precio)}); si no, no es una oferta.`,
       };
     }
 
-    const tallas = lista(args, "tallas");
-    const stock = Math.max(0, Math.floor(numero(args, "stock") ?? 10));
-    const variants: Variant[] = (tallas.length ? tallas : ["Única"]).map(
-      (size) => ({ size, sku: skuFor(slug, size), stock })
+    const slug = slugificar(nombre);
+    const existentes = await getProducts({ includeInactive: true, raw: true });
+
+    const mismo = existentes.find(
+      (p) => p.slug === slug || normalizar(p.name) === normalizar(nombre)
     );
+    if (mismo) {
+      return {
+        ok: false,
+        mensaje: `Ya existe "${mismo.name}" (id ${mismo.id}). Si es otro modelo, ponle un nombre que los distinga; si es el mismo, dime qué quieres cambiarle.`,
+      };
+    }
+
+    const tallas = leerTallas(args);
+    if (tallas.length === 0) {
+      return {
+        ok: false,
+        mensaje: "Faltan las tallas. Dime cuáles van (por ejemplo S, M, L), o 'única' si no tiene tallas.",
+      };
+    }
+
+    const porDefecto = Math.max(0, Math.floor(numero(args, "stock") ?? 10));
+    const porTalla = leerStockPorTalla(args);
+    const variants: Variant[] = tallas.map((size) => ({
+      size,
+      sku: skuFor(slug, size),
+      stock: porTalla.get(normalizar(size)) ?? porDefecto,
+    }));
+
+    // Las fotos las engancha el sistema (llegan por Telegram), no el
+    // modelo: por eso no están entre los parámetros que él puede llenar.
+    const fotos = lista(args, "fotos").filter((f) => f.startsWith("/api/imagen/"));
+
+    // Un producto sin foto en una tienda de ropa no se vende: se crea
+    // como borrador y se publica cuando tenga imagen. Se puede forzar,
+    // pero hay que pedirlo.
+    const publicar = fotos.length > 0 || booleano(args, "publicar", false);
+
+    const colecciones = ["nuevos-ingresos"];
+    if (anterior !== undefined) colecciones.push("sale");
 
     const producto: Product = {
       id: await nextProductId(),
@@ -1295,14 +1449,40 @@ const agregarProducto: Tool = {
       category: cat.slug,
       description: texto(args, "descripcion") || undefined,
       variants,
-      collections: ["nuevos-ingresos"],
-      active: true,
+      collections: colecciones,
+      active: publicar,
+      ...(fotos.length > 0 ? { image: fotos[0], images: fotos } : {}),
+      ...(anterior !== undefined
+        ? { oldPrice: Math.round(anterior), onSale: true }
+        : {}),
+      ...(booleano(args, "destacado", false) ? { featured: true } : {}),
     };
 
     await upsertProduct(producto);
+
+    const unidades = variants.reduce((s, v) => s + v.stock, 0);
+    const avisos: string[] = [];
+
+    if (!publicar) {
+      avisos.push(
+        "Quedó OCULTO porque no tiene foto: mándame la foto y lo publico, o súbela desde /admin."
+      );
+    }
+    if (!producto.description) {
+      avisos.push("No tiene descripción; conviene ponerle una.");
+    }
+    const similares = parecidos(nombre, existentes);
+    if (similares.length > 0) {
+      avisos.push(`Ojo, ya existen parecidos: ${similares.join(", ")}.`);
+    }
+
     return {
       ok: true,
-      mensaje: `Producto "${producto.name}" creado a ${soles(producto.price)} (id ${producto.id}). Recuerda subirle la foto desde /admin.`,
+      mensaje:
+        `Producto "${producto.name}" creado a ${soles(producto.price)} en ${cat.name}` +
+        ` · ${tallas.join("/")} · ${unidades} unidades` +
+        `${fotos.length ? ` · ${fotos.length} foto(s)` : ""} (id ${producto.id}).` +
+        (avisos.length ? ` ${avisos.join(" ")}` : ""),
     };
   },
 };

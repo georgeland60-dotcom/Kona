@@ -4,7 +4,9 @@
 //  de negocio aquí.
 // =============================================================
 
-const API = "https://api.telegram.org";
+// La dirección de la API de Telegram. Se puede apuntar a otro sitio para
+// probar el flujo completo sin un bot de verdad.
+const API = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
 
 function token(): string {
   const t = process.env.TELEGRAM_BOT_TOKEN;
@@ -121,20 +123,20 @@ export async function mostrarEscribiendo(chatId: number): Promise<void> {
   await llamar("sendChatAction", { chat_id: chatId, action: "typing" });
 }
 
-// ---- Descargar una nota de voz --------------------------------------
+// ---- Descargar lo que manda la dueña --------------------------------
 
-const MAX_AUDIO = 10 * 1024 * 1024; // 10 MB
+const MAX_ARCHIVO = 10 * 1024 * 1024; // 10 MB
 
-// Devuelve el audio en base64, que es como lo entiende la IA.
-export async function descargarAudio(
+// Baja un archivo de Telegram (audio o foto) y devuelve sus bytes.
+export async function descargarArchivo(
   fileId: string
-): Promise<{ base64: string; mimeType: string } | null> {
+): Promise<{ bytes: Buffer; extension: string } | null> {
   const info = await llamar<{ file_path?: string; file_size?: number }>(
     "getFile",
     { file_id: fileId }
   );
   if (!info?.file_path) return null;
-  if (info.file_size && info.file_size > MAX_AUDIO) return null;
+  if (info.file_size && info.file_size > MAX_ARCHIVO) return null;
 
   try {
     const res = await fetch(`${API}/file/bot${token()}/${info.file_path}`, {
@@ -142,24 +144,53 @@ export async function descargarAudio(
     });
     if (!res.ok) return null;
 
-    const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.byteLength > MAX_AUDIO) return null;
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.byteLength > MAX_ARCHIVO) return null;
 
-    // Las notas de voz de Telegram son OGG/Opus.
-    const extension = info.file_path.split(".").pop()?.toLowerCase();
-    const mimeType =
-      extension === "mp3"
-        ? "audio/mp3"
-        : extension === "m4a"
-          ? "audio/mp4"
-          : extension === "wav"
-            ? "audio/wav"
-            : "audio/ogg";
-
-    return { base64: buffer.toString("base64"), mimeType };
+    return {
+      bytes,
+      extension: (info.file_path.split(".").pop() || "").toLowerCase(),
+    };
   } catch {
     return null;
   }
+}
+
+// Devuelve el audio en base64, que es como lo entiende la IA.
+export async function descargarAudio(
+  fileId: string
+): Promise<{ base64: string; mimeType: string } | null> {
+  const archivo = await descargarArchivo(fileId);
+  if (!archivo) return null;
+
+  // Las notas de voz de Telegram son OGG/Opus.
+  const mimeType =
+    archivo.extension === "mp3"
+      ? "audio/mp3"
+      : archivo.extension === "m4a"
+        ? "audio/mp4"
+        : archivo.extension === "wav"
+          ? "audio/wav"
+          : "audio/ogg";
+
+  return { base64: archivo.bytes.toString("base64"), mimeType };
+}
+
+// Baja una foto y devuelve sus bytes con el tipo que le corresponde.
+export async function descargarFoto(
+  fileId: string
+): Promise<{ bytes: Buffer; mime: string } | null> {
+  const archivo = await descargarArchivo(fileId);
+  if (!archivo) return null;
+
+  const mime =
+    archivo.extension === "png"
+      ? "image/png"
+      : archivo.extension === "webp"
+        ? "image/webp"
+        : "image/jpeg";
+
+  return { bytes: archivo.bytes, mime };
 }
 
 // ---- Registrar el webhook (se usa una sola vez, al instalar) --------

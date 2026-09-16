@@ -24,8 +24,11 @@ import {
   responderBoton,
   mostrarEscribiendo,
   descargarAudio,
+  descargarFoto,
   escapar,
 } from "@/lib/agent/telegram";
+import { guardarImagen } from "@/lib/imagenes";
+import { anotarFoto, vaciarFotos } from "@/lib/agent/fotos";
 
 // Pasado este tiempo, Vercel MATA la función sin avisar a nadie: no sale
 // ni la respuesta ni un error. Por eso el agente trabaja con un
@@ -48,6 +51,10 @@ type TelegramUpdate = {
     caption?: string;
     voice?: { file_id: string };
     audio?: { file_id: string };
+    // Telegram manda VARIOS tamaños de la misma foto, del más pequeño al
+    // más grande. El último es el bueno.
+    photo?: Array<{ file_id: string; width?: number; height?: number }>;
+    document?: { file_id: string; mime_type?: string };
   };
   callback_query?: {
     id: string;
@@ -56,6 +63,18 @@ type TelegramUpdate = {
     message?: { message_id: number; chat: { id: number; type?: string } };
   };
 };
+
+// La foto más grande que mandó Telegram (o una imagen enviada como
+// archivo, que es lo que pasa cuando se manda "sin comprimir").
+function fotoDelMensaje(mensaje: NonNullable<TelegramUpdate["message"]>): string | null {
+  if (mensaje.photo?.length) {
+    return mensaje.photo[mensaje.photo.length - 1].file_id;
+  }
+  if (mensaje.document?.mime_type?.startsWith("image/")) {
+    return mensaje.document.file_id;
+  }
+  return null;
+}
 
 // Cómo llamamos a quien escribió, para dejar constancia de quién pidió
 // y quién aprobó cada cambio (importante cuando el grupo tiene 2 personas).
@@ -84,13 +103,13 @@ const AYUDA = `
 • Descuentos: <i>"mete 20% a todos los vestidos hasta el domingo"</i>
 • Precios: <i>"el pantalón Killa ahora cuesta 129"</i>
 • Ofertas: <i>"pon el top Princess en oferta a 39"</i>
-• Productos: <i>"agrega blusa Lila a 79 en blusas, tallas S M L"</i>
+• Productos nuevos: mándame las <b>fotos</b> y luego <i>"agrega blusa Lila a 79 en blusas, tallas S M L"</i>
 • Quitar: <i>"saca de la web la casaca jean"</i>
 • Stock: <i>"el vestido Pams se agotó"</i>
 • Temporada: <i>"crea la temporada Verano y mete la ropa de baño"</i>
 
 <b>Lo que NO puedo hacer</b>
-Cambiar el diseño de la página, ver pedidos o datos de clientes, ni subir fotos (esas van por el panel /admin).
+Cambiar el diseño de la página, ver pedidos o datos de clientes, ni cambiarle la foto a un producto que ya existe (eso va por /admin).
 
 <b>Si estamos en un grupo</b>
 Cualquiera del grupo me puede pedir cambios, y cualquiera puede confirmarlos. Siempre dejo escrito quién pidió y quién confirmó cada cambio.
@@ -167,6 +186,43 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
   if (/^\/(start|ayuda|help)/i.test(texto)) {
     await enviarMensaje(chatId, AYUDA);
     return;
+  }
+
+  // ---- Fotos -------------------------------------------------------
+  // Las fotos no van a la IA (no hace falta que las mire): se guardan y
+  // quedan esperando a que se dé de alta el producto. Así la dueña puede
+  // mandar tres fotos y después escribir qué producto es, que es como se
+  // hace de verdad.
+  const foto = fotoDelMensaje(mensaje);
+  if (foto) {
+    await mostrarEscribiendo(chatId);
+    const bajada = await descargarFoto(foto);
+    const url = bajada ? await guardarImagen(bajada.bytes, bajada.mime) : null;
+
+    if (!url) {
+      await enviarMensaje(
+        chatId,
+        "No pude guardar esa foto. ¿Me la mandas otra vez?",
+        undefined,
+        { responderA: enGrupo ? mensaje.message_id : undefined }
+      );
+      return;
+    }
+
+    const cuantas = await anotarFoto(chatId, url);
+
+    // Si la foto viene sin texto, no hay nada que pensar todavía: se
+    // acusa recibo y se espera la descripción.
+    if (!texto) {
+      await enviarMensaje(
+        chatId,
+        `📸 Foto guardada (${cuantas} en total). Cuando me digas qué producto es, se la pongo.\n\n` +
+          "<i>Para darlo de alta necesito: nombre, precio, categoría y tallas.</i>",
+        undefined,
+        { responderA: enGrupo ? mensaje.message_id : undefined }
+      );
+      return;
+    }
   }
 
   // Armamos lo que le vamos a dar a la IA: el texto, el audio, o los dos.
@@ -273,6 +329,15 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
   const { hechos, fallos, detalle } = await aplicarPlan(acciones);
 
   if (hechos.length > 0) refrescarTienda();
+
+  // Si se dio de alta un producto, las fotos que esperaban ya quedaron
+  // puestas: se vacían para que no se le cuelguen al siguiente.
+  if (
+    acciones.some((a) => a.herramienta.includes("agregar_producto")) &&
+    hechos.length > 0
+  ) {
+    await vaciarFotos(chatId);
+  }
 
   // Dejamos constancia de lo que se aplicó, para la trazabilidad del panel.
   // Si esto fallara no debe tumbar la respuesta: el cambio ya está hecho y

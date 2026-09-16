@@ -21,6 +21,8 @@ import {
 } from "@/lib/agent/run";
 import { guardarSesion, type Sesion } from "@/lib/agent/sesion";
 import { guardarPlan } from "@/lib/agent/pending";
+import { verFotos } from "@/lib/agent/fotos";
+import { buscarHerramienta } from "@/lib/agent/tools";
 import { ErrorAgente } from "@/lib/agent/gemini";
 import {
   anotarConsumo,
@@ -116,6 +118,42 @@ async function responder(
   }
 }
 
+// Las fotos que la dueña mandó antes se enganchan al producto que está a
+// punto de crearse. Se hace aquí y no en la herramienta porque solo aquí
+// se sabe de qué chat vienen; y se hace ANTES de mostrar el plan para
+// que ella vea cuántas fotos llevará, que es parte de lo que confirma.
+//
+// No se borran del buzón todavía: si cancela, tienen que seguir ahí para
+// el siguiente intento.
+async function engancharFotos(
+  sesion: Sesion,
+  acciones: AccionPlan[]
+): Promise<void> {
+  const altas = acciones.filter((a) =>
+    a.herramienta.includes("agregar_producto")
+  );
+  if (altas.length === 0) return;
+
+  const fotos = await verFotos(sesion.chatId);
+  if (fotos.length === 0) return;
+
+  // Si se dan de alta dos productos a la vez no hay forma de saber qué
+  // foto es de cuál, así que no se adivina: se dejan para el que va solo.
+  if (altas.length > 1) return;
+
+  const alta = altas[0];
+  alta.args = { ...alta.args, fotos };
+
+  const herramienta = buscarHerramienta(alta.herramienta);
+  if (herramienta) {
+    try {
+      alta.resumen = await herramienta.resumen(alta.args);
+    } catch {
+      // Si el resumen falla, el plan sigue siendo válido.
+    }
+  }
+}
+
 async function entregar(
   sesion: Sesion,
   resultado: Extract<ResultadoAgente, { tipo: "respuesta" | "plan" }>
@@ -124,6 +162,8 @@ async function entregar(
     await responder(sesion, escapar(resultado.texto));
     return;
   }
+
+  await engancharFotos(sesion, resultado.acciones);
 
   const codigo = await guardarPlan(
     sesion.chatId,
