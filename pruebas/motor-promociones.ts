@@ -22,8 +22,8 @@ function ok(nombre: string, cond: boolean, extra: unknown = "") {
   else console.log("ok  ", nombre);
 }
 
-const P = (id: string, name: string, price: number, category: string): Product => ({
-  id, slug: id, name, price, category, variants: [{ size: "U", sku: id + "-U", stock: 10 }],
+const P = (id: string, name: string, price: number, category: string, stock = 10): Product => ({
+  id, slug: id, name, price, category, variants: [{ size: "U", sku: id + "-U", stock }],
 });
 
 const bag = P("p1", "Ribbon Bag Verde", 115, "carteras");
@@ -165,5 +165,39 @@ ok("el escalonado no se pinta con una sola unidad", precioVitrina(jean, [desde3]
 
 // 21. Regla apagada o vencida.
 ok("apagada no se muestra", precioVitrina(bag, [{ ...soloBag, active: false }]) === 115);
+
+// ---- Stock: nunca se cobra más de lo que hay ------------------------
+
+// 22. Pedir más unidades de las que quedan.
+const pocas = P("p9", "Botas Nara", 189, "calzado", 3);
+let r9 = preciarCarrito([{ productId: "p9", size: "U", qty: 10 }], [pocas], []);
+ok("no se cobran más unidades de las que hay", r9.lineas[0].qty === 3 && r9.total === 567, r9.lineas[0]);
+ok("queda constancia de lo que se pidió", r9.lineas[0].pedida === 10 && r9.lineas[0].disponible === 3, r9.lineas[0]);
+
+// 23. Sin stock, la línea no entra.
+const agotado = P("p10", "Agotado", 50, "basicos", 0);
+r9 = preciarCarrito([{ productId: "p10", size: "U", qty: 2 }], [agotado], []);
+ok("lo agotado no se cobra", r9.lineas.length === 0 && r9.total === 0, r9);
+
+// 24. El tope de stock manda también con promociones.
+const bogoPocas: DiscountRule = {
+  id: "rb2", name: "2x1", scope: "all", kind: "percent", value: 0, active: true,
+  tipo: "bogo", bogo: { porCada: 2, regala: 1, descuentoRegalo: 100, recursivo: true },
+};
+r9 = preciarCarrito([{ productId: "p9", size: "U", qty: 8 }], [pocas], [bogoPocas]);
+ok("el 2x1 se calcula sobre lo que hay, no sobre lo pedido", r9.lineas[0].qty === 3 && r9.lineas[0].regaladas === 1, r9.lineas[0]);
+
+// 25. Sin talla, cuenta el stock de todo el producto.
+const variasTallas: Product = {
+  id: "p11", slug: "p11", name: "Blusa", price: 79, category: "blusas",
+  variants: [
+    { size: "S", sku: "p11-S", stock: 1 },
+    { size: "M", sku: "p11-M", stock: 2 },
+  ],
+};
+r9 = preciarCarrito([{ productId: "p11", qty: 5 }], [variasTallas], []);
+ok("sin talla se mira el stock total", r9.lineas[0].qty === 3, r9.lineas[0]);
+r9 = preciarCarrito([{ productId: "p11", size: "S", qty: 5 }], [variasTallas], []);
+ok("con talla se mira esa talla", r9.lineas[0].qty === 1, r9.lineas[0]);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);

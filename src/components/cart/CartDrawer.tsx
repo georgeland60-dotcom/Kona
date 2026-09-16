@@ -176,7 +176,22 @@ export default function CartDrawer() {
                       </div>
                     );
                   })()}
-                  <div className="flex items-center gap-3 mt-2">
+                  {(() => {
+                    // El tope real lo dice el servidor al preciar; mientras
+                    // responde, se usa el stock que trae el producto.
+                    const linea = precio?.lineas.find(
+                      (x) => x.productId === i.product.id && x.size === i.size
+                    );
+                    const disponible =
+                      linea?.disponible ??
+                      (i.size
+                        ? (i.product.variants.find((v) => v.size === i.size)
+                            ?.stock ?? 0)
+                        : i.product.variants.reduce((s, v) => s + v.stock, 0));
+                    const enElTope = i.qty >= disponible;
+
+                    return (
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
                     <div className="flex items-center border border-line rounded">
                       <button
                         className="px-2 py-0.5"
@@ -186,7 +201,8 @@ export default function CartDrawer() {
                       </button>
                       <span className="px-2 text-sm">{i.qty}</span>
                       <button
-                        className="px-2 py-0.5"
+                        className="px-2 py-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                        disabled={enElTope}
                         onClick={() => setQty(i.product.id, i.qty + 1, i.size)}
                       >
                         +
@@ -198,7 +214,17 @@ export default function CartDrawer() {
                     >
                       Quitar
                     </button>
+                    {enElTope && (
+                      <span className="text-xs text-muted w-full">
+                        {disponible === 1
+                          ? "Queda 1 unidad"
+                          : `Quedan ${disponible} unidades`}
+                        {i.size ? ` en talla ${i.size}` : ""}
+                      </span>
+                    )}
                   </div>
+                    );
+                  })()}
                 </div>
               </div>
             ))}

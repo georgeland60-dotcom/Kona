@@ -312,6 +312,12 @@ Decisiones que conviene no romper:
   descuento del total o uno por cantidad no bajan el precio de una unidad
   suelta, así que no se muestran como precio rebajado. Aparecen cuando
   corresponde, en el carrito.
+- **Nunca se cobra más de lo que hay.** El tope de stock se aplica en el
+  motor, junto al precio, no en el navegador: el carrito guardado puede
+  traer un stock viejo y una petición se puede falsear. La línea lleva lo
+  que se cobra (`qty`), lo que se pidió (`pedida`) y lo que queda
+  (`disponible`), y el carrito se corrige solo cuando el servidor recorta.
+  Vender lo que no se tiene se descubre en el peor momento: al despachar.
 - **El carrito y el cobro usan la MISMA función** (`preciarPedido`), no dos
   parecidas. Es lo único que garantiza que no se muestre un precio y se
   cobre otro. `promo-engine.ts` es puro a propósito (recibe productos y

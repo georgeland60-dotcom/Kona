@@ -45,7 +45,9 @@ export type LineaPreciada = {
   sku?: string;
   size?: string;
   nombre: string;
-  qty: number;
+  qty: number; // lo que se cobra: nunca más de lo que hay
+  pedida: number; // lo que se pidió, que puede ser más
+  disponible: number; // unidades que quedan de esa talla
   precioLista: number; // por unidad, sin ninguna promoción
   precioUnitario: number; // el más bajo que se paga en esta línea
   subtotalLista: number; // lo que costaría sin promociones
@@ -81,6 +83,18 @@ export type CarritoPreciado = {
   promos: string[];
   descuentoCarrito?: DescuentoCarrito;
 };
+
+// Cuántas unidades hay de verdad de lo que se está pidiendo. Si la línea
+// no trae talla (productos de talla única, o el botón "Agregar" de la
+// ficha), cuenta todo el stock del producto.
+export function stockDisponible(producto: Product, size?: string): number {
+  // Se suma aquí en vez de importar el ayudante de types.ts para que este
+  // módulo siga sin depender de nada: es lo que permite probarlo suelto,
+  // sin servidor ni base de datos.
+  if (!size) return producto.variants.reduce((s, v) => s + v.stock, 0);
+  const variante = producto.variants.find((v) => v.size === size);
+  return variante ? variante.stock : 0;
+}
 
 // ---- Utilidades ------------------------------------------------------
 
@@ -283,8 +297,25 @@ export function preciarCarrito(
   const vigentes = reglas.filter((r) => vigente(r, ahora));
 
   // Solo las líneas que existen de verdad y piden algo.
+  //
+  // Y NUNCA más unidades de las que hay. Esto se hace aquí, en el mismo
+  // sitio donde se calcula el precio, porque es la única forma de que lo
+  // que se muestra, lo que se cobra y lo que existe sean lo mismo: el
+  // navegador puede pedir 50 de algo de lo que quedan 3, y el carrito
+  // guardado puede traer un stock viejo.
   const validas = lineas
-    .map((l, i) => ({ l, i, producto: porId.get(l.productId) }))
+    .map((l, i) => {
+      const producto = porId.get(l.productId);
+      const disponible = producto ? stockDisponible(producto, l.size) : 0;
+      const pedida = Math.max(0, Math.floor(l.qty));
+      return {
+        l: { ...l, qty: Math.min(pedida, disponible) },
+        pedida,
+        disponible,
+        i,
+        producto,
+      };
+    })
     .filter((x) => x.producto && x.l.qty > 0);
 
   // ---- Paso 1: descuentos por unidad (simple y escalonado) ----------
@@ -449,7 +480,7 @@ export function preciarCarrito(
   }
 
   // ---- Paso 4: volver a juntar las unidades en líneas ---------------
-  const preciadas: LineaPreciada[] = validas.map(({ l, producto }, idx) => {
+  const preciadas: LineaPreciada[] = validas.map(({ l, producto, pedida, disponible }, idx) => {
     const mias: number[] = [];
     unidades.forEach((u, i) => {
       if (u.linea === idx) mias.push(i);
@@ -465,6 +496,8 @@ export function preciarCarrito(
       size: l.size,
       nombre: producto!.name,
       qty: l.qty,
+      pedida,
+      disponible,
       precioLista: producto!.price,
       // Lo que cuesta una unidad normal (la regalada se muestra aparte).
       precioUnitario: Math.max(...mias.map((i) => unidades[i].precio)),

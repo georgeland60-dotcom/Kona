@@ -10,7 +10,7 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { Product } from "@/lib/types";
+import { Product, totalStock } from "@/lib/types";
 
 export type CartItem = {
   product: Product;
@@ -26,6 +26,8 @@ export type LineaPreciada = {
   size?: string;
   nombre: string;
   qty: number;
+  pedida: number; // lo que se pidió (puede ser más de lo que hay)
+  disponible: number; // unidades que quedan
   precioLista: number;
   precioUnitario: number;
   subtotalLista: number;
@@ -75,6 +77,14 @@ function firmaDe(items: CartItem[]): string {
   return JSON.stringify(items.map((i) => [i.product.id, i.size ?? "", i.qty]));
 }
 
+// Cuántas unidades hay de esa talla. El carrito guardado en el navegador
+// puede traer un stock viejo, así que esto es solo para no dejar pedir un
+// disparate: quien manda es el servidor, que recalcula al preciar.
+function disponibleDe(product: Product, size?: string): number {
+  if (!size) return totalStock(product);
+  return product.variants.find((v) => v.size === size)?.stock ?? 0;
+}
+
 const CartContext = createContext<CartContextType | null>(null);
 const STORAGE_KEY = "tienda-cart";
 
@@ -104,13 +114,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const add = (product: Product, size?: string) => {
+    const tope = disponibleDe(product, size);
     setItems((prev) => {
       const idx = prev.findIndex(
         (i) => i.product.id === product.id && i.size === size
       );
       if (idx >= 0) {
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
+        // No pasar del stock: pedir 5 de lo que hay 3 solo sirve para
+        // decepcionar a la clienta en el último paso.
+        copy[idx] = {
+          ...copy[idx],
+          qty: Math.min(copy[idx].qty + 1, Math.max(1, tope)),
+        };
         return copy;
       }
       return [...prev, { product, qty: 1, size }];
@@ -127,9 +143,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setQty = (id: string, qty: number, size?: string) => {
     if (qty <= 0) return remove(id, size);
     setItems((prev) =>
-      prev.map((i) =>
-        i.product.id === id && i.size === size ? { ...i, qty } : i
-      )
+      prev.map((i) => {
+        if (i.product.id !== id || i.size !== size) return i;
+        const tope = Math.max(1, disponibleDe(i.product, i.size));
+        return { ...i, qty: Math.min(qty, tope) };
+      })
     );
   };
 
@@ -159,7 +177,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .then((data: PrecioCarrito | null) => {
         // Si mientras respondía el carrito volvió a cambiar, esta respuesta
         // ya no vale: la descartamos en vez de pintar un precio viejo.
-        if (!cancelado && data) setPrecioState({ firma, datos: data });
+        if (cancelado || !data) return;
+        setPrecioState({ firma, datos: data });
+
+        // El servidor sabe el stock de verdad. Si recortó alguna línea
+        // (el carrito guardado traía un stock viejo, o alguien compró
+        // antes), se ajusta el carrito para que lo que se ve sea lo que
+        // se va a cobrar.
+        const recortadas = data.lineas.filter((l) => l.qty < l.pedida);
+        if (recortadas.length > 0) {
+          setItems((prev) =>
+            prev
+              .map((i) => {
+                const linea = recortadas.find(
+                  (l) => l.productId === i.product.id && l.size === i.size
+                );
+                return linea ? { ...i, qty: linea.qty } : i;
+              })
+              .filter((i) => i.qty > 0)
+          );
+        }
       })
       .catch(() => {
         // Sin conexión seguimos mostrando el último precio conocido.
