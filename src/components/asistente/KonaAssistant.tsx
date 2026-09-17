@@ -67,10 +67,45 @@ export default function KonaAssistant() {
   const [pensando, setPensando] = useState(false);
   const finRef = useRef<HTMLDivElement>(null);
 
+  const [aviso, setAviso] = useState(false);
+
   // Cada mensaje nuevo deja la conversación abajo, como cualquier chat.
   useEffect(() => {
     if (abierto) finRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes, abierto, pensando]);
+
+  // Otras partes de la tienda pueden llamarlo (por ejemplo el botón de
+  // "no sé mi talla" de la ficha). Se avisa por un evento del navegador
+  // para no tener que pasar nada de mano en mano por media aplicación.
+  useEffect(() => {
+    const abrir = () => {
+      setAbierto(true);
+      setAviso(false);
+    };
+    window.addEventListener("kona-asistente:abrir", abrir);
+    return () => window.removeEventListener("kona-asistente:abrir", abrir);
+  }, []);
+
+  // Un aviso corto la primera vez que alguien se queda un rato en la
+  // tienda: si no, la burbuja pasa desapercibida y nadie descubre que
+  // puede preguntar. Solo una vez por visita, y se puede cerrar.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (sessionStorage.getItem("kona-asistente-visto")) return;
+    } catch {
+      return;
+    }
+    const t = setTimeout(() => {
+      setAviso(true);
+      try {
+        sessionStorage.setItem("kona-asistente-visto", "1");
+      } catch {
+        // Modo incógnito: da igual, solo significa que se verá otra vez.
+      }
+    }, 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   const preguntar = async (pregunta: string, sobre?: string) => {
     const limpio = pregunta.trim();
@@ -118,21 +153,55 @@ export default function KonaAssistant() {
 
   return (
     <>
+      {/* Globo de aviso: aparece una vez y llama la atención sin tapar
+          nada. Se cierra solo al abrir el asistente. */}
+      {aviso && !abierto && (
+        <div className="fixed bottom-24 right-5 z-40 max-w-[16rem] animate-[fadeIn_.3s_ease-out]">
+          <button
+            onClick={() => {
+              setAbierto(true);
+              setAviso(false);
+            }}
+            className="text-left bg-background border border-accent/30 shadow-xl rounded-2xl rounded-br-sm px-4 py-3"
+          >
+            <p className="text-sm font-medium">¿Te ayudo a elegir? 💛</p>
+            <p className="text-xs text-muted mt-0.5">
+              Te digo qué prenda te conviene y qué talla pedir.
+            </p>
+          </button>
+          <button
+            onClick={() => setAviso(false)}
+            aria-label="Cerrar aviso"
+            className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-foreground text-background text-xs leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Burbuja */}
       <button
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => {
+          setAbierto((v) => !v);
+          setAviso(false);
+        }}
         aria-label={abierto ? "Cerrar el asistente" : "Abrir el asistente"}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-accent text-white shadow-lg px-4 py-3 hover:bg-accent-dark transition"
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 rounded-full bg-accent text-white shadow-xl px-5 py-4 hover:bg-accent-dark transition-transform hover:scale-105"
       >
         {abierto ? (
-          <span className="text-lg leading-none">×</span>
+          <span className="text-xl leading-none px-1">×</span>
         ) : (
           <>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z" />
-            </svg>
-            <span className="text-sm font-medium hidden sm:inline">
-              ¿Te ayudo a elegir?
+            {/* El anillo que late: es lo que hace que se vea sin tener
+                que ocupar media pantalla. */}
+            <span className="absolute inset-0 rounded-full bg-accent opacity-60 animate-ping pointer-events-none" />
+            <span className="relative flex items-center gap-2.5">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z" />
+              </svg>
+              <span className="text-sm font-semibold whitespace-nowrap">
+                ¿Te ayudo a elegir?
+              </span>
             </span>
           </>
         )}

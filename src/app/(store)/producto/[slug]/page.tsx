@@ -5,6 +5,7 @@ import { getCategorias } from "@/lib/categorias-data";
 import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/product/AddToCartButton";
 import GuiaTallas from "@/components/product/GuiaTallas";
+import PreguntarTalla from "@/components/product/PreguntarTalla";
 import ProductGallery from "@/components/product/ProductGallery";
 import ProductGrid from "@/components/product/ProductGrid";
 import TrackView from "@/components/TrackView";
@@ -107,6 +108,8 @@ export default async function ProductPage({
             })()}
 
           <AddToCartButton product={product} />
+
+          <PreguntarTalla />
 
           <GuiaTallas product={product} />
 

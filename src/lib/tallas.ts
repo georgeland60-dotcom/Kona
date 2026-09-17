@@ -99,6 +99,11 @@ export function guiaDeProducto(producto: Product): GuiaDeTallas | null {
     };
   }
 
+  // Sin medidas cargadas: o se estiman, o se remite a la tabla que la
+  // tienda pone en las fotos. Dos tablas distintas para la misma prenda
+  // confunden más que ninguna.
+  if (!store.medidasEstimadas) return null;
+
   const molde = MOLDES[POR_CATEGORIA[producto.category] ?? ""];
   if (!molde) return null;
 
@@ -149,14 +154,17 @@ export function modeloEnTexto(producto: Product): string | null {
   if (!m) {
     const ref = store.modeloReferencia;
     if (!ref?.talla) return null;
+    // Se dice en presente y en concreto, como pidió la tienda: es la
+    // talla con la que se fotografían las prendas mientras no se cargue
+    // la de cada una.
     return (
-      `En general nuestras modelos usan talla ${ref.talla}` +
-      (ref.altura ? ` y miden alrededor de ${(ref.altura / 100).toFixed(2)} m` : "") +
-      ". De esta prenda todavía no tenemos la referencia exacta de la foto."
+      `La modelo está usando talla ${ref.talla}` +
+      (ref.altura ? ` y mide ${(ref.altura / 100).toFixed(2)} m` : "") +
+      "."
     );
   }
 
-  const partes = [`usa talla ${m.talla}`];
+  const partes = [`está usando talla ${m.talla}`];
   if (m.altura) partes.push(`mide ${(m.altura / 100).toFixed(2)} m`);
   if (m.medidas && Object.keys(m.medidas).length > 0) {
     partes.push(

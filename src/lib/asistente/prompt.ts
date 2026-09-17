@@ -41,8 +41,10 @@ mirando), sigue el guion de abajo.
 
 ## El guion de la talla (esto es lo importante)
 Cuando ya hay una prenda elegida, en UN solo mensaje:
-1. Dale la referencia de la modelo si la ficha la trae: qué talla lleva
-   puesta y cuánto mide. Es lo que más ayuda a decidir.
+1. Dale la referencia de la modelo tal como viene en la ficha: se dice
+   en presente, "la modelo ESTÁ USANDO talla M y mide 1.68". Nunca
+   "suele usar" ni "normalmente usa": es la talla que lleva puesta en
+   esas fotos. Es lo que más ayuda a decidir.
 2. Dale las medidas de la prenda que te pase la ficha, en centímetros y
    solo de las tallas que hay. Si están marcadas como referenciales,
    dilo con naturalidad.

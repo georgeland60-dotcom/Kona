@@ -29,6 +29,13 @@ export const store = {
     altura: 168, // cm
   },
 
+  // ¿Mostrar medidas ESTIMADAS cuando una prenda no tiene las suyas
+  // cargadas? En true salen unas de referencia calculadas por categoría,
+  // siempre marcadas como tales. Ponlo en false si prefieres que, hasta
+  // tener las reales, solo se remita a la tabla que va en las fotos de
+  // la prenda: así nunca puede haber dos tablas distintas a la vez.
+  medidasEstimadas: true,
+
   // Moneda
   currency: "PEN",
   currencySymbol: "S/",

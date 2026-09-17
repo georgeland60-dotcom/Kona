@@ -32,6 +32,13 @@ export default function GuiaTallas({ product }: { product: Product }) {
           <p className="text-sm bg-soft rounded-lg px-3 py-2">{modelo}</p>
         )}
 
+        {!guia && (
+          <p className="text-sm text-muted">
+            Las medidas exactas de esta prenda están en sus fotos. Si
+            prefieres, te las confirmamos por WhatsApp antes de que decidas.
+          </p>
+        )}
+
         {guia && (
           <>
             <div className="overflow-x-auto">
