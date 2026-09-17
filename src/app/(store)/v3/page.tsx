@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
 import { getActiveBanners, getLiveRules } from "@/lib/promos-data";
+import { getCategorias } from "@/lib/categorias-data";
 import { buildPromos } from "@/lib/promos-display";
 import { getBestSellers, getTopCollections } from "@/lib/bestsellers";
 import { resolveBlocks } from "@/data/home-blocks";
@@ -33,21 +34,22 @@ export const dynamic = "force-dynamic";
 // Mensajes de la cinta. El delivery va primero porque es lo que mas
 // preguntan las clientas. Cada uno lleva su color de estrella.
 const CINTA = [
-  { texto: "DELIVERY LIMA EN 3 DÍAS", color: "text-v3-coral" },
-  { texto: "PROVINCIA EN 7 DÍAS", color: "text-v3-amber" },
-  { texto: "PAGO SEGURO", color: "text-v3-teal" },
-  { texto: "CAMBIOS EN 7 DÍAS", color: "text-v3-lilac" },
-  { texto: "NUEVA TEMPORADA", color: "text-v3-primary" },
+  "DELIVERY LIMA EN 3 DÍAS",
+  "PROVINCIA EN 7 DÍAS",
+  "PAGO SEGURO",
+  "CAMBIOS EN 7 DÍAS",
+  "NUEVA TEMPORADA",
 ];
 
 export default async function V3() {
-  const [products, banners, rules] = await Promise.all([
+  const [products, banners, rules, categorias] = await Promise.all([
     getProducts(),
     getActiveBanners(),
     getLiveRules(),
+    getCategorias(),
   ]);
 
-  const promos = buildPromos(rules, banners, products);
+  const promos = buildPromos(rules, banners, products, categorias);
   const bloques = resolveBlocks(products);
   const [favoritos, topColecciones] = await Promise.all([
     getBestSellers(products, 8),
@@ -61,23 +63,18 @@ export default async function V3() {
       {/* 3. POP-UP DE PROMOCIONES (se muestra solo si hay alguna vigente) */}
       <PromoPopup promos={promos} />
 
-      {/* 1. CINTA NEGRA — mas delgada y con acentos de color */}
-      <div className="bg-black text-white overflow-hidden whitespace-nowrap">
-        {/* hilo de color sobre la cinta, para que no sea solo negro */}
-        <div
-          aria-hidden="true"
-          className="h-1 w-full bg-gradient-to-r from-v3-primary via-v3-amber to-v3-teal"
-        />
+      {/* 1. CINTA DE AVISOS — en el fucsia de la marca, letras blancas */}
+      <div className="bg-accent text-white overflow-hidden whitespace-nowrap">
         <div className="py-2">
           <div className="inline-flex animate-marquee">
             {[0, 1].map((k) => (
               <span key={k} className="inline-flex">
-                {CINTA.map((item, idx) => (
+                {CINTA.map((texto, idx) => (
                   <span
                     key={idx}
                     className="mx-5 uppercase tracking-[0.25em] text-[11px] font-semibold"
                   >
-                    {item.texto} <span className={item.color}>✦</span>
+                    {texto} <span className="text-white/60">✦</span>
                   </span>
                 ))}
               </span>
@@ -89,11 +86,12 @@ export default async function V3() {
       {/* 2. CUATRO BLOQUES VERTICALES DE CATEGORIA */}
       <section className="max-w-6xl mx-auto px-4 pt-12 pb-14 md:pt-16 md:pb-20">
         <div className="text-center mb-10 md:mb-12">
-          <p className="uppercase tracking-[0.35em] text-xs text-v3-primary font-semibold mb-3">
-            Elige tu estilo
+          <p className="uppercase tracking-[0.35em] text-xs text-accent font-semibold mb-3">
+            #KonaGirl
           </p>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[0.95]">
-            Lo que <span className="text-v3-primary">te queda</span> bien
+            Siente Kona,{" "}
+            <span className="text-accent">siéntete libre</span>
           </h1>
           {/* letra de apoyo mas grande (antes era text-sm) */}
           <p className="text-v3-ink-soft text-lg md:text-xl max-w-xl mx-auto mt-4 leading-relaxed">

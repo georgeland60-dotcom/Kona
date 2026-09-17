@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { store } from "@/config/store";
 import type { Category } from "@/lib/types";
@@ -9,7 +10,13 @@ import { useCart } from "@/components/cart/CartContext";
 
 export default function Header({ categorias }: { categorias: Category[] }) {
   const { count, setOpen } = useCart();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Mientras se esta viendo el diseno nuevo, "Inicio" y el logo se quedan
+  // dentro de el en vez de devolver al inicio de siempre. Fuera de /v3
+  // todo se comporta exactamente igual que antes.
+  const inicioHref = pathname?.startsWith("/v3") ? "/v3" : "/";
   const [prodOpen, setProdOpen] = useState(false);
 
   const closeMenu = () => {
@@ -39,7 +46,7 @@ export default function Header({ categorias }: { categorias: Category[] }) {
 
           {/* Logo */}
           <Link
-            href="/"
+            href={inicioHref}
             aria-label={store.name}
             className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0"
           >
@@ -55,7 +62,7 @@ export default function Header({ categorias }: { categorias: Category[] }) {
 
           {/* Menu en escritorio */}
           <nav className="hidden md:flex items-center gap-5 text-[13px] uppercase tracking-wide">
-            <Link href="/" className="hover:text-accent transition">
+            <Link href={inicioHref} className="hover:text-accent transition">
               Inicio
             </Link>
             <Link
@@ -134,7 +141,7 @@ export default function Header({ categorias }: { categorias: Category[] }) {
         {/* Menu desplegable en celular */}
         {menuOpen && (
           <nav className="md:hidden pb-4 flex flex-col gap-1 text-sm border-t border-line pt-3">
-            <Link href="/" onClick={closeMenu} className="py-1.5">
+            <Link href={inicioHref} onClick={closeMenu} className="py-1.5">
               Inicio
             </Link>
             <Link href="/tienda?cat=nuevos-ingresos" onClick={closeMenu} className="py-1.5">

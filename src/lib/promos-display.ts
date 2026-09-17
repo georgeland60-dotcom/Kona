@@ -1,81 +1,198 @@
 // =============================================================
-//  PROMOCIONES PARA MOSTRAR AL CLIENTE
-//  Toma lo que ya existe en el panel (las reglas de descuento
-//  vigentes y los banners activos) y lo convierte en una lista
-//  simple y legible para el pop-up del inicio.
-//  Es dinamico: lo que se prende o apaga en /admin sale aqui.
+//  PROMOCIONES COMO GANCHO DE VENTA
+//  Convierte las reglas vigentes del panel en un mensaje corto y
+//  concreto: "2x1 en Chompas", "20% OFF en Vestidos", "Todo a S/ 89".
+//  Nada se inventa: el gancho se arma leyendo la MISMA regla que
+//  luego cobra el carrito, asi que lo que se promete es lo que se
+//  cobra. Si una promocion se queda sin stock, no se anuncia.
 // =============================================================
 
-import { categories } from "@/data/categories";
 import { formatPrice } from "@/lib/format";
-import type { Banner, DiscountRule, Product } from "@/lib/types";
+import { aplicaAlProducto, stockDisponible } from "@/lib/promo-engine";
+import type { Banner, Category, DiscountRule, Product } from "@/lib/types";
+
+// Por debajo de estas unidades el pop-up avisa que queda poco. Es el
+// empujon final ("quedan 2!"), pero solo cuando es verdad.
+const UMBRAL_POCAS_UNIDADES = 6;
 
 export type PromoItem = {
   id: string;
-  title: string; // lo grande, ej "20% de descuento"
-  detail: string; // a que aplica, ej "en Vestidos"
+  title: string; // el gancho grande, ej "2x1"
+  detail: string; // la condicion, ej "Llevando 2, la 2da gratis"
+  scope: string; // donde aplica, ej "en Chompas"
+  urgency?: string; // ej "Solo quedan 2 unidades"
   href: string;
   image?: string;
   cta: string;
 };
 
-function categoryName(slug: string): string {
-  return categories.find((c) => c.slug === slug)?.name ?? slug;
+// ---- El gancho: lo que se lee en grande ------------------------------
+
+function gancho(rule: DiscountRule): string {
+  // Un 2x1 no tiene porcentaje: su "value" es 0 y diria "0% OFF".
+  if (rule.tipo === "bogo" && rule.bogo) {
+    const { porCada, regala, descuentoRegalo } = rule.bogo;
+    if (descuentoRegalo >= 100) return `${porCada}x${porCada - regala}`;
+    return `${descuentoRegalo}% OFF en la ${porCada}ª`;
+  }
+
+  // Un escalonado son varios escalones: se anuncia el mejor.
+  if (rule.tipo === "escalonado" && rule.tramos?.length) {
+    const mejorPct = Math.max(
+      0,
+      ...rule.tramos.filter((t) => t.kind === "percent").map((t) => t.value)
+    );
+    if (mejorPct > 0) return `Hasta ${mejorPct}% OFF`;
+    const mejorFijo = Math.max(0, ...rule.tramos.map((t) => t.value));
+    return `Hasta ${formatPrice(mejorFijo)} OFF`;
+  }
+
+  if (rule.kind === "precio_fijo") return `Todo a ${formatPrice(rule.value)}`;
+  if (rule.kind === "percent") return `${rule.value}% OFF`;
+  return `${formatPrice(rule.value)} OFF`;
 }
 
-// "20% de descuento" / "S/ 30.00 de descuento"
-function ruleTitle(rule: DiscountRule): string {
-  return rule.kind === "percent"
-    ? `${rule.value}% de descuento`
-    : `${formatPrice(rule.value)} de descuento`;
+// ---- La condicion: la letra chica que evita malentendidos ------------
+
+function detalle(rule: DiscountRule): string {
+  if (rule.tipo === "bogo" && rule.bogo) {
+    const { porCada, regala, descuentoRegalo } = rule.bogo;
+    const que = regala === 1 ? "la siguiente" : `las siguientes ${regala}`;
+    return descuentoRegalo >= 100
+      ? `Llevando ${porCada}, ${que} va gratis`
+      : `Llevando ${porCada}, ${que} al ${descuentoRegalo}% OFF`;
+  }
+
+  if (rule.tipo === "carrito") {
+    const c = rule.carrito?.condicion;
+    const partes: string[] = [];
+    if (c?.cantidadMinima) {
+      partes.push(
+        c.cantidadMinima === 1
+          ? "En toda la compra"
+          : `Llevando ${c.cantidadMinima} prendas o más`
+      );
+    }
+    if (c?.subtotalMinimo) {
+      partes.push(`En compras desde ${formatPrice(c.subtotalMinimo)}`);
+    }
+    if (partes.length === 0) partes.push("Sobre el total de tu compra");
+    if (rule.carrito?.maximoDescuento) {
+      partes.push(`máximo ${formatPrice(rule.carrito.maximoDescuento)}`);
+    }
+    return partes.join(" · ");
+  }
+
+  if (rule.tipo === "escalonado" && rule.tramos?.length) {
+    return rule.tramos
+      .map(
+        (t) =>
+          `${t.desde}+ u: ${
+            t.kind === "percent" ? `${t.value}%` : formatPrice(t.value)
+          }`
+      )
+      .join(" · ");
+  }
+
+  return "Precio ya rebajado en la tienda";
 }
 
-// "en toda la tienda" / "en Vestidos" / "en Vestido Dreams"
-function ruleDetail(rule: DiscountRule, products: Product[]): string {
+// ---- Donde aplica ----------------------------------------------------
+
+function nombresCategorias(slugs: string[], categorias: Category[]): string {
+  return slugs
+    .map((s) => categorias.find((c) => c.slug === s)?.name ?? s)
+    .join(", ");
+}
+
+function alcance(
+  rule: DiscountRule,
+  categorias: Category[],
+  products: Product[]
+): string {
+  const f = rule.filtro;
+  if (f) {
+    if (f.todos) return "En toda la tienda";
+    if (f.categorias?.length) {
+      return `En ${nombresCategorias(f.categorias, categorias)}`;
+    }
+    if (f.productos?.length === 1) {
+      const p = products.find((x) => x.id === f.productos?.[0]);
+      if (p) return `En ${p.name}`;
+    }
+    if (f.productos?.length) return `En ${f.productos.length} prendas`;
+  }
   if (rule.scope === "all") return "En toda la tienda";
   if (rule.scope === "category") {
-    return `En ${categoryName(rule.target ?? "")}`;
+    return `En ${nombresCategorias([rule.target ?? ""], categorias)}`;
   }
-  const product = products.find((p) => p.id === rule.target);
-  return product ? `En ${product.name}` : "Promoción especial";
+  const p = products.find((x) => x.id === rule.target);
+  return p ? `En ${p.name}` : "Promoción especial";
 }
 
-// A donde lleva el boton de la promocion.
-function ruleHref(rule: DiscountRule, products: Product[]): string {
-  if (rule.scope === "category" && rule.target) {
-    return `/tienda?cat=${rule.target}`;
-  }
-  if (rule.scope === "product") {
-    const product = products.find((p) => p.id === rule.target);
-    if (product) return `/producto/${product.slug}`;
-  }
+// ---- Urgencia: solo si es cierta -------------------------------------
+
+// Unidades que quedan entre los productos a los que apunta la regla.
+function unidadesEnJuego(rule: DiscountRule, products: Product[]): number {
+  return products
+    .filter((p) => aplicaAlProducto(rule, p))
+    .reduce((sum, p) => sum + stockDisponible(p), 0);
+}
+
+function urgencia(unidades: number): string | undefined {
+  if (unidades <= 0 || unidades >= UMBRAL_POCAS_UNIDADES) return undefined;
+  return unidades === 1 ? "Queda 1 unidad" : `Solo quedan ${unidades} unidades`;
+}
+
+// ---- A donde lleva ---------------------------------------------------
+
+function destino(rule: DiscountRule, products: Product[]): string {
+  const f = rule.filtro;
+  const cat = f?.categorias?.[0] ?? (rule.scope === "category" ? rule.target : undefined);
+  if (cat) return `/tienda?cat=${cat}`;
+  const prodId = f?.productos?.[0] ?? (rule.scope === "product" ? rule.target : undefined);
+  const p = products.find((x) => x.id === prodId);
+  if (p) return `/producto/${p.slug}`;
   return "/tienda";
 }
 
-// Arma la lista completa de promociones vigentes.
-// Recibe los datos ya leidos para no repetir lecturas de disco.
+// ---- Armado final ----------------------------------------------------
+
 export function buildPromos(
   liveRules: DiscountRule[],
   activeBanners: Banner[],
-  products: Product[]
+  products: Product[],
+  categorias: Category[]
 ): PromoItem[] {
-  const deReglas: PromoItem[] = liveRules.map((rule) => ({
-    id: rule.id,
-    title: ruleTitle(rule),
-    detail: ruleDetail(rule, products),
-    href: ruleHref(rule, products),
-    cta: "Ver productos",
-  }));
+  const deReglas: PromoItem[] = [];
 
+  for (const rule of liveRules) {
+    const unidades = unidadesEnJuego(rule, products);
+    // Una promocion sin stock es una promesa que no se puede cumplir.
+    if (unidades <= 0) continue;
+
+    deReglas.push({
+      id: rule.id,
+      title: gancho(rule),
+      detail: detalle(rule),
+      scope: alcance(rule, categorias, products),
+      urgency: urgencia(unidades),
+      href: destino(rule, products),
+      cta: "Lo quiero",
+    });
+  }
+
+  // Los banners son avisos libres que escribe la tienda (por ejemplo
+  // "Delivery gratis desde 3 prendas"): van despues de los descuentos.
   const deBanners: PromoItem[] = activeBanners.map((banner) => ({
     id: banner.id,
     title: banner.title,
     detail: banner.text || banner.eyebrow,
+    scope: banner.eyebrow || "",
     href: banner.href || "/tienda",
     image: banner.image,
-    cta: banner.cta || "Ver mas",
+    cta: banner.cta || "Ver más",
   }));
 
-  // Los descuentos van primero: son lo que mas mueve la compra.
   return [...deReglas, ...deBanners];
 }
