@@ -36,6 +36,18 @@ export const store = {
   // la prenda: así nunca puede haber dos tablas distintas a la vez.
   medidasEstimadas: true,
 
+  // ¿Decir qué talla lleva la modelo aunque esa prenda no traiga el dato
+  // cargado? En true se usa la talla de referencia de arriba traducida a
+  // la escala de cada prenda (en un jean que va del 28 al 34, la "M"
+  // equivale a la 30), para que ninguna ficha se quede sin referencia
+  // mientras se cargan las reales.
+  //
+  // OJO: mientras esté en true, esa talla es una ESTIMACIÓN, no un dato
+  // de esa foto. Es útil para probar; en cuanto cada prenda tenga su
+  // modeloFoto cargada, esto se puede poner en false y solo se dirá lo
+  // que de verdad se sabe.
+  tallaModeloEstimada: true,
+
   // Moneda
   currency: "PEN",
   currencySymbol: "S/",

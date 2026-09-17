@@ -72,18 +72,23 @@ function distanciaALaBase(talla: string, tipo: keyof typeof MOLDES): number | nu
   const enEscala = ESCALA.indexOf(limpia);
   if (enEscala >= 0) return enEscala - ESCALA.indexOf("M");
 
-  // Números: solo significan algo en calzado, donde la escala es
-  // conocida (el 37 de base). En un pantalón un "32" es una talla de la
-  // marca, no una medida, y tratarla como un número de zapato daba
-  // cinturas de 37 cm. Sin escala fiable, no se estima nada.
+  const numero = Number(limpia.replace(",", "."));
+  if (!Number.isFinite(numero)) return null;
+
+  // Un número no quiere decir lo mismo en un zapato que en un jean, y
+  // confundirlos es lo que daba cinturas de 37 cm. Cada escala va por
+  // su lado.
   if (tipo === "calzado") {
-    const numero = Number(limpia.replace(",", "."));
-    if (Number.isFinite(numero) && numero >= 30 && numero <= 48) {
-      return numero - 37;
-    }
+    // Calzado: la base es el 37.
+    if (numero >= 30 && numero <= 48) return numero - 37;
+    return null;
   }
 
-  return null; // "Única", tallas por número de marca, y cualquier otra
+  // Ropa por número (jeans, pantalones): la escala sube de dos en dos y
+  // la 30 hace de M, así que la 32 es una L y la 28 una S.
+  if (numero >= 24 && numero <= 46) return (numero - 30) / 2;
+
+  return null; // "Única" y cualquier otra que no diga nada
 }
 
 // ¿Esta prenda no lleva talla? (una cartera, un accesorio)
@@ -99,6 +104,39 @@ export function esTallaUnica(producto: Product): boolean {
 function tieneTalla(producto: Product, talla: string): boolean {
   const buscada = talla.trim().toLowerCase();
   return producto.variants.some((v) => v.size.trim().toLowerCase() === buscada);
+}
+
+// La talla de esta prenda que equivale a la de referencia de la tienda.
+//
+// La tienda se fotografía con una talla ("M"), pero no todas las prendas
+// usan letras: en un jean que va del 28 al 34, esa M es la 30. Se busca
+// la talla de la prenda que queda más cerca en la escala, y si ninguna
+// dice nada (números de marca raros), se toma la del medio.
+function tallaEquivalente(producto: Product, referencia: string): string | null {
+  const tallas = producto.variants.map((v) => v.size);
+  if (tallas.length === 0) return null;
+
+  const exacta = tallas.find(
+    (t) => t.trim().toLowerCase() === referencia.trim().toLowerCase()
+  );
+  if (exacta) return exacta;
+
+  const tipo = POR_CATEGORIA[producto.category];
+  if (tipo) {
+    const objetivo = distanciaALaBase(referencia, tipo);
+    if (objetivo !== null) {
+      let mejor: { talla: string; lejos: number } | null = null;
+      for (const talla of tallas) {
+        const d = distanciaALaBase(talla, tipo);
+        if (d === null) continue;
+        const lejos = Math.abs(d - objetivo);
+        if (!mejor || lejos < mejor.lejos) mejor = { talla, lejos };
+      }
+      if (mejor) return mejor.talla;
+    }
+  }
+
+  return tallas[Math.floor((tallas.length - 1) / 2)];
 }
 
 function redondear(n: number): number {
@@ -180,16 +218,25 @@ export function modeloEnTexto(producto: Product): string | null {
 
   if (!m) {
     const ref = store.modeloReferencia;
-    // La talla de referencia de la tienda ("M") solo vale si esta prenda
-    // la tiene: los pantalones van por número y ahí una M no existe.
-    // Antes se afirmaba igual, y quedaba en evidencia.
-    if (!ref?.talla || !tieneTalla(producto, ref.talla)) return null;
+    if (!ref?.talla) return null;
+
+    // La talla de referencia de la tienda ("M") no se puede soltar tal
+    // cual: los pantalones van por número y ahí una M no existe. Se
+    // traduce a la escala de esta prenda (M -> 30) y, si ni eso se
+    // puede, no se dice nada antes que decir una talla que no se puede
+    // pedir.
+    const talla = store.tallaModeloEstimada
+      ? tallaEquivalente(producto, ref.talla)
+      : tieneTalla(producto, ref.talla)
+        ? ref.talla
+        : null;
+    if (!talla) return null;
 
     // Se dice en presente y en concreto, como pidió la tienda: es la
     // talla con la que se fotografían las prendas mientras no se cargue
     // la de cada una.
     return (
-      `La modelo está usando talla ${ref.talla}` +
+      `La modelo está usando talla ${talla}` +
       (ref.altura ? ` y mide ${(ref.altura / 100).toFixed(2)} m` : "") +
       "."
     );
