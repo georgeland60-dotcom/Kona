@@ -1,231 +1,187 @@
 import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
-import { getActiveBanners, getActiveSeasons } from "@/lib/promos-data";
-import { formatPrice } from "@/lib/format";
+import { getActiveBanners, getLiveRules } from "@/lib/promos-data";
+import { getCategorias } from "@/lib/categorias-data";
+import { buildPromos } from "@/lib/promos-display";
+import { getBestSellers, getTopCollections } from "@/lib/bestsellers";
+import { resolveBlocks } from "@/data/home-blocks";
 import ProductGrid from "@/components/product/ProductGrid";
-import HeroSlider from "@/components/layout/HeroSlider";
+import PromoPopup from "@/components/promo/PromoPopup";
 import TrackView from "@/components/TrackView";
-import {
-  homeCollections,
-  pickCollection,
-  type HomeCollection,
-} from "@/data/collections";
+
+// =============================================================
+//  INICIO DE LA TIENDA
+//  Este es el inicio que ve la clienta. El inicio anterior no se
+//  perdio: sigue completo en /inicio-anterior, y /v3 (la direccion
+//  con la que se estuvo revisando) redirige aqui.
+//
+//  Que trae:
+//   1. Cinta de avisos en el fucsia de la marca, con los tiempos
+//      de delivery.
+//   2. Cuatro bloques verticales de categoria con foto y nombre.
+//   3. Pop-up dinamico con las promociones vigentes.
+//   4. Una sola seccion abajo: "Los favoritos", ordenada por ventas.
+// =============================================================
+
+// Esta pagina se arma en cada visita, no al compilar. Es lo que hace que
+// el pop-up y "Los favoritos" sean de verdad dinamicos: si en /admin se
+// prende una promocion o entra una venta, se ve al recargar, sin tener
+// que publicar la web de nuevo.
+export const dynamic = "force-dynamic";
+
+// Mensajes de la cinta. El delivery va primero porque es lo que mas
+// preguntan las clientas. Cada uno lleva su color de estrella.
+const CINTA = [
+  "DELIVERY LIMA EN 3 DÍAS",
+  "PROVINCIA EN 7 DÍAS",
+  "PAGO SEGURO",
+  "CAMBIOS EN 7 DÍAS",
+  "NUEVA TEMPORADA",
+];
 
 export default async function Home() {
-  const [products, banners, temporadas] = await Promise.all([
+  const [products, banners, rules, categorias] = await Promise.all([
     getProducts(),
     getActiveBanners(),
-    getActiveSeasons(),
+    getLiveRules(),
+    getCategorias(),
   ]);
-  const favoritos = products.filter((p) => p.featured);
 
-  // Los bloques de temporada (que crea el agente, ej "Verano") se muestran
-  // primero, y después las colecciones fijas del inicio.
-  const bloques: HomeCollection[] = [
-    ...temporadas.map((t) => ({
-      slug: t.slug,
-      title: t.title,
-      subtitle: t.subtitle,
-      by: "collection" as const,
-      value: t.slug,
-      limit: t.limit ?? 4,
-    })),
-    ...homeCollections,
-  ];
-  const colecciones = bloques
-    .map((c) => ({ col: c, items: pickCollection(products, c) }))
-    .filter((c) => c.items.length > 0);
+  const promos = buildPromos(rules, banners, products, categorias);
+  const bloques = resolveBlocks(products);
+  const [favoritos, topColecciones] = await Promise.all([
+    getBestSellers(products, 8),
+    getTopCollections(products, 4),
+  ]);
 
   return (
-    <div className="bg-background">
+    <div className="bg-v3-cream text-v3-ink">
       <TrackView type="visit" />
 
-      {/* MARQUESINA (estilo v2) — justo debajo del menú, encima del banner */}
-      <div className="bg-black text-white py-4 overflow-hidden whitespace-nowrap">
-        <div className="inline-flex animate-marquee">
-          {[0, 1].map((k) => (
-            <span key={k} className="inline-flex">
-              {[
-                "ENVÍO A TODO LIMA",
-                "NUEVA TEMPORADA",
-                "PAGO SEGURO",
-                "CAMBIOS EN 7 DÍAS",
-                "HECHO PARA TI",
-              ].map((t, idx) => (
-                <span
-                  key={idx}
-                  className="mx-6 uppercase tracking-[0.3em] text-sm font-medium"
-                >
-                  {t} <span className="text-accent">✦</span>
-                </span>
-              ))}
-            </span>
-          ))}
+      {/* 3. POP-UP DE PROMOCIONES (se muestra solo si hay alguna vigente) */}
+      <PromoPopup promos={promos} />
+
+      {/* 1. CINTA DE AVISOS — en el fucsia de la marca, letras blancas */}
+      <div className="bg-accent text-white overflow-hidden whitespace-nowrap">
+        <div className="py-2">
+          <div className="inline-flex animate-marquee">
+            {[0, 1].map((k) => (
+              <span key={k} className="inline-flex">
+                {CINTA.map((texto, idx) => (
+                  <span
+                    key={idx}
+                    className="mx-5 uppercase tracking-[0.25em] text-[11px] font-semibold"
+                  >
+                    {texto} <span className="text-white/60">✦</span>
+                  </span>
+                ))}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* HERO SLIDER (banner Ropa de baño) */}
-      <HeroSlider banners={banners} />
-
-      {/* GRILLA EDITORIAL "LO QUE AMAMOS" (estilo v2) */}
-      <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
-        <div className="flex items-end justify-between mb-10">
-          <h2 className="text-4xl md:text-6xl font-bold uppercase tracking-tight leading-none">
-            Lo que <span className="text-accent">amamos</span>
-          </h2>
-          <Link
-            href="/tienda"
-            className="hidden md:inline text-sm uppercase tracking-wide underline underline-offset-4 hover:text-accent"
-          >
-            Ver todo
-          </Link>
+      {/* 2. CUATRO BLOQUES VERTICALES DE CATEGORIA */}
+      <section className="max-w-6xl mx-auto px-4 pt-12 pb-14 md:pt-16 md:pb-20">
+        <div className="text-center mb-10 md:mb-12">
+          <p className="uppercase tracking-[0.35em] text-xs text-accent font-semibold mb-3">
+            #KonaGirl
+          </p>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[0.95]">
+            Siente Kona,{" "}
+            <span className="text-accent">siéntete libre</span>
+          </h1>
+          {/* letra de apoyo mas grande (antes era text-sm) */}
+          <p className="text-v3-ink-soft text-lg md:text-xl max-w-xl mx-auto mt-4 leading-relaxed">
+            Cuatro formas de empezar. Entra por la que va contigo hoy.
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {favoritos.map((p, idx) => {
-            // cada 5to producto ocupa el doble (efecto editorial)
-            const big = idx % 5 === 0;
-            return (
-              <Link
-                key={p.id}
-                href={`/producto/${p.slug}`}
-                className={`group relative overflow-hidden ${
-                  big ? "col-span-2 row-span-2" : ""
-                }`}
-              >
-                <div
-                  className={`placeholder-box overflow-hidden ${
-                    big ? "aspect-square" : "aspect-[3/4]"
-                  }`}
-                >
-                  {p.image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
-                    />
-                  )}
+        {/* bloques verticales y bien espaciados entre si */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
+          {bloques.map(({ block, image, count, href }) => (
+            <Link key={block.key} href={href} className="group block">
+              <div className="relative aspect-[3/4.4] overflow-hidden rounded-2xl placeholder-box shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image}
+                  alt={block.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                />
+                {/* velo oscuro para que el nombre se lea siempre */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+
+                {count === 0 && (
+                  <span
+                    className={`absolute top-3 left-3 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${block.badge}`}
+                  >
+                    Próximamente
+                  </span>
+                )}
+
+                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+                  <span
+                    aria-hidden="true"
+                    className={`block w-10 h-1 rounded-full mb-3 ${block.bar}`}
+                  />
+                  {/* en celular el bloque es angosto: letra algo menor para
+                      que nombres largos no se partan feo */}
+                  <h2 className="text-white text-lg md:text-2xl font-bold leading-tight">
+                    {block.name}
+                  </h2>
+                  {/* letra de apoyo mas grande */}
+                  <p className="text-white/85 text-sm md:text-base leading-snug mt-1">
+                    {block.tagline}
+                  </p>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition">
-                  <p className="text-white font-medium leading-tight">{p.name}</p>
-                  <p className="text-white/90 text-sm">{formatPrice(p.price)}</p>
-                </div>
-                <span className="absolute top-3 left-3 text-xs font-bold bg-background px-2 py-1">
-                  {String(idx + 1).padStart(2, "0")}
-                </span>
-              </Link>
-            );
-          })}
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
-      {/* COLECCIONES TEMÁTICAS */}
-      {colecciones.map(({ col, items }) => (
-        <section
-          key={col.slug}
-          className="max-w-6xl mx-auto px-4 py-12 border-t border-line"
-        >
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight">
-                {col.title}
-              </h2>
-              <p className="text-muted text-sm mt-1">{col.subtitle}</p>
+      {/* 4. UNICA SECCION DE ABAJO: LOS FAVORITOS (por ventas) */}
+      <section className="bg-white border-t border-line">
+        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+          <div className="text-center mb-8 md:mb-10">
+            <p className="uppercase tracking-[0.35em] text-xs text-v3-teal font-semibold mb-3">
+              Lo más pedido
+            </p>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+              Los <span className="text-v3-primary">favoritos</span>
+            </h2>
+            <p className="text-v3-ink-soft text-lg md:text-xl max-w-xl mx-auto mt-4 leading-relaxed">
+              {favoritos.basedOnSales
+                ? "Lo que más se está vendiendo ahora mismo. La lista se ordena sola con cada compra."
+                : "Nuestra selección del momento. En cuanto haya ventas, esta lista se ordena sola."}
+            </p>
+          </div>
+
+          {/* colecciones con mayor venta, en orden dinamico */}
+          {topColecciones.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2.5 mb-10">
+              {topColecciones.map(({ col }) => (
+                <Link
+                  key={col.slug}
+                  href={`/tienda?cat=${col.slug}`}
+                  className="border border-line rounded-full px-5 py-2 text-base text-v3-ink hover:border-v3-primary hover:text-v3-primary transition"
+                >
+                  {col.title}
+                </Link>
+              ))}
             </div>
+          )}
+
+          <ProductGrid products={favoritos.items} />
+
+          <div className="text-center mt-12">
             <Link
-              href={`/tienda?cat=${col.slug}`}
-              className="text-sm text-accent hover:text-accent-dark whitespace-nowrap font-medium"
+              href="/tienda"
+              className="inline-block bg-v3-primary text-white px-10 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-v3-ink transition"
             >
-              Ver todos →
+              Ver toda la tienda
             </Link>
           </div>
-          <ProductGrid products={items} />
-        </section>
-      ))}
-
-      {/* CTA BLOQUE DE COLOR (estilo v2) */}
-      <section className="bg-accent text-white">
-        <div className="max-w-6xl mx-auto px-4 py-20 text-center">
-          <h2 className="font-script text-6xl md:text-8xl mb-4">¿Lista?</h2>
-          <p className="text-white/85 max-w-md mx-auto mb-8 text-lg">
-            Encuentra tu próxima prenda favorita. Te lo llevamos a casa.
-          </p>
-          <Link
-            href="/tienda"
-            className="inline-block bg-white text-accent px-10 py-4 font-bold uppercase tracking-wide text-sm hover:bg-foreground hover:text-white transition"
-          >
-            Explorar la tienda
-          </Link>
-        </div>
-      </section>
-
-      {/* FRANJA DE CONFIANZA */}
-      <section className="bg-soft border-y border-line">
-        <div className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            {
-              title: "Delivery",
-              text: "Hacemos delivery a todo Lima",
-              icon: (
-                <>
-                  <rect x="1" y="3" width="15" height="13" rx="1" />
-                  <path d="M16 8h4l3 3v5h-7z" />
-                  <circle cx="5.5" cy="18.5" r="2.5" />
-                  <circle cx="18.5" cy="18.5" r="2.5" />
-                </>
-              ),
-            },
-            {
-              title: "Pago Seguro",
-              text: "Pago seguro, todos los medios",
-              icon: (
-                <>
-                  <rect x="2" y="5" width="20" height="14" rx="2" />
-                  <path d="M2 10h20" />
-                </>
-              ),
-            },
-            {
-              title: "Excelente Servicio",
-              text: "Te ayudamos en todo momento",
-              icon: (
-                <>
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                </>
-              ),
-            },
-            {
-              title: "Cambios permitidos",
-              text: "Hasta 7 días después de la compra",
-              icon: (
-                <>
-                  <path d="M3 2v6h6" />
-                  <path d="M3 8a9 9 0 1 0 2.5-3.5L3 8" />
-                </>
-              ),
-            },
-          ].map((b) => (
-            <div key={b.title} className="flex flex-col items-center">
-              <svg
-                width="34"
-                height="34"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-accent mb-3"
-              >
-                {b.icon}
-              </svg>
-              <h3 className="text-sm font-medium mb-1">{b.title}</h3>
-              <p className="text-xs text-muted leading-relaxed max-w-[12rem]">
-                {b.text}
-              </p>
-            </div>
-          ))}
         </div>
       </section>
     </div>
