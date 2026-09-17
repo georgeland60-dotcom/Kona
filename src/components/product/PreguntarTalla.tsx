@@ -20,7 +20,7 @@ export default function PreguntarTalla() {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z" />
       </svg>
-      ¿No sabes qué talla pedir? Pregúntame
+      ¿Te ayudamos a elegir tu talla?
     </button>
   );
 }

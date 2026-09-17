@@ -33,7 +33,7 @@ type Mensaje = {
 const SALUDO: Mensaje = {
   rol: "asistente",
   texto:
-    "¡Hola! Soy el asistente de Kona 👋 Dime para qué ocasión buscas y te muestro opciones. Cuando elijas una prenda, te paso sus medidas y la talla de la modelo para que vayas segura.",
+    "¡Hola! Soy Kona Assistant 👋 Estoy para que elijas tranquila: dime para qué ocasión buscas y te muestro opciones. Cuando elijas una prenda, te cuento qué talla está usando la modelo y las medidas, para que pidas segura.",
 };
 
 // Atajos distintos según dónde esté: en una ficha lo que se pregunta es
@@ -164,9 +164,12 @@ export default function KonaAssistant() {
             }}
             className="text-left bg-background border border-accent/30 shadow-xl rounded-2xl rounded-br-sm px-4 py-3"
           >
-            <p className="text-sm font-medium">¿Te ayudo a elegir? 💛</p>
+            <p className="text-sm font-medium">
+              ¿Te ayudamos a sentirte más segura con tu talla? 💛
+            </p>
             <p className="text-xs text-muted mt-0.5">
-              Te digo qué prenda te conviene y qué talla pedir.
+              Te contamos qué talla está usando la modelo y las medidas de
+              la prenda.
             </p>
           </button>
           <button
@@ -180,27 +183,31 @@ export default function KonaAssistant() {
       )}
 
       {/* Burbuja */}
+      {/* Se ve por tamaño y por contraste, no por movimiento: un
+          parpadeo constante cansa y le da aire de anuncio. */}
       <button
         onClick={() => {
           setAbierto((v) => !v);
           setAviso(false);
         }}
-        aria-label={abierto ? "Cerrar el asistente" : "Abrir el asistente"}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 rounded-full bg-accent text-white shadow-xl px-5 py-4 hover:bg-accent-dark transition-transform hover:scale-105"
+        aria-label={abierto ? "Cerrar el asistente" : "Abrir Kona Assistant"}
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-3 rounded-full bg-accent text-white shadow-xl ring-1 ring-white/25 px-6 py-4 hover:bg-accent-dark transition-transform hover:scale-[1.03]"
       >
         {abierto ? (
-          <span className="text-xl leading-none px-1">×</span>
+          <span className="text-2xl leading-none px-2">×</span>
         ) : (
           <>
-            {/* El anillo que late: es lo que hace que se vea sin tener
-                que ocupar media pantalla. */}
-            <span className="absolute inset-0 rounded-full bg-accent opacity-60 animate-ping pointer-events-none" />
-            <span className="relative flex items-center gap-2.5">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/15">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z" />
               </svg>
-              <span className="text-sm font-semibold whitespace-nowrap">
-                ¿Te ayudo a elegir?
+            </span>
+            <span className="text-left leading-tight">
+              <span className="block text-[15px] font-medium tracking-wide">
+                Kona Assistant
+              </span>
+              <span className="block text-[11px] text-white/80">
+                Te ayudamos con tu talla
               </span>
             </span>
           </>
