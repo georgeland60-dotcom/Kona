@@ -275,8 +275,10 @@ export default function KonaAssistant() {
             {/* Empezar de nuevo. Cuando la conversación se quedó metida
                 en una prenda, esto es lo que hace falta para preguntar
                 por otra cosa sin recargar la página. */}
-            {mensajes.length > 1 && (
-              <button
+            {/* Siempre visible, aunque no haya conversación todavía:
+                escondido hasta el primer mensaje no lo encontraba
+                nadie, que era justo para lo que hacía falta. */}
+            <button
                 onClick={reiniciar}
                 title="Empezar una conversación nueva"
                 className="flex items-center gap-1.5 text-xs text-muted border border-line rounded-full px-3 py-1.5 hover:border-foreground hover:text-foreground transition flex-shrink-0"
@@ -295,7 +297,6 @@ export default function KonaAssistant() {
                 </svg>
                 Empezar de nuevo
               </button>
-            )}
           </div>
 
           {/* De qué prenda se está hablando, y cómo salirse de ella. Si
