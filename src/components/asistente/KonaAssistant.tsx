@@ -44,6 +44,13 @@ const ATAJOS_TIENDA = [
   "Lo más nuevo",
 ];
 
+// El slug es lo único que se tiene a mano en el navegador; para
+// enseñarlo basta con quitarle los guiones.
+function comoTitulo(slug: string): string {
+  const texto = slug.replace(/-/g, " ");
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 const ATAJOS_PRODUCTO = [
   "¿Qué talla me conviene?",
   "¿Qué talla usa la modelo?",
@@ -68,6 +75,25 @@ export default function KonaAssistant() {
   const finRef = useRef<HTMLDivElement>(null);
 
   const [aviso, setAviso] = useState(false);
+
+  // Cuando ella dice "quiero preguntar por otra cosa", se suelta la
+  // prenda aunque siga parada en su ficha.
+  const [sinEnfoque, setSinEnfoque] = useState(false);
+
+  // Cada vez que se empieza de nuevo sube el turno. Una respuesta que
+  // llega tarde, de la conversación anterior, se descarta: si no,
+  // aparecería contestando a algo que ya se borró.
+  const turno = useRef(0);
+
+  // Si se va a otra ficha, deja de hablar de la anterior. Antes la
+  // prenda elegida se quedaba pegada para siempre: se preguntaba por
+  // otra cosa y seguía contestando sobre la primera.
+  useEffect(() => {
+    if (productoDeLaRuta) {
+      setElegida(undefined);
+      setSinEnfoque(false);
+    }
+  }, [productoDeLaRuta]);
 
   // Cada mensaje nuevo deja la conversación abajo, como cualquier chat.
   useEffect(() => {
@@ -107,17 +133,36 @@ export default function KonaAssistant() {
     return () => clearTimeout(t);
   }, []);
 
+  // La prenda de la que se habla ahora mismo.
+  const enfoque = sinEnfoque ? undefined : elegida ?? productoDeLaRuta;
+
+  // Empezar de nuevo. Es la salida cuando la conversación se quedó
+  // enganchada en una prenda y lo que se quiere preguntar es otra cosa.
+  const reiniciar = () => {
+    turno.current += 1;
+    setMensajes([SALUDO]);
+    setElegida(undefined);
+    setSinEnfoque(false);
+    setTexto("");
+    setPensando(false);
+  };
+
   const preguntar = async (pregunta: string, sobre?: string) => {
     const limpio = pregunta.trim();
     if (!limpio || pensando) return;
 
-    const producto = sobre ?? elegida ?? productoDeLaRuta;
-    if (sobre) setElegida(sobre);
+    const producto = sobre ?? enfoque;
+    if (sobre) {
+      setElegida(sobre);
+      setSinEnfoque(false);
+    }
 
     const conmigo: Mensaje[] = [...mensajes, { rol: "cliente", texto: limpio }];
     setMensajes(conmigo);
     setTexto("");
     setPensando(true);
+
+    const mio = turno.current;
 
     try {
       const res = await fetch("/api/asistente", {
@@ -129,6 +174,7 @@ export default function KonaAssistant() {
         }),
       });
       const data = await res.json();
+      if (turno.current !== mio) return; // se reinició mientras pensaba
       setMensajes((prev) => [
         ...prev,
         {
@@ -138,6 +184,7 @@ export default function KonaAssistant() {
         },
       ]);
     } catch {
+      if (turno.current !== mio) return;
       setMensajes((prev) => [
         ...prev,
         {
@@ -147,7 +194,7 @@ export default function KonaAssistant() {
         },
       ]);
     } finally {
-      setPensando(false);
+      if (turno.current === mio) setPensando(false);
     }
   };
 
@@ -217,12 +264,59 @@ export default function KonaAssistant() {
       {/* Panel */}
       {abierto && (
         <div className="fixed bottom-20 right-3 left-3 sm:left-auto sm:right-5 sm:w-[380px] z-40 bg-background border border-line rounded-2xl shadow-2xl flex flex-col max-h-[70vh] overflow-hidden">
-          <div className="px-4 py-3 border-b border-line">
-            <p className="font-medium text-sm">Kona Assistant</p>
-            <p className="text-xs text-muted">
-              Te ayudo a elegir prenda y talla
-            </p>
+          <div className="px-4 py-3 border-b border-line flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-sm">Kona Assistant</p>
+              <p className="text-xs text-muted">
+                Te ayudo a elegir prenda y talla
+              </p>
+            </div>
+
+            {/* Empezar de nuevo. Cuando la conversación se quedó metida
+                en una prenda, esto es lo que hace falta para preguntar
+                por otra cosa sin recargar la página. */}
+            {mensajes.length > 1 && (
+              <button
+                onClick={reiniciar}
+                title="Empezar una conversación nueva"
+                className="flex items-center gap-1.5 text-xs text-muted border border-line rounded-full px-3 py-1.5 hover:border-foreground hover:text-foreground transition flex-shrink-0"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+                Empezar de nuevo
+              </button>
+            )}
           </div>
+
+          {/* De qué prenda se está hablando, y cómo salirse de ella. Si
+              no se ve, nadie entiende por qué sigue contestando de lo
+              mismo. */}
+          {enfoque && (
+            <div className="px-4 py-2 bg-soft border-b border-line flex items-center justify-between gap-2">
+              <p className="text-xs text-muted truncate">
+                Hablando de <span className="text-foreground">{comoTitulo(enfoque)}</span>
+              </p>
+              <button
+                onClick={() => {
+                  setElegida(undefined);
+                  setSinEnfoque(true);
+                }}
+                className="text-xs underline text-muted hover:text-foreground flex-shrink-0"
+              >
+                Preguntar por otra cosa
+              </button>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {mensajes.map((m, i) => (
@@ -304,7 +398,7 @@ export default function KonaAssistant() {
             {/* Atajos, solo al principio: después estorban. */}
             {mensajes.length === 1 && !pensando && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {(productoDeLaRuta ? ATAJOS_PRODUCTO : ATAJOS_TIENDA).map((a) => (
+                {(enfoque ? ATAJOS_PRODUCTO : ATAJOS_TIENDA).map((a) => (
                   <button
                     key={a}
                     onClick={() => preguntar(a)}

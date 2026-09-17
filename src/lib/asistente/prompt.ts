@@ -174,7 +174,7 @@ export function fichaDeProducto(datos: {
   }
 
   lineas.push(
-    "Usa esta ficha para el guion de la talla. Si la clienta pregunta por otra prenda, vuelve al catálogo."
+    "Usa esta ficha SOLO para esta prenda. Si la clienta pregunta por otra cosa, olvídala: contesta con el catálogo y no le apliques a otra prenda estas tallas ni estas medidas."
   );
   return lineas.join("\n");
 }
