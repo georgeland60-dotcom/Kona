@@ -58,7 +58,10 @@ export async function catalogoParaAsistente(): Promise<Catalogo> {
   const texto = [
     `Categorías: ${categorias.map((c) => c.name).join(", ")}.`,
     "",
-    "CATÁLOGO (slug | nombre | precio | categoría | tallas con stock | descripción):",
+    "CATÁLOGO (slug | nombre | precio | categoría | tallas con stock | descripción).",
+    "Las tallas que ves aquí son las ÚNICAS que existen en cada prenda: no",
+    "todas van por letras (los pantalones van por número) y \"Única\" quiere",
+    "decir que esa pieza no lleva talla. Nunca nombres una que no esté:",
     ...visibles.map(linea),
   ].join("\n");
 

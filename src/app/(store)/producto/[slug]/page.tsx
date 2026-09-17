@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProducts, getProductBySlug } from "@/lib/store-data";
 import { getCategorias } from "@/lib/categorias-data";
 import { formatPrice } from "@/lib/format";
+import { esTallaUnica } from "@/lib/tallas";
 import AddToCartButton from "@/components/product/AddToCartButton";
 import GuiaTallas from "@/components/product/GuiaTallas";
 import PreguntarTalla from "@/components/product/PreguntarTalla";
@@ -109,7 +110,7 @@ export default async function ProductPage({
 
           <AddToCartButton product={product} />
 
-          <PreguntarTalla />
+          <PreguntarTalla tallaUnica={esTallaUnica(product)} />
 
           <GuiaTallas product={product} />
 

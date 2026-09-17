@@ -16,7 +16,12 @@
 import { preguntarAlModelo, ErrorAgente } from "@/lib/agent/gemini";
 import { catalogoParaAsistente } from "@/lib/asistente/catalogo";
 import { fichaDeProducto, instruccionAsistente } from "@/lib/asistente/prompt";
-import { guiaDeProducto, guiaEnTexto, modeloEnTexto } from "@/lib/tallas";
+import {
+  esTallaUnica,
+  guiaDeProducto,
+  guiaEnTexto,
+  modeloEnTexto,
+} from "@/lib/tallas";
 import { huellaDe, permitirConsulta } from "@/lib/asistente/limites";
 import { anotarConsumo } from "@/lib/consumo-data";
 import type { Product } from "@/lib/types";
@@ -43,6 +48,7 @@ function fichaDe(producto: Product | undefined): string | undefined {
     guia: guia ? guiaEnTexto(guia) : undefined,
     guiaEstimada: guia?.estimada,
     modelo: modeloEnTexto(producto),
+    tallaUnica: esTallaUnica(producto),
   });
 }
 

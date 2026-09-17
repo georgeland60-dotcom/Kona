@@ -64,19 +64,41 @@ const POR_CATEGORIA: Record<string, keyof typeof MOLDES> = {
 
 // El orden de las tallas de ropa, para saber cuánto se aleja cada una de
 // la base.
-const ESCALA = ["XS", "S", "M", "L", "XL", "XXL"];
+const ESCALA = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 
-function distanciaALaBase(talla: string): number | null {
+function distanciaALaBase(talla: string, tipo: keyof typeof MOLDES): number | null {
   const limpia = talla.trim().toUpperCase();
 
   const enEscala = ESCALA.indexOf(limpia);
   if (enEscala >= 0) return enEscala - ESCALA.indexOf("M");
 
-  // Tallas numéricas (calzado, o pantalón por número).
-  const numero = Number(limpia.replace(",", "."));
-  if (Number.isFinite(numero) && numero >= 20) return numero - 37;
+  // Números: solo significan algo en calzado, donde la escala es
+  // conocida (el 37 de base). En un pantalón un "32" es una talla de la
+  // marca, no una medida, y tratarla como un número de zapato daba
+  // cinturas de 37 cm. Sin escala fiable, no se estima nada.
+  if (tipo === "calzado") {
+    const numero = Number(limpia.replace(",", "."));
+    if (Number.isFinite(numero) && numero >= 30 && numero <= 48) {
+      return numero - 37;
+    }
+  }
 
-  return null; // "Única" y cualquier otra cosa: no hay escala que valga
+  return null; // "Única", tallas por número de marca, y cualquier otra
+}
+
+// ¿Esta prenda no lleva talla? (una cartera, un accesorio)
+export function esTallaUnica(producto: Product): boolean {
+  const tallas = producto.variants.map((v) => v.size.trim().toLowerCase());
+  if (tallas.length === 0) return true;
+  return tallas.every((t) => t === "única" || t === "unica" || t === "u");
+}
+
+// ¿La prenda tiene esa talla? Sirve para no afirmar nunca una talla que
+// no existe en esa prenda: los pantalones van por número y una "M" ahí
+// no significa nada.
+function tieneTalla(producto: Product, talla: string): boolean {
+  const buscada = talla.trim().toLowerCase();
+  return producto.variants.some((v) => v.size.trim().toLowerCase() === buscada);
 }
 
 function redondear(n: number): number {
@@ -104,12 +126,13 @@ export function guiaDeProducto(producto: Product): GuiaDeTallas | null {
   // confunden más que ninguna.
   if (!store.medidasEstimadas) return null;
 
-  const molde = MOLDES[POR_CATEGORIA[producto.category] ?? ""];
-  if (!molde) return null;
+  const tipo = POR_CATEGORIA[producto.category];
+  const molde = tipo ? MOLDES[tipo] : undefined;
+  if (!molde || !tipo) return null;
 
   const medidas: MedidaTalla[] = [];
   for (const variante of producto.variants) {
-    const distancia = distanciaALaBase(variante.size);
+    const distancia = distanciaALaBase(variante.size, tipo);
     if (distancia === null) continue;
 
     const valores: Record<string, number> = {};
@@ -149,11 +172,19 @@ export function guiaEnTexto(guia: GuiaDeTallas): string {
 // general", no un dato de esa foto. Afirmar de una foto concreta algo
 // que no se sabe es justo lo que hace que luego no calce.
 export function modeloEnTexto(producto: Product): string | null {
+  // Una cartera no tiene talla: decir que la modelo "está usando M" es
+  // absurdo y resta credibilidad a todo lo demás.
+  if (esTallaUnica(producto)) return null;
+
   const m = producto.modeloFoto;
 
   if (!m) {
     const ref = store.modeloReferencia;
-    if (!ref?.talla) return null;
+    // La talla de referencia de la tienda ("M") solo vale si esta prenda
+    // la tiene: los pantalones van por número y ahí una M no existe.
+    // Antes se afirmaba igual, y quedaba en evidencia.
+    if (!ref?.talla || !tieneTalla(producto, ref.talla)) return null;
+
     // Se dice en presente y en concreto, como pidió la tienda: es la
     // talla con la que se fotografían las prendas mientras no se cargue
     // la de cada una.
@@ -163,6 +194,10 @@ export function modeloEnTexto(producto: Product): string | null {
       "."
     );
   }
+
+  // Si la talla cargada no existe en la prenda, algo se cargó mal: mejor
+  // no decir nada que decir una talla que no se puede pedir.
+  if (!tieneTalla(producto, m.talla)) return null;
 
   const partes = [`está usando talla ${m.talla}`];
   if (m.altura) partes.push(`mide ${(m.altura / 100).toFixed(2)} m`);

@@ -1533,8 +1533,33 @@ const agregarProducto: Tool = {
     const colecciones = ["nuevos-ingresos"];
     if (anterior !== undefined) colecciones.push("sale");
 
-    const guiaTallas = leerGuiaTallas(args);
+    // La talla de la modelo y la guía tienen que hablar de tallas QUE
+    // EXISTEN en esta prenda. Un pantalón va del 28 al 40: si aquí se
+    // cuela una "M", la tienda termina diciéndole a la clienta que la
+    // modelo usa una talla que no puede pedir.
+    const esUnica = tallas.every((t) => normalizar(t) === "unica");
+    const tieneTalla = (t: string) =>
+      tallas.some((x) => normalizar(x) === normalizar(t));
+
+    const guiaCompleta = leerGuiaTallas(args);
+    const guiaTallas = guiaCompleta.filter((m) => tieneTalla(m.talla));
+    const guiaSobrante = guiaCompleta
+      .filter((m) => !tieneTalla(m.talla))
+      .map((m) => m.talla);
+
     const modeloTalla = texto(args, "modelo_talla");
+    if (modeloTalla && esUnica) {
+      return {
+        ok: false,
+        mensaje: `"${nombre}" es de talla única, así que no lleva talla de modelo. Quita el dato y lo subo.`,
+      };
+    }
+    if (modeloTalla && !tieneTalla(modeloTalla)) {
+      return {
+        ok: false,
+        mensaje: `La modelo no puede estar usando talla ${modeloTalla}: esta prenda va en ${tallas.join(", ")}. Dime cuál de esas lleva puesta (o dime que no se sabe).`,
+      };
+    }
     const modeloMedidas = leerMedidas(args["modelo_medidas"]);
     const modeloAltura = numero(args, "modelo_altura");
 
@@ -1580,12 +1605,19 @@ const agregarProducto: Tool = {
     if (!producto.description) {
       avisos.push("No tiene descripción; conviene ponerle una.");
     }
-    if (guiaTallas.length === 0) {
+    if (guiaSobrante.length > 0) {
       avisos.push(
-        "Sin medidas por talla: la tienda mostrará unas referenciales. Si me las dictas, las pongo exactas."
+        `Dejé fuera las medidas de ${guiaSobrante.join(", ")}: esta prenda no tiene esas tallas.`
       );
     }
-    if (!modeloTalla) {
+    if (guiaTallas.length === 0) {
+      avisos.push(
+        esUnica
+          ? "Sin medidas de la pieza. Si me las dictas (alto, ancho, asa), las muestro en la ficha."
+          : "Sin medidas por talla: la tienda mostrará unas referenciales. Si me las dictas, las pongo exactas."
+      );
+    }
+    if (!modeloTalla && !esUnica) {
       avisos.push(
         "No sé qué talla usa la modelo de las fotos; es el dato que más ayuda a elegir talla."
       );

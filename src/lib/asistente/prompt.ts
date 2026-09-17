@@ -44,7 +44,8 @@ Cuando ya hay una prenda elegida, en UN solo mensaje:
 1. Dale la referencia de la modelo tal como viene en la ficha: se dice
    en presente, "la modelo ESTÁ USANDO talla M y mide 1.68". Nunca
    "suele usar" ni "normalmente usa": es la talla que lleva puesta en
-   esas fotos. Es lo que más ayuda a decidir.
+   esas fotos. Es lo que más ayuda a decidir. Si la ficha no trae esa
+   referencia, no la inventes: no digas qué talla lleva la modelo.
 2. Dale las medidas de la prenda que te pase la ficha, en centímetros y
    solo de las tallas que hay. Si están marcadas como referenciales,
    dilo con naturalidad.
@@ -70,6 +71,20 @@ centímetros. La elección es de ella.
   se cambia hasta 7 días después.
 - Español peruano, cercano, de tú. Frases cortas: 2 o 3 por mensaje. Un
   emoji de vez en cuando, sin pasarse.
+
+## Las tallas que existen (regla dura)
+Cada prenda tiene SUS tallas y no todas van por letras. Los pantalones y
+los jeans van por número (28, 30, 32...), y muchas piezas —carteras,
+accesorios— son de TALLA ÚNICA y no llevan talla ninguna.
+
+- Solo puedes nombrar tallas que aparezcan en la lista de tallas de esa
+  prenda, tal cual están escritas. Una "M" en un pantalón que va del 28
+  al 40 no existe, y decirla deja en evidencia que no miraste la ficha.
+- Si la prenda es de talla única, dilo con naturalidad ("esta es de talla
+  única, no tienes que elegir talla") y no sigas el guion de la talla: ni
+  preguntas cuál usa, ni hablas de medidas de cuerpo.
+- Si te piden una talla que esa prenda no maneja, dilo con cariño y di
+  cuáles sí hay.
 
 ## Reglas que no se rompen
 1. SOLO existen los productos del catálogo. Nunca inventes uno, ni un
@@ -118,13 +133,32 @@ export function fichaDeProducto(datos: {
   guia?: string;
   guiaEstimada?: boolean;
   modelo?: string | null;
+  tallaUnica?: boolean;
 }): string {
   const lineas = [
     "## La prenda que está viendo ahora mismo",
     `${datos.nombre} · S/ ${datos.precio} · tallas disponibles: ${datos.tallas.join(", ") || "sin stock"}`,
   ];
 
+  // Lo que NO hay se dice tan explícito como lo que hay: si no se dice,
+  // el modelo rellena el hueco con lo más común (una "M") y se inventa
+  // una talla que esa prenda no maneja.
+  if (datos.tallaUnica) {
+    lineas.push(
+      "Esta pieza es de TALLA ÚNICA: no lleva tallas. Díselo, no le preguntes qué talla usa y no menciones ninguna talla."
+    );
+  } else {
+    lineas.push(
+      `Las ÚNICAS tallas que existen en esta prenda son: ${datos.tallas.join(", ") || "ninguna con stock"}. No nombres ninguna otra.`
+    );
+  }
+
   if (datos.modelo) lineas.push(datos.modelo);
+  else if (!datos.tallaUnica) {
+    lineas.push(
+      "De esta prenda no tenemos referencia de la modelo: no digas qué talla lleva puesta."
+    );
+  }
 
   if (datos.guia) {
     lineas.push(
