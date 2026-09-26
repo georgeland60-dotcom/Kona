@@ -161,7 +161,7 @@ export function fichaDeProducto(datos: {
 
   if (datos.agotadas && datos.agotadas.length > 0) {
     lineas.push(
-      `Agotadas ahora mismo: ${datos.agotadas.join(", ")}. Si pregunta por una de estas, dilo claro y ofrece avisarle por WhatsApp cuando vuelva.`
+      `Agotadas ahora mismo: ${datos.agotadas.join(", ")}. Si pregunta por una de estas, dilo claro y ofrécele las que sí hay. NO prometas cuándo vuelve ni que se le avisará: eso no lo puedes cumplir. Si quiere saberlo, que nos escriba por WhatsApp.`
     );
   }
 

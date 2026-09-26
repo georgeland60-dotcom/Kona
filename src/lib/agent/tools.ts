@@ -37,6 +37,7 @@ import {
   crearCategoria,
   getCategorias,
 } from "@/lib/categorias-data";
+import { leerMedidas } from "@/lib/medidas";
 import type { TipoCambio } from "@/lib/historial-data";
 import type {
   Product,
@@ -1279,24 +1280,6 @@ function leerTallas(args: ToolArgs): string[] {
   return tallas.slice(0, 12);
 }
 
-// Medidas escritas como las dicta una persona: "busto 92, largo 62" o
-// "busto 92 cm / largo 62". Se acepta cualquiera de las dos.
-function leerMedidas(bruto: unknown): Record<string, number> {
-  const medidas: Record<string, number> = {};
-  if (typeof bruto !== "string") return medidas;
-
-  // La coma separa medidas ("busto 92, largo 62") pero también es la
-  // coma decimal ("23,7"). Solo separa cuando no va seguida de un dígito.
-  for (const trozo of bruto.split(/[;/]|,(?!\d)/)) {
-    const m = trozo.trim().match(/^([a-zA-ZáéíóúÁÉÍÓÚñÑ _]+)\s*[:=]?\s*([\d.,]+)/);
-    if (!m) continue;
-    const campo = normalizar(m[1]).replace(/\s+/g, "_");
-    const valor = Number(m[2].replace(",", "."));
-    if (campo && Number.isFinite(valor)) medidas[campo] = valor;
-  }
-  return medidas;
-}
-
 // La guía de tallas de la prenda: qué mide cada talla.
 function leerGuiaTallas(args: ToolArgs): MedidaTalla[] {
   const bruto = args["guia_tallas"];
@@ -1734,6 +1717,120 @@ const destacarProducto: Tool = {
   },
 };
 
+const cargarMedidas: Tool = {
+  nombre: "cargar_medidas",
+  leer: false,
+  descripcion:
+    "Carga (o corrige) la talla que usa la modelo de las fotos y las medidas por talla de un producto que YA existe. Es lo que la tienda muestra en la guía de tallas y lo que el asistente le dice a la clienta.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      producto: { type: "STRING", description: "Id o nombre del producto." },
+      modelo_talla: {
+        type: "STRING",
+        description:
+          "Qué talla lleva puesta quien sale en las fotos. Tiene que ser una de las tallas del producto.",
+      },
+      modelo_altura: {
+        type: "NUMBER",
+        description: "Cuánto mide la modelo, en centímetros. Ej: 168.",
+      },
+      modelo_medidas: {
+        type: "STRING",
+        description: "Medidas de la modelo: 'busto 86, cintura 66, cadera 94'.",
+      },
+      guia_tallas: {
+        type: "ARRAY",
+        description:
+          "Medidas de la prenda, una entrada por talla: [{talla:'M', medidas:'busto 92, largo 62'}]. Solo las tallas que el producto tiene.",
+        items: {
+          type: "OBJECT",
+          properties: {
+            talla: { type: "STRING" },
+            medidas: { type: "STRING" },
+          },
+        },
+      },
+    },
+    required: ["producto"],
+  },
+  resumen: async (args) => {
+    const nombre = await nombreProducto(texto(args, "producto"));
+    return `Cargar medidas y talla de la modelo en "${nombre}"`;
+  },
+  ejecutar: async (args) => {
+    const r = await resolverProducto(texto(args, "producto"));
+    if (!r.ok) return { ok: false, mensaje: r.mensaje };
+    const producto = r.producto;
+
+    const tallas = producto.variants.map((v) => v.size);
+    const esUnica = tallas.every((t) => normalizar(t) === "unica");
+    const tieneTalla = (t: string) =>
+      tallas.some((x) => normalizar(x) === normalizar(t));
+
+    const modeloTalla = texto(args, "modelo_talla");
+    if (modeloTalla && esUnica) {
+      return {
+        ok: false,
+        mensaje: `"${producto.name}" es de talla única: no lleva talla de modelo. Si quieres, dime solo sus medidas.`,
+      };
+    }
+    if (modeloTalla && !tieneTalla(modeloTalla)) {
+      return {
+        ok: false,
+        mensaje: `La modelo no puede estar usando talla ${modeloTalla}: "${producto.name}" va en ${tallas.join(", ")}. ¿Cuál de esas lleva puesta?`,
+      };
+    }
+
+    const guiaCompleta = leerGuiaTallas(args);
+    const guiaTallas = guiaCompleta.filter((m) => tieneTalla(m.talla));
+    const sobrante = guiaCompleta
+      .filter((m) => !tieneTalla(m.talla))
+      .map((m) => m.talla);
+
+    if (!modeloTalla && guiaTallas.length === 0) {
+      return {
+        ok: false,
+        mensaje:
+          sobrante.length > 0
+            ? `Esas tallas (${sobrante.join(", ")}) no están en "${producto.name}", que va en ${tallas.join(", ")}.`
+            : "Dime qué talla usa la modelo, o las medidas por talla (por ejemplo: M: busto 92, largo 62).",
+      };
+    }
+
+    // Lo que no se dicta ahora se queda como estaba: así se puede
+    // cargar primero la talla de la modelo y las medidas otro día.
+    const actualizado = { ...producto };
+    if (guiaTallas.length > 0) actualizado.guiaTallas = guiaTallas;
+    if (modeloTalla) {
+      const medidas = leerMedidas(args["modelo_medidas"]);
+      const altura = numero(args, "modelo_altura");
+      actualizado.modeloFoto = {
+        talla: modeloTalla,
+        ...(altura ? { altura: Math.round(altura) } : {}),
+        ...(Object.keys(medidas).length > 0 ? { medidas } : {}),
+      };
+    }
+
+    await upsertProduct(actualizado);
+
+    const hechas: string[] = [];
+    if (modeloTalla) hechas.push(`la modelo usa talla ${modeloTalla}`);
+    if (guiaTallas.length > 0) {
+      hechas.push(`medidas de ${guiaTallas.map((m) => m.talla).join(", ")}`);
+    }
+    const avisos =
+      sobrante.length > 0
+        ? ` Dejé fuera ${sobrante.join(", ")}: esa talla no está en el producto.`
+        : "";
+
+    return {
+      ok: true,
+      mensaje: `Listo en "${producto.name}": ${hechas.join(" y ")}. Ya sale en la guía de tallas de la ficha.${avisos}`,
+    };
+  },
+};
+
 const cambiarStock: Tool = {
   nombre: "cambiar_stock",
   leer: false,
@@ -1995,6 +2092,7 @@ export const HERRAMIENTAS: Tool[] = [
   quitarProducto,
   mostrarProducto,
   destacarProducto,
+  cargarMedidas,
   cambiarStock,
   crearTemporada,
   cambiarTemporada,
@@ -2007,6 +2105,7 @@ export const HERRAMIENTAS: Tool[] = [
 // historial en el panel.
 const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
   crear_categoria: "productos",
+  cargar_medidas: "productos",
   crear_descuento: "descuentos",
   crear_descuento_escalonado: "descuentos",
   crear_promocion_2x1: "ofertas",
