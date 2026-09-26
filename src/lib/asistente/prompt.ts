@@ -147,6 +147,8 @@ export function fichaDeProducto(datos: {
   nombre: string;
   precio: number;
   tallas: string[];
+  agotadas?: string[];
+  descripcion?: string;
   guia?: string;
   guiaEstimada?: boolean;
   modelo?: string | null;
@@ -156,6 +158,19 @@ export function fichaDeProducto(datos: {
     "## La prenda que está viendo ahora mismo",
     `${datos.nombre} · S/ ${datos.precio} · tallas disponibles: ${datos.tallas.join(", ") || "sin stock"}`,
   ];
+
+  if (datos.agotadas && datos.agotadas.length > 0) {
+    lineas.push(
+      `Agotadas ahora mismo: ${datos.agotadas.join(", ")}. Si pregunta por una de estas, dilo claro y ofrece avisarle por WhatsApp cuando vuelva.`
+    );
+  }
+
+  // La descripción ENTERA. En el catálogo va recortada para que quepan
+  // las 80 prendas, y ahí es donde se perdía la tela, la composición y
+  // el corte: justo lo que se pregunta cuando ya se eligió la prenda.
+  if (datos.descripcion) {
+    lineas.push(`Ficha de la prenda (tela, corte, detalles): ${datos.descripcion}`);
+  }
 
   // Lo que NO hay se dice tan explícito como lo que hay: si no se dice,
   // el modelo rellena el hueco con lo más común (una "M") y se inventa

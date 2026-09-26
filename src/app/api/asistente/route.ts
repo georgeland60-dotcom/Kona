@@ -45,6 +45,8 @@ function fichaDe(producto: Product | undefined): string | undefined {
     nombre: producto.name,
     precio: producto.price,
     tallas: producto.variants.filter((v) => v.stock > 0).map((v) => v.size),
+    agotadas: producto.variants.filter((v) => v.stock <= 0).map((v) => v.size),
+    descripcion: producto.description,
     guia: guia ? guiaEnTexto(guia) : undefined,
     guiaEstimada: guia?.estimada,
     modelo: modeloEnTexto(producto),
