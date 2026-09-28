@@ -1434,7 +1434,7 @@ const agregarProducto: Tool = {
     partes.push(
       fotos > 0
         ? `· con ${fotos} foto${fotos === 1 ? "" : "s"}`
-        : "· SIN foto (queda oculto)"
+        : "· sin foto todavía (mándala antes de confirmar y la pongo; si no, queda oculto)"
     );
     return partes.join(" ");
   },
@@ -1578,45 +1578,69 @@ const agregarProducto: Tool = {
     await upsertProduct(producto);
 
     const unidades = variants.reduce((s, v) => s + v.stock, 0);
-    const avisos: string[] = [];
 
-    if (!publicar) {
-      avisos.push(
-        "Quedó OCULTO porque no tiene foto: mándame la foto y lo publico, o súbela desde /admin."
-      );
-    }
-    if (!producto.description) {
-      avisos.push("No tiene descripción; conviene ponerle una.");
-    }
+    // El resumen va como una ficha, no como un párrafo: al dar de alta
+    // lo que importa es ver de un vistazo qué quedó puesto y qué falta.
+    // Antes todo iba seguido y lo más importante ("quedó oculto") se
+    // perdía en medio de la frase.
+    const stockPorTalla = variants
+      .map((v) => `${v.size} (${v.stock})`)
+      .join(", ");
+
+    const detalle = [
+      `Precio: ${soles(producto.price)}${
+        producto.oldPrice ? ` (antes ${soles(producto.oldPrice)})` : ""
+      }`,
+      `Categoría: ${cat.name}`,
+      `Tallas: ${stockPorTalla} · ${unidades} unidades`,
+      fotos.length > 0
+        ? `Fotos: ${fotos.length} ✅`
+        : "Fotos: ninguna ❌ (mándamela y la pongo)",
+      guiaTallas.length > 0
+        ? `Guía de tallas: ${guiaTallas.map((m) => m.talla).join(", ")} ✅`
+        : esUnica
+          ? "Medidas de la pieza: sin cargar (dime alto, ancho, asa)"
+          : "Guía de tallas: sin cargar ⚠️ (la tienda mostrará medidas referenciales)",
+      esUnica
+        ? "Talla de la modelo: no aplica, es talla única"
+        : modeloTalla
+          ? `Talla de la modelo: ${modeloTalla}${modeloAltura ? ` · ${(modeloAltura / 100).toFixed(2)} m` : ""} ✅`
+          : "Talla de la modelo: sin cargar ⚠️ (es lo que más ayuda a elegir talla)",
+      producto.description
+        ? "Descripción: puesta ✅"
+        : "Descripción: sin poner ⚠️",
+      publicar
+        ? "Estado: PUBLICADO, ya se ve en la tienda"
+        : "Estado: OCULTO hasta que tenga foto",
+    ];
+
     if (guiaSobrante.length > 0) {
-      avisos.push(
-        `Dejé fuera las medidas de ${guiaSobrante.join(", ")}: esta prenda no tiene esas tallas.`
-      );
-    }
-    if (guiaTallas.length === 0) {
-      avisos.push(
-        esUnica
-          ? "Sin medidas de la pieza. Si me las dictas (alto, ancho, asa), las muestro en la ficha."
-          : "Sin medidas por talla: la tienda mostrará unas referenciales. Si me las dictas, las pongo exactas."
-      );
-    }
-    if (!modeloTalla && !esUnica) {
-      avisos.push(
-        "No sé qué talla usa la modelo de las fotos; es el dato que más ayuda a elegir talla."
+      detalle.push(
+        `Ojo: dejé fuera las medidas de ${guiaSobrante.join(", ")} (esta prenda no tiene esas tallas).`
       );
     }
     const similares = parecidos(nombre, existentes);
     if (similares.length > 0) {
-      avisos.push(`Ojo, ya existen parecidos: ${similares.join(", ")}.`);
+      detalle.push(`Ojo: ya existen parecidos: ${similares.join(", ")}.`);
+    }
+    // La pista que se da es la del dato que falta, no una genérica: si
+    // ya dictó la talla de la modelo, repetírsela sobra.
+    const pistas: string[] = [];
+    if (!modeloTalla && !esUnica) {
+      pistas.push(`"en ${producto.name} la modelo usa talla X y mide 1.68"`);
+    }
+    if (guiaTallas.length === 0) {
+      pistas.push(`"en ${producto.name}: ${tallas[0]} busto 92 largo 62"`);
+    }
+    if (pistas.length > 0) {
+      detalle.push(`Para completarlo, dime: ${pistas.join(" o ")}.`);
     }
 
     return {
       ok: true,
       mensaje:
-        `Producto "${producto.name}" creado a ${soles(producto.price)} en ${cat.name}` +
-        ` · ${tallas.join("/")} · ${unidades} unidades` +
-        `${fotos.length ? ` · ${fotos.length} foto(s)` : ""} (id ${producto.id}).` +
-        (avisos.length ? ` ${avisos.join(" ")}` : ""),
+        `Producto "${producto.name}" creado (id ${producto.id}).\n` +
+        detalle.map((d) => `   · ${d}`).join("\n"),
     };
   },
 };

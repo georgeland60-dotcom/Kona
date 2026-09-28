@@ -23,6 +23,7 @@ import {
   modeloEnTexto,
 } from "@/lib/tallas";
 import { huellaDe, permitirConsulta } from "@/lib/asistente/limites";
+import { store } from "@/config/store";
 import { anotarConsumo } from "@/lib/consumo-data";
 import type { Product } from "@/lib/types";
 
@@ -62,6 +63,54 @@ type Sugerencia = {
   imagen?: string;
   tallas: string[];
 };
+
+// La tabla de medidas de una prenda, para pintarla en el chat. Leerla
+// en una tabla es la diferencia entre entenderla y saltársela.
+type Tabla = {
+  nombre: string;
+  campos: string[];
+  filas: { talla: string; medidas: Record<string, number> }[];
+  nota: string;
+  modelo?: string;
+};
+
+function tablaDe(producto: Product): Tabla | null {
+  const guia = guiaDeProducto(producto);
+  if (!guia) return null;
+  return {
+    nombre: producto.name,
+    campos: [...new Set(guia.medidas.flatMap((m) => Object.keys(m.medidas)))],
+    filas: guia.medidas,
+    nota: guia.nota,
+    modelo: modeloEnTexto(producto) ?? undefined,
+  };
+}
+
+// "ASESOR" en una línea = ponle el botón de WhatsApp con el mensaje ya
+// escrito. Escribir el número a mano se presta a que se lo invente.
+function enlaceWhatsApp(producto?: Product): { url: string; texto: string } {
+  const saludo = producto
+    ? `Hola, estoy viendo ${producto.name} en la web y me gustaría que me ayuden 💛`
+    : "Hola, estoy viendo la tienda y me gustaría que me ayuden 💛";
+  return {
+    url: `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(saludo)}`,
+    texto: "Escribir por WhatsApp",
+  };
+}
+
+// Las líneas de control ("PRODUCTOS:", "TALLAS:", "ASESOR") no son para
+// la clienta: el sistema las convierte en tarjetas, tabla o botón.
+function separarMarca(texto: string, marca: RegExp): {
+  resto: string;
+  valor: string | null;
+} {
+  const encontrado = texto.match(marca);
+  if (!encontrado) return { resto: texto, valor: null };
+  return {
+    resto: texto.replace(marca, "").trim(),
+    valor: (encontrado[1] ?? "").trim(),
+  };
+}
 
 // La última línea "PRODUCTOS: slug, slug" no es para la clienta: se
 // convierte en tarjetas. Aquí se separa una cosa de la otra.
@@ -154,7 +203,19 @@ export async function POST(req: Request) {
       },
     });
 
-    const { respuesta: texto, slugs } = separarSugerencias(respuesta.texto);
+    const sinTallas = separarMarca(respuesta.texto, /^\s*TALLAS\s*:\s*(.+)$/im);
+    const sinAsesor = separarMarca(sinTallas.resto, /^\s*(ASESOR)\s*$/im);
+    const { respuesta: texto, slugs } = separarSugerencias(sinAsesor.resto);
+
+    // La tabla es la de la prenda que se nombró, si existe y si tiene
+    // medidas; si el modelo se equivoca de slug, simplemente no va.
+    const pedida = sinTallas.valor
+      ? sinTallas.valor.split(/[,;]/)[0].trim().replace(/[^a-z0-9-]/gi, "")
+      : null;
+    const productoTabla = pedida
+      ? productos.find((p) => p.slug === pedida)
+      : undefined;
+    const tabla = productoTabla ? tablaDe(productoTabla) : null;
 
     // Solo se muestran prendas que existen y tienen stock: el modelo
     // puede equivocarse de slug, y una tarjeta a un producto agotado es
@@ -170,6 +231,10 @@ export async function POST(req: Request) {
     return Response.json({
       respuesta: texto || "¿Me cuentas un poco más de lo que buscas?",
       productos: sugeridos,
+      ...(tabla ? { tabla } : {}),
+      ...(sinAsesor.valor
+        ? { whatsapp: enlaceWhatsApp(productoTabla ?? elegida) }
+        : {}),
     });
   } catch (error) {
     const esCuota = error instanceof ErrorAgente && !!error.cuota;
