@@ -82,6 +82,9 @@ export default function BannerRotativo({
             alt={f.alt}
             fill
             sizes={sizes}
+            // Solo la primera se carga con prioridad: es la que la
+            // clienta ve al abrir. Las otras cinco esperan, para no
+            // gastarle medio mega de datos del celular de entrada.
             priority={i === 0}
             quality={88}
             className={`object-cover ${f.position ?? "object-center"}`}

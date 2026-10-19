@@ -103,62 +103,56 @@ export default async function Home() {
       </div>
 
       {/* ---- PORTADA ----
-           Dos columnas: la frase a la izquierda y la foto a la derecha,
-           en marco vertical. La columna de la foto no pasa de 580 px,
-           menos de lo que miden las fotos: por eso se ven nitidas. */}
+           Banners propios de Kona a 1920 px, a todo lo ancho y en su
+           formato nativo (casi 2:1), sin recortar: cada uno trae su
+           texto y recortarlo se lo comeria.
+           Por eso tampoco se les encima ningun titulo: la frase de
+           marca va en la franja fucsia de abajo. */}
       <section className="bg-k-hueso">
-        <div className="max-w-6xl mx-auto px-5 md:px-8 py-14 md:py-24">
-          <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center">
-            <div className="relative order-2 md:order-1">
-              <Flor
-                className="absolute -top-10 -left-4 w-16 h-16 text-k-lila/50 hidden md:block"
-                variante="linea"
-              />
+        <div className="relative w-full aspect-[1920/939] overflow-hidden">
+          <BannerRotativo fotos={fotosPortada} sizes="100vw" />
+        </div>
+      </section>
 
-              <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris font-semibold mb-5">
-                #KonaGirl
-              </p>
+      <section className="relative bg-k-fucsia text-white overflow-hidden">
+        <Flor
+          className="absolute -top-3 right-8 w-20 h-20 text-white/15 hidden md:block"
+          variante="linea"
+        />
+        <Estrella className="absolute bottom-6 left-10 w-6 h-6 text-white/20 hidden md:block" />
 
-              <h1 className="leading-[0.88]">
-                <span className="block text-[2.6rem] md:text-6xl font-bold tracking-tight text-k-gris-texto">
-                  Vive Kona,
-                </span>
-                <span className="block font-script text-[3.4rem] md:text-[5rem] text-k-fucsia leading-[1.12] mt-1">
-                  vive orgullosa de ti
-                </span>
-              </h1>
+        <div className="relative max-w-5xl mx-auto px-5 md:px-8 py-10 md:py-14 text-center">
+          <p className="uppercase tracking-[0.45em] text-[11px] text-white/80 font-semibold mb-3">
+            #KonaGirl
+          </p>
+          <h1 className="leading-[0.9]">
+            <span className="block text-3xl md:text-5xl font-bold tracking-tight">
+              Vive Kona,
+            </span>
+            <span className="block font-script text-5xl md:text-7xl leading-[1.12] mt-1">
+              vive orgullosa de ti
+            </span>
+          </h1>
 
-              <Trazo className="w-24 h-3 text-k-fucsia/40 my-7" />
+          <Trazo className="w-24 h-3 text-white/60 mx-auto my-5" />
 
-              <p className="text-k-gris-texto text-lg md:text-xl max-w-md leading-relaxed">
-                Ropa pensada para tu cuerpo real, en todas las tallas. Para que
-                te la pongas y te sientas tú.
-              </p>
+          <p className="text-white/90 text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
+            Ropa pensada para tu cuerpo real, en todas las tallas.
+          </p>
 
-              <div className="flex flex-wrap gap-3 mt-9">
-                <Link
-                  href="/tienda"
-                  className="bg-k-fucsia text-white px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-k-fucsia-dark transition-colors"
-                >
-                  Ver la tienda
-                </Link>
-                <Link
-                  href="/tienda?cat=nuevos-ingresos"
-                  className="border border-k-gris-texto/30 text-k-gris-texto px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:border-k-fucsia hover:text-k-fucsia transition-colors"
-                >
-                  Nuevos ingresos
-                </Link>
-              </div>
-            </div>
-
-            <div className="order-1 md:order-2">
-              <div className="relative aspect-[4/5] w-full max-w-[580px] mx-auto overflow-hidden rounded-[2rem]">
-                <BannerRotativo
-                  fotos={fotosPortada}
-                  sizes="(min-width: 1024px) 580px, (min-width: 768px) 45vw, 92vw"
-                />
-              </div>
-            </div>
+          <div className="flex flex-wrap justify-center gap-3 mt-8">
+            <Link
+              href="/tienda"
+              className="bg-white text-k-fucsia px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-k-hueso transition-colors"
+            >
+              Ver la tienda
+            </Link>
+            <Link
+              href="/tienda?cat=nuevos-ingresos"
+              className="border border-white/70 text-white px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-white hover:text-k-fucsia transition-colors"
+            >
+              Nuevos ingresos
+            </Link>
           </div>
         </div>
       </section>

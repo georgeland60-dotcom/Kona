@@ -23,31 +23,43 @@ export type FotoMarca = {
   position?: string;
 };
 
-// ---- PORTADA (marco vertical 4:5) ----
-// El ORDEN es el orden en que se ven: la primera es la que abre.
+// ---- PORTADA (banners anchos de la marca, 1920 x 939) ----
+// Son los banners que la propia Kona tiene publicados en konamoda.pe,
+// bajados a su tamano original. Como vienen con su texto ya puesto,
+// la pagina NO les encima ningun titulo: se veria sucio.
 //
-// PENDIENTE: faltan las tres fotos anchas nuevas (las dos chicas, el
-// corazon con las manos, la cebra horizontal). No llegaron como
-// archivo. Cuando lleguen van al principio de esta lista, empezando
-// por la de las dos chicas.
+// Van en su formato nativo (casi 2:1) y sin recortar, para no cortar
+// la tipografia que trae cada uno.
+//
+// Quedaron fuera a proposito los banners de campana ("BLACK WEEK 2x1",
+// "50% OFF MOM days"): anunciar una promocion que no esta activa es
+// prometerle a la clienta algo que el carrito no le va a cobrar.
+//
+// El ORDEN es el orden en que se ven.
 export const fotosPortada: FotoMarca[] = [
   {
-    // 931 x 1236
-    src: "/marca/selflove.webp",
-    alt: "Clienta de Kona sonriendo con flores, con la frase “self love”",
-    position: "object-[center_20%]",
+    src: "/marca/hero-bannerweb.webp",
+    alt: "Dos clientas de Kona sonriendo en una terraza de Lima",
   },
   {
-    // 837 x 1180
-    src: "/marca/lista.webp",
-    alt: "Clienta de Kona de espaldas con cartera floral, con la frase “es estar siempre lista para vivir”",
-    position: "object-[center_30%]",
+    src: "/marca/hero-portadaconjuntos-1.webp",
+    alt: "Tres clientas de Kona juntas, con la frase “vive la moda con comodidad”",
   },
   {
-    // 835 x 1187
-    src: "/marca/elegir.webp",
-    alt: "Perchero con prendas de Kona en tonos pastel, con la frase “es poder elegir”",
-    position: "object-[center_40%]",
+    src: "/marca/hero-bannerswim1.webp",
+    alt: "Clienta de Kona en una piscina, con la frase “Vivo orgullosa de mí”",
+  },
+  {
+    src: "/marca/hero-bannerwebali.webp",
+    alt: "Clienta de Kona en ropa de baño naranja junto a la piscina",
+  },
+  {
+    src: "/marca/hero-banner-UNICA.webp",
+    alt: "Clientas de Kona: única, detalles en cada prenda",
+  },
+  {
+    src: "/marca/hero-banner-MODERNA.webp",
+    alt: "Clientas de Kona: moderna, diseños en tendencia",
   },
 ];
 
