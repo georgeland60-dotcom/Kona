@@ -61,6 +61,58 @@ const VALORES = [
   { titulo: "Libre", texto: "Sin límites al vestir", flor: "text-k-magenta" },
 ];
 
+// El texto de la portada. Se escribe una sola vez y se usa en los dos
+// sitios (encima de la foto en escritorio, debajo en celular) para que
+// no se pueda quedar uno desactualizado respecto del otro.
+function TextoPortada({ sobreFoto }: { sobreFoto: boolean }) {
+  return (
+    <div className="max-w-xl">
+      <p
+        className={`uppercase tracking-[0.45em] text-[10px] md:text-[11px] font-semibold mb-2 md:mb-3 ${
+          sobreFoto ? "text-white/85" : "text-white/80"
+        }`}
+      >
+        #KonaGirl
+      </p>
+      <h1 className="leading-[0.9] text-white">
+        <span className="block text-2xl md:text-4xl font-bold tracking-tight">
+          Vive Kona,
+        </span>
+        <span className="block font-script text-4xl md:text-6xl leading-[1.1] mt-0.5">
+          vive orgullosa de ti
+        </span>
+      </h1>
+
+      <p className="text-white/90 text-sm md:text-lg max-w-md mt-3 leading-relaxed">
+        Ropa pensada para tu cuerpo real, en todas las tallas.
+      </p>
+
+      <div className="flex flex-wrap gap-2.5 md:gap-3 mt-4 md:mt-6">
+        <Link
+          href="/tienda"
+          className={`px-6 md:px-9 py-3 md:py-3.5 rounded-full font-semibold uppercase tracking-[0.12em] text-[11px] md:text-xs transition-colors ${
+            sobreFoto
+              ? "bg-k-fucsia text-white hover:bg-k-fucsia-dark"
+              : "bg-white text-k-fucsia hover:bg-k-hueso"
+          }`}
+        >
+          Ver la tienda
+        </Link>
+        <Link
+          href="/tienda?cat=nuevos-ingresos"
+          className={`px-6 md:px-9 py-3 md:py-3.5 rounded-full font-semibold uppercase tracking-[0.12em] text-[11px] md:text-xs transition-colors ${
+            sobreFoto
+              ? "bg-white/95 text-k-gris-texto hover:bg-white"
+              : "border border-white/70 text-white hover:bg-white hover:text-k-fucsia"
+          }`}
+        >
+          Nuevos ingresos
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default async function Home() {
   const [products, banners, rules, categorias] = await Promise.all([
     getProducts(),
@@ -106,56 +158,46 @@ export default async function Home() {
       </div>
 
       {/* ---- PORTADA ----
-           Banners propios de Kona a 1920 px, a todo lo ancho y en su
-           formato nativo (casi 2:1), sin recortar: cada uno trae su
-           texto y recortarlo se lo comeria.
-           Por eso tampoco se les encima ningun titulo: la frase de
-           marca va en la franja fucsia de abajo. */}
-      <section className="bg-k-hueso">
+           En ESCRITORIO la frase va encima de la foto, abajo a la
+           izquierda, con un velo oscuro para que se lea. Va a la
+           izquierda porque estos banners traen su propio texto arriba
+           y a la derecha ("swim SALE", "40% OFF"): asi no se pisan.
+
+           En CELULAR no cabe: el banner mide 191 px de alto en una
+           pantalla de 390, y el texto encima quedaba ilegible y
+           cortado. Ahi la foto se queda sola y la frase baja a una
+           franja fucsia debajo.
+
+           Solo una de las dos versiones existe a la vez (la otra esta
+           en display:none), asi que un lector de pantalla lee el texto
+           una vez, no dos. */}
+      <section className="relative">
         <div className="relative w-full aspect-[1920/939] overflow-hidden">
           <BannerRotativo fotos={fotosPortada} sizes="100vw" />
+
+          {/* velo: solo donde hay texto encima */}
+          <div
+            aria-hidden="true"
+            className="hidden md:block absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"
+          />
+          <div
+            aria-hidden="true"
+            className="hidden md:block absolute inset-0 bg-gradient-to-r from-black/55 via-black/10 to-transparent"
+          />
+
+          <div className="hidden md:flex absolute inset-0 items-end pointer-events-none">
+            <div className="w-full max-w-6xl mx-auto px-5 md:px-8 pb-8 md:pb-14">
+              <div className="pointer-events-auto">
+                <TextoPortada sobreFoto />
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
 
-      <section className="relative bg-k-fucsia text-white overflow-hidden">
-        <Flor
-          className="absolute -top-3 right-8 w-20 h-20 text-white/15 hidden md:block"
-          variante="linea"
-        />
-        <Estrella className="absolute bottom-6 left-10 w-6 h-6 text-white/20 hidden md:block" />
-
-        <div className="relative max-w-5xl mx-auto px-5 md:px-8 py-10 md:py-14 text-center">
-          <p className="uppercase tracking-[0.45em] text-[11px] text-white/80 font-semibold mb-3">
-            #KonaGirl
-          </p>
-          <h1 className="leading-[0.9]">
-            <span className="block text-3xl md:text-5xl font-bold tracking-tight">
-              Vive Kona,
-            </span>
-            <span className="block font-script text-5xl md:text-7xl leading-[1.12] mt-1">
-              vive orgullosa de ti
-            </span>
-          </h1>
-
-          <Trazo className="w-24 h-3 text-white/60 mx-auto my-5" />
-
-          <p className="text-white/90 text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
-            Ropa pensada para tu cuerpo real, en todas las tallas.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
-            <Link
-              href="/tienda"
-              className="bg-white text-k-fucsia px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-k-hueso transition-colors"
-            >
-              Ver la tienda
-            </Link>
-            <Link
-              href="/tienda?cat=nuevos-ingresos"
-              className="border border-white/70 text-white px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-white hover:text-k-fucsia transition-colors"
-            >
-              Nuevos ingresos
-            </Link>
+        {/* en celular, la frase va debajo */}
+        <div className="md:hidden bg-k-fucsia">
+          <div className="px-5 py-8">
+            <TextoPortada sobreFoto={false} />
           </div>
         </div>
       </section>

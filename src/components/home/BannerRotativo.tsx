@@ -93,7 +93,7 @@ export default function BannerRotativo({
       ))}
 
       {fotos.length > 1 && (
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
+        <div className="absolute bottom-5 right-5 md:right-8 flex gap-2">
           {fotos.map((f, i) => (
             <button
               key={f.src}
