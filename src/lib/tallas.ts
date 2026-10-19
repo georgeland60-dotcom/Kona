@@ -149,11 +149,32 @@ export type GuiaDeTallas = {
   nota: string;
 };
 
+// De la más chica a la más grande. Una tabla en el orden en que se
+// cargaron las tallas (L, M, S, XL) se lee fatal: hay que buscar la
+// fila en vez de recorrerla.
+function ordenarPorTalla(
+  medidas: MedidaTalla[],
+  tipo?: keyof typeof MOLDES
+): MedidaTalla[] {
+  const clave = (m: MedidaTalla): number => {
+    const enEscala = ESCALA.indexOf(m.talla.trim().toUpperCase());
+    if (enEscala >= 0) return enEscala;
+    const numero = Number(m.talla.replace(",", "."));
+    if (Number.isFinite(numero)) return 100 + numero;
+    const porTipo = tipo ? distanciaALaBase(m.talla, tipo) : null;
+    return porTipo === null ? 1000 : porTipo;
+  };
+  return [...medidas].sort((a, b) => clave(a) - clave(b));
+}
+
 export function guiaDeProducto(producto: Product): GuiaDeTallas | null {
   // Lo cargado manda siempre.
   if (producto.guiaTallas && producto.guiaTallas.length > 0) {
     return {
-      medidas: producto.guiaTallas,
+      medidas: ordenarPorTalla(
+        producto.guiaTallas,
+        POR_CATEGORIA[producto.category]
+      ),
       estimada: false,
       nota: "Medidas de la prenda, en centímetros.",
     };
@@ -183,7 +204,7 @@ export function guiaDeProducto(producto: Product): GuiaDeTallas | null {
   if (medidas.length === 0) return null;
 
   return {
-    medidas,
+    medidas: ordenarPorTalla(medidas, tipo),
     estimada: true,
     nota:
       "Medidas referenciales en centímetros. Todavía no tenemos medidas exactas de esta prenda: si quieres, te la medimos por WhatsApp antes de que decidas.",
