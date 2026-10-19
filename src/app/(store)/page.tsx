@@ -13,6 +13,7 @@ import Testimonios from "@/components/home/Testimonios";
 import Instagram from "@/components/home/Instagram";
 import PreguntasFrecuentes from "@/components/home/PreguntasFrecuentes";
 import BannerRotativo from "@/components/home/BannerRotativo";
+import Revelar from "@/components/home/Revelar";
 import Foto from "@/components/brand/Foto";
 import { Corazon, Estrella, Flor, Trazo } from "@/components/brand/Garabatos";
 
@@ -165,6 +166,7 @@ export default async function Home() {
       {/* ---- CATEGORIAS ---- */}
       <section className="bg-white">
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <Revelar>
           <div className="flex items-end justify-between mb-8 md:mb-10">
             <div>
               <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris font-semibold mb-2">
@@ -218,6 +220,7 @@ export default async function Home() {
               </Link>
             ))}
           </div>
+          </Revelar>
         </div>
       </section>
 
@@ -229,6 +232,7 @@ export default async function Home() {
            3:2 y en una columna que no pasa de su tamano real. */}
       <section className="bg-k-lila">
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <Revelar>
           <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center">
             <div className="relative aspect-[3/2] w-full max-w-[600px] overflow-hidden rounded-[2rem]">
               <Foto
@@ -259,12 +263,14 @@ export default async function Home() {
               </Link>
             </div>
           </div>
+          </Revelar>
         </div>
       </section>
 
       {/* ---- LOS FAVORITOS ---- */}
       <section className="bg-white">
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <Revelar>
           <div className="text-center mb-10">
             <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris font-semibold mb-3">
               Lo más pedido
@@ -303,14 +309,18 @@ export default async function Home() {
               Ver toda la tienda
             </Link>
           </div>
+        </Revelar>
         </div>
       </section>
 
       {/* ---- TESTIMONIOS ---- */}
-      <Testimonios />
+      <Revelar>
+        <Testimonios />
+      </Revelar>
 
       {/* ---- VALORES DEL MANUAL ---- */}
       <section className="bg-k-lila/25">
+        <Revelar>
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-14 md:py-20 grid grid-cols-2 md:grid-cols-4 gap-10 text-center">
           {VALORES.map((v) => (
             <div key={v.titulo}>
@@ -325,16 +335,22 @@ export default async function Home() {
             </div>
           ))}
         </div>
+        </Revelar>
       </section>
 
       {/* ---- INSTAGRAM ---- */}
-      <Instagram productos={products} />
+      <Revelar>
+        <Instagram productos={products} />
+      </Revelar>
 
       {/* ---- PREGUNTAS FRECUENTES ---- */}
-      <PreguntasFrecuentes />
+      <Revelar>
+        <PreguntasFrecuentes />
+      </Revelar>
 
       {/* ---- CIERRE ---- */}
       <section className="bg-k-fucsia text-white">
+        <Revelar>
         <div className="max-w-3xl mx-auto px-5 md:px-8 py-20 md:py-24 text-center">
           <Corazon className="w-9 h-9 mx-auto mb-5 text-white/70" />
           <h2 className="font-script text-[3rem] md:text-[4rem] leading-[1.18]">
@@ -350,6 +366,7 @@ export default async function Home() {
             Hablar con Kona
           </Link>
         </div>
+        </Revelar>
       </section>
     </div>
   );
