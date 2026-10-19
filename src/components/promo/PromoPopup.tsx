@@ -93,20 +93,23 @@ export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
 
       <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-3xl bg-white shadow-2xl animate-v3-pop-in">
         {/* Cabecera en el fucsia de la marca */}
-        <div className="relative bg-k-fucsia px-6 py-7 text-center text-white">
-          <p className="uppercase tracking-[0.3em] text-xs text-white/85">
-            Aprovecha ahora
-          </p>
+        {/* Antes esta cabecera tenia TRES renglones: "APROVECHA AHORA",
+            el titulo y "Hay N promociones activas". Se veia apretada y
+            la cola de la "P" de Promociones, con leading-none, chocaba
+            con el renglon de abajo. Ahora son dos: el titulo y una sola
+            frase que ya dice lo que decian las otras dos. El leading
+            deja sitio a los rasgos que bajan de la letra manuscrita. */}
+        <div className="relative bg-k-fucsia px-6 py-8 text-center text-white">
           <h2
             id="promo-popup-titulo"
-            className="font-script text-5xl leading-none mt-1"
+            className="font-script text-5xl leading-[1.25] pb-1"
           >
             Promociones
           </h2>
-          <p className="text-base text-white/90 mt-2">
+          <p className="text-base text-white/90 mt-1">
             {promos.length === 1
-              ? "Hay 1 promoción activa"
-              : `Hay ${promos.length} promociones activas`}
+              ? "Aprovecha la promoción activa"
+              : `Aprovecha las ${promos.length} promociones activas`}
           </p>
 
           <button
@@ -124,48 +127,57 @@ export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
           {promos.map((promo, idx) => {
             const color = COLORES[idx % COLORES.length];
             return (
+              // En celular la fila no cabe en una linea: foto, texto y
+              // boton se peleaban los 390 px y los titulos se partian en
+              // dos. Debajo de sm el boton baja a su propio renglon, a
+              // todo lo ancho (que ademas es mas facil de pulsar). De sm
+              // en adelante vuelve a la derecha, como estaba.
               <li key={promo.id} className="flex items-stretch gap-3 px-5 py-4">
                 <span
                   aria-hidden="true"
                   className={`w-1.5 rounded-full shrink-0 ${color.bar}`}
                 />
-                {promo.image && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={promo.image}
-                    alt=""
-                    className="w-14 h-18 object-cover rounded-lg shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  {/* el gancho, en grande */}
-                  <p
-                    className={`font-bold text-xl leading-tight ${color.texto}`}
+                <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex gap-3 min-w-0 flex-1">
+                    {promo.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={promo.image}
+                        alt=""
+                        className="w-14 h-18 object-cover rounded-lg shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      {/* el gancho, en grande */}
+                      <p
+                        className={`font-bold text-lg sm:text-xl leading-tight ${color.texto}`}
+                      >
+                        {promo.title}
+                      </p>
+                      {promo.scope && (
+                        <p className="font-semibold text-k-gris-texto text-sm sm:text-base leading-snug">
+                          {promo.scope}
+                        </p>
+                      )}
+                      <p className="text-k-gris text-sm leading-snug mt-0.5">
+                        {promo.detail}
+                      </p>
+                      {/* solo aparece cuando de verdad queda poco */}
+                      {promo.urgency && (
+                        <p className="inline-block mt-1.5 bg-k-lila/40 text-k-gris-texto text-xs font-bold px-2 py-1 rounded-full">
+                          ¡{promo.urgency}!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Link
+                    href={promo.href}
+                    onClick={cerrar}
+                    className="shrink-0 w-full sm:w-auto text-center text-white text-xs font-bold uppercase tracking-wide px-4 py-3 sm:py-2.5 rounded-full hover:opacity-90 transition bg-k-fucsia"
                   >
-                    {promo.title}
-                  </p>
-                  {promo.scope && (
-                    <p className="font-semibold text-k-gris-texto text-base leading-snug">
-                      {promo.scope}
-                    </p>
-                  )}
-                  <p className="text-k-gris text-sm leading-snug mt-0.5">
-                    {promo.detail}
-                  </p>
-                  {/* solo aparece cuando de verdad queda poco */}
-                  {promo.urgency && (
-                    <p className="inline-block mt-1.5 bg-k-lila/40 text-k-gris-texto text-xs font-bold px-2 py-1 rounded-full">
-                      ¡{promo.urgency}!
-                    </p>
-                  )}
+                    {promo.cta}
+                  </Link>
                 </div>
-                <Link
-                  href={promo.href}
-                  onClick={cerrar}
-                  className={`self-center shrink-0 text-white text-xs font-bold uppercase tracking-wide px-4 py-2.5 rounded-full hover:opacity-90 transition bg-k-fucsia`}
-                >
-                  {promo.cta}
-                </Link>
               </li>
             );
           })}
