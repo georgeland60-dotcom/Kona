@@ -98,6 +98,33 @@ function enlaceWhatsApp(producto?: Product): { url: string; texto: string } {
   };
 }
 
+// Una línea que es una fila de medidas: "- **M:** cintura 72 cm, ...".
+// Cuando la tabla va aparte, repetirlas en el texto es ruido; y en el
+// chat los asteriscos del markdown se veían tal cual.
+const FILA_DE_MEDIDAS =
+  /^\s*[-*•]?\s*\**\s*(?:talla\s+)?[a-z0-9]{1,4}\**\s*[:.]\s*.*\d+\s*cm/i;
+
+function quitarFilasDeMedidas(texto: string): string {
+  return texto
+    .split("\n")
+    .filter((l) => !FILA_DE_MEDIDAS.test(l))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// El chat muestra texto plano, así que el markdown se veía en crudo
+// ("**S:**"). Se limpia aquí y no en el navegador para que valga igual
+// si algún día el texto se usa en otro sitio.
+function sinMarkdown(texto: string): string {
+  return texto
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(^|\s)\*(\S[^*]*?)\*(?=\s|$)/g, "$1$2")
+    .replace(/^\s*#{1,6}\s*/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "• ")
+    .trim();
+}
+
 // Las líneas de control ("PRODUCTOS:", "TALLAS:", "ASESOR") no son para
 // la clienta: el sistema las convierte en tarjetas, tabla o botón.
 function separarMarca(texto: string, marca: RegExp): {
@@ -205,16 +232,22 @@ export async function POST(req: Request) {
 
     const sinTallas = separarMarca(respuesta.texto, /^\s*TALLAS\s*:\s*(.+)$/im);
     const sinAsesor = separarMarca(sinTallas.resto, /^\s*(ASESOR)\s*$/im);
-    const { respuesta: texto, slugs } = separarSugerencias(sinAsesor.resto);
+    const { respuesta: textoCrudo, slugs } = separarSugerencias(sinAsesor.resto);
 
     // La tabla es la de la prenda que se nombró, si existe y si tiene
     // medidas; si el modelo se equivoca de slug, simplemente no va.
     const pedida = sinTallas.valor
       ? sinTallas.valor.split(/[,;]/)[0].trim().replace(/[^a-z0-9-]/gi, "")
       : null;
-    const productoTabla = pedida
-      ? productos.find((p) => p.slug === pedida)
-      : undefined;
+
+    // Y si no puso la marca pero está hablando de las medidas de la
+    // prenda que se está viendo, la tabla va igual. Depender de que el
+    // modelo se acuerde de una línea de control es depender de que no
+    // se le olvide, y se le olvida.
+    const hablaDeMedidas = /\d+\s*cm|medidas|talla/i.test(sinAsesor.resto);
+    const productoTabla =
+      (pedida ? productos.find((p) => p.slug === pedida) : undefined) ??
+      (hablaDeMedidas ? elegida : undefined);
     const tabla = productoTabla ? tablaDe(productoTabla) : null;
 
     // Solo se muestran prendas que existen y tienen stock: el modelo
@@ -227,6 +260,12 @@ export async function POST(req: Request) {
           !!p && p.variants.some((v) => v.stock > 0)
       )
       .map(aTarjeta);
+
+    // Con tabla, las filas de medidas salen del texto: se leen en la
+    // tabla, y repetidas arriba la respuesta se hacía larguísima.
+    const texto = sinMarkdown(
+      tabla ? quitarFilasDeMedidas(textoCrudo) : textoCrudo
+    );
 
     return Response.json({
       respuesta: texto || "¿Me cuentas un poco más de lo que buscas?",
