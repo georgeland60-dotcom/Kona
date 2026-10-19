@@ -21,6 +21,17 @@ export type FotoMarca = {
   // Que parte de la foto no se puede recortar cuando cambia el tamano
   // de la pantalla (la cara, normalmente).
   position?: string;
+  // Cuanto velo necesita la esquina de abajo a la izquierda para que
+  // el texto blanco de la portada se lea encima. NO es gusto: salio de
+  // medir, foto por foto, la luminancia del fondo justo debajo de cada
+  // renglon y calcular el contraste contra el blanco.
+  //   suave  -> la foto ya es oscura ahi (ciudad, agua, ropa oscura)
+  //   medio  -> por defecto
+  //   fuerte -> la foto es casi blanca ahi y sin esto no se lee
+  // El velo es gris neutro a proposito. Se probo con el fucsia de la
+  // marca y quedaba bonito, pero tenia el blusas y ropa de bano: en una
+  // tienda de ropa el color de la prenda no se puede falsear.
+  velo?: "suave" | "medio" | "fuerte";
 };
 
 // ---- PORTADA (banners anchos de la marca, 1920 x 939) ----
@@ -43,6 +54,7 @@ export const fotosPortada: FotoMarca[] = [
     // arriba: lo que se recorta es el borde de la piscina, no el
     // "swim SALE" ni el 40%.
     src: "/marca/hero-swimsale.webp",
+    velo: "suave",
     alt: "Dos clientas de Kona en ropa de baño azul con rosas: swim sale, 40% de descuento",
     position: "object-top",
   },
@@ -50,23 +62,28 @@ export const fotosPortada: FotoMarca[] = [
     // 1534 x 940, mismo caso: anclada arriba para no comerse el
     // "love is a holiday".
     src: "/marca/hero-loveholiday.webp",
+    velo: "medio",
     alt: "Clienta de Kona con un conjunto rosa y rosas, con la frase “love is a holiday”",
     position: "object-top",
   },
   {
     src: "/marca/hero-bannerwebali.webp",
+    velo: "medio",
     alt: "Clienta de Kona en ropa de baño naranja junto a la piscina",
   },
   {
     src: "/marca/hero-bannerweb.webp",
+    velo: "medio",
     alt: "Dos clientas de Kona sonriendo en una terraza de Lima",
   },
   {
     src: "/marca/hero-portadaconjuntos-1.webp",
+    velo: "fuerte",
     alt: "Tres clientas de Kona juntas, con la frase “vive la moda con comodidad”",
   },
   {
     src: "/marca/hero-bannerswim1.webp",
+    velo: "fuerte",
     alt: "Clienta de Kona en una piscina, con la frase “Vivo orgullosa de mí”",
   },
 ];

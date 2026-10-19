@@ -22,7 +22,47 @@ export type Diapositiva = {
   src: string;
   alt: string;
   position?: string;
+  velo?: "suave" | "medio" | "fuerte";
 };
+
+// =============================================================
+//  EL VELO DE CADA FOTO
+//  Encima de la foto va texto blanco, y una foto clara se lo come.
+//  Pero oscurecerlas todas por igual apaga las que ya eran oscuras,
+//  que son la mayoria. Asi que cada foto trae escrito cuanto velo
+//  necesita, medido una por una.
+//
+//  Son dos capas, y las dos mueren antes de llegar a la mitad de la
+//  foto: una franja abajo y un charco ovalado en la esquina de abajo
+//  a la izquierda, que es donde vive el texto. Arriba (las caras, el
+//  cielo, el texto que ya trae cada banner) no se toca.
+//
+//  Gris neutro a proposito: un velo de color le cambia el tono a la
+//  ropa, y en una tienda de ropa eso no se puede hacer.
+//
+//  Las clases van escritas enteras porque Tailwind lee el archivo
+//  como texto: un nombre de clase armado a pedazos no existiria.
+// =============================================================
+const VELOS = {
+  suave: {
+    franja:
+      "bg-[linear-gradient(to_top,rgba(0,0,0,0.38)_0%,rgba(0,0,0,0.12)_14%,rgba(0,0,0,0)_28%)]",
+    charco:
+      "bg-[radial-gradient(130%_100%_at_0%_100%,rgba(0,0,0,0.42)_0%,rgba(0,0,0,0.20)_38%,rgba(0,0,0,0)_70%)]",
+  },
+  medio: {
+    franja:
+      "bg-[linear-gradient(to_top,rgba(0,0,0,0.46)_0%,rgba(0,0,0,0.16)_15%,rgba(0,0,0,0)_32%)]",
+    charco:
+      "bg-[radial-gradient(130%_100%_at_0%_100%,rgba(0,0,0,0.56)_0%,rgba(0,0,0,0.30)_38%,rgba(0,0,0,0)_70%)]",
+  },
+  fuerte: {
+    franja:
+      "bg-[linear-gradient(to_top,rgba(0,0,0,0.56)_0%,rgba(0,0,0,0.24)_18%,rgba(0,0,0,0)_38%)]",
+    charco:
+      "bg-[radial-gradient(140%_110%_at_0%_100%,rgba(0,0,0,0.76)_0%,rgba(0,0,0,0.50)_40%,rgba(0,0,0,0)_74%)]",
+  },
+} as const;
 
 export default function BannerRotativo({
   fotos,
@@ -88,6 +128,24 @@ export default function BannerRotativo({
             priority={i === 0}
             quality={88}
             className={`object-cover ${f.position ?? "object-center"}`}
+          />
+
+          {/* El velo viaja con su foto, asi que se desvanece junto con
+              ella y nunca se ve el velo de una sobre la otra. En
+              celular no hace falta: alli el texto va debajo, sobre
+              fucsia. pointer-events-none o se tragaria los clics de
+              los puntitos, que estan debajo en el HTML. */}
+          <div
+            aria-hidden="true"
+            className={`hidden md:block absolute inset-0 pointer-events-none ${
+              VELOS[f.velo ?? "medio"].franja
+            }`}
+          />
+          <div
+            aria-hidden="true"
+            className={`hidden md:block absolute inset-0 pointer-events-none ${
+              VELOS[f.velo ?? "medio"].charco
+            }`}
           />
         </div>
       ))}

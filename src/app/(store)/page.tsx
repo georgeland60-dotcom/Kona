@@ -67,14 +67,28 @@ const VALORES = [
 function TextoPortada({ sobreFoto }: { sobreFoto: boolean }) {
   return (
     <div className="max-w-xl">
-      <p
-        className={`uppercase tracking-[0.45em] text-[10px] md:text-[11px] font-semibold mb-2 md:mb-3 ${
-          sobreFoto ? "text-white/85" : "text-white/80"
+      {/* Encima de la foto esta linea va en una pastilla fucsia. Es la
+          letra mas chica de toda la portada y, suelta sobre la foto,
+          caia a 1.8:1 en el banner de los sweaters celestes: ilegible.
+          Sobre el fucsia de la marca se lee a 7:1 en cualquier banner,
+          y de paso mete el color de Kona en la portada sin oscurecer
+          nada de la foto. */}
+      <p className="mb-2 md:mb-3">
+        <span
+          className={`inline-block uppercase tracking-[0.45em] text-[10px] md:text-[11px] font-semibold ${
+            sobreFoto
+              ? "bg-k-fucsia text-white rounded-full pl-3 pr-1.5 py-1.5"
+              : "text-white/80"
+          }`}
+        >
+          #KonaGirl
+        </span>
+      </p>
+      <h1
+        className={`leading-[0.9] text-white ${
+          sobreFoto ? "[text-shadow:0_2px_14px_rgba(0,0,0,0.55)]" : ""
         }`}
       >
-        #KonaGirl
-      </p>
-      <h1 className="leading-[0.9] text-white">
         <span className="block text-2xl md:text-4xl font-bold tracking-tight">
           Vive Kona,
         </span>
@@ -83,7 +97,11 @@ function TextoPortada({ sobreFoto }: { sobreFoto: boolean }) {
         </span>
       </h1>
 
-      <p className="text-white/90 text-sm md:text-lg max-w-md mt-3 leading-relaxed">
+      <p
+        className={`text-white/90 text-sm md:text-lg max-w-md mt-3 leading-relaxed ${
+          sobreFoto ? "[text-shadow:0_1px_10px_rgba(0,0,0,0.6)]" : ""
+        }`}
+      >
         Ropa pensada para tu cuerpo real, en todas las tallas.
       </p>
 
@@ -175,15 +193,10 @@ export default async function Home() {
         <div className="relative w-full aspect-[1920/939] overflow-hidden">
           <BannerRotativo fotos={fotosPortada} sizes="100vw" />
 
-          {/* velo: solo donde hay texto encima */}
-          <div
-            aria-hidden="true"
-            className="hidden md:block absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"
-          />
-          <div
-            aria-hidden="true"
-            className="hidden md:block absolute inset-0 bg-gradient-to-r from-black/55 via-black/10 to-transparent"
-          />
+          {/* El velo que deja leer el texto ya no vive aqui: viaja con
+              cada foto dentro de BannerRotativo, porque cada banner
+              necesita una cantidad distinta y asi se desvanece junto
+              con su propia foto. */}
 
           <div className="hidden md:flex absolute inset-0 items-end pointer-events-none">
             <div className="w-full max-w-6xl mx-auto px-5 md:px-8 pb-8 md:pb-14">
