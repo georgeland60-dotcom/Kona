@@ -12,6 +12,7 @@ import Testimonios from "@/components/home/Testimonios";
 import Instagram from "@/components/home/Instagram";
 import PreguntasFrecuentes from "@/components/home/PreguntasFrecuentes";
 import { Corazon, Estrella, Flor, Trazo } from "@/components/brand/Garabatos";
+import { fotoPortada, fotoIntermedia } from "@/data/fotos-marca";
 
 // =============================================================
 //  INICIO DE LA TIENDA — version alineada al MANUAL DE MARCA
@@ -100,57 +101,71 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* ---- PORTADA: la frase de marca ---- */}
-      <section className="relative bg-k-hueso overflow-hidden">
-        {/* garabatos de marca, sueltos como pide el manual */}
-        <Flor
-          className="absolute top-6 left-6 md:top-10 md:left-14 w-16 h-16 md:w-20 md:h-20 text-k-lila/60"
-          variante="linea"
-        />
-        <Corazon className="absolute top-10 right-8 md:right-16 w-8 h-8 md:w-10 md:h-10 text-k-rosa/55" />
-        <Estrella className="absolute bottom-10 left-10 md:left-24 w-7 h-7 text-k-celeste/70" />
-        <Estrella className="absolute top-24 right-24 w-4 h-4 text-k-turquesa/60 hidden md:block" />
+      {/* ---- PORTADA: foto de marca + la frase ----
+           Antes esto era texto sobre un fondo casi blanco y la pagina
+           arrancaba apagada. Ahora entra una foto real de Kona y un
+           bloque fucsia: color desde el primer golpe de vista. */}
+      <section className="relative bg-k-fucsia text-white overflow-hidden">
+        <div className="grid md:grid-cols-2 items-stretch">
+          {/* texto */}
+          <div className="relative order-2 md:order-1 px-6 md:px-12 lg:px-16 py-12 md:py-20 flex flex-col justify-center">
+            {/* garabatos de marca, apenas insinuados */}
+            <Flor
+              className="absolute top-5 right-6 w-16 h-16 text-white/20 hidden md:block"
+              variante="linea"
+            />
+            <Estrella className="absolute bottom-8 right-12 w-6 h-6 text-white/25 hidden md:block" />
 
-        <div className="relative max-w-4xl mx-auto px-4 pt-14 pb-12 md:pt-20 md:pb-16 text-center">
-          <p className="uppercase tracking-[0.4em] text-xs text-k-gris font-semibold mb-4">
-            #KonaGirl
-          </p>
-          <h1 className="leading-[0.95]">
-            <span className="block text-4xl md:text-6xl font-bold tracking-tight text-k-gris-texto">
-              Vive Kona,
-            </span>
-            {/* la cursiva de marca, reservada para las frases especiales */}
-            <span className="block font-script text-6xl md:text-8xl text-k-fucsia leading-[1.05] mt-1">
-              vive orgullosa de ti
-            </span>
-          </h1>
+            <p className="uppercase tracking-[0.4em] text-xs text-white/80 font-semibold mb-4">
+              #KonaGirl
+            </p>
+            <h1 className="leading-[0.95]">
+              <span className="block text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+                Vive Kona,
+              </span>
+              {/* la cursiva de marca, reservada a las frases especiales */}
+              <span className="block font-script text-6xl md:text-7xl lg:text-8xl leading-[1.05] mt-1">
+                vive orgullosa de ti
+              </span>
+            </h1>
 
-          <Trazo className="w-28 h-3 text-k-fucsia/50 mx-auto my-5" />
+            <Trazo className="w-28 h-3 text-white/60 my-5" />
 
-          <p className="text-k-gris-texto text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
-            Ropa pensada para tu cuerpo real, en todas las tallas. Entra por la
-            que va contigo hoy.
-          </p>
+            <p className="text-white/90 text-lg md:text-xl max-w-md leading-relaxed">
+              Ropa pensada para tu cuerpo real, en todas las tallas.
+            </p>
 
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
-            <Link
-              href="/tienda"
-              className="bg-k-fucsia text-white px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-fucsia-dark transition"
-            >
-              Ver la tienda
-            </Link>
-            <Link
-              href="/tienda?cat=nuevos-ingresos"
-              className="border-2 border-k-fucsia text-k-fucsia px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-fucsia hover:text-white transition"
-            >
-              Nuevos ingresos
-            </Link>
+            <div className="flex flex-wrap gap-3 mt-8">
+              <Link
+                href="/tienda"
+                className="bg-white text-k-fucsia px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-hueso transition"
+              >
+                Ver la tienda
+              </Link>
+              <Link
+                href="/tienda?cat=nuevos-ingresos"
+                className="border-2 border-white text-white px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-white hover:text-k-fucsia transition"
+              >
+                Nuevos ingresos
+              </Link>
+            </div>
+          </div>
+
+          {/* foto */}
+          <div className="order-1 md:order-2 relative min-h-[320px] md:min-h-[560px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={fotoPortada.src}
+              alt={fotoPortada.alt}
+              className={`absolute inset-0 w-full h-full object-cover ${fotoPortada.position ?? ""}`}
+            />
           </div>
         </div>
       </section>
 
       {/* ---- CUATRO BLOQUES DE CATEGORIA ---- */}
-      <section className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+      <section className="bg-k-hueso">
+        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
           {bloques.map(({ block, image, count, href }) => (
             <Link key={block.key} href={href} className="group block">
@@ -187,10 +202,49 @@ export default async function Home() {
             </Link>
           ))}
         </div>
+        </div>
+      </section>
+
+      {/* ---- BANNER DEL MEDIO ----
+           Es el corte que pediste para que la pagina no sea una sabana
+           blanca: una foto de marca a todo lo ancho, a mitad de camino.
+           Para cambiarla, deja la foto nueva en /public/marca/ y cambia
+           la ruta en src/data/fotos-marca.ts. */}
+      <section className="relative bg-k-navy text-white overflow-hidden">
+        <div className="grid md:grid-cols-2 items-stretch">
+          <div className="relative min-h-[300px] md:min-h-[480px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={fotoIntermedia.src}
+              alt={fotoIntermedia.alt}
+              className={`absolute inset-0 w-full h-full object-cover ${fotoIntermedia.position ?? ""}`}
+            />
+          </div>
+
+          <div className="relative px-6 md:px-12 lg:px-16 py-12 md:py-20 flex flex-col justify-center">
+            <Corazon className="absolute top-8 right-8 w-9 h-9 text-white/20 hidden md:block" />
+            <p className="uppercase tracking-[0.4em] text-xs text-white/75 font-semibold mb-3">
+              Hecho para ti
+            </p>
+            <h2 className="font-script text-5xl md:text-6xl lg:text-7xl leading-[1.05]">
+              quiérete en todas tus tallas
+            </h2>
+            <p className="text-white/90 text-lg md:text-xl max-w-md mt-5 leading-relaxed">
+              Cada prenda se piensa para cuerpos reales: tallas que de verdad
+              existen y detalles que se notan al ponértela.
+            </p>
+            <Link
+              href="/nosotros"
+              className="self-start mt-8 bg-white text-k-navy px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-hueso transition"
+            >
+              Conoce Kona
+            </Link>
+          </div>
+        </div>
       </section>
 
       {/* ---- LOS FAVORITOS (ordenados por ventas reales) ---- */}
-      <section className="bg-k-hueso border-y border-k-gris-claro">
+      <section className="bg-white">
         <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
           <div className="text-center mb-8 md:mb-10">
             <p className="uppercase tracking-[0.35em] text-xs text-k-gris font-semibold mb-2">
@@ -234,7 +288,7 @@ export default async function Home() {
       </section>
 
       {/* ---- VALORES DE LA MARCA (textuales del manual) ---- */}
-      <section className="bg-white">
+      <section className="bg-k-lila/25">
         <div className="max-w-5xl mx-auto px-4 py-14 md:py-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {VALORES.map((v) => (
             <div key={v.titulo}>

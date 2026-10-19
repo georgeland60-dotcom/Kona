@@ -25,6 +25,7 @@ export const testimonios: Testimonio[] = [
     texto:
       "No es solo una ropa de baño. Ha llegado justo en un momento complicado, donde no me sentía muy bien con nada. Pero me la probé y te aseguro que ninguna otra ropa de baño me ha quedado tan bien y me hace sentir aún mejor. En serio muchas gracias.",
     prenda: "Ropa de baño",
+    foto: "/marca/testi-negro.webp",
     fuente: "https://www.instagram.com/p/DTrFM6pjR4o/",
   },
   {
@@ -32,6 +33,7 @@ export const testimonios: Testimonio[] = [
     texto:
       "Cuando la recibí fue increíble, la suavidad de la lycra me impactó. Vale cada sol, es muy cómoda y se siente de alta calidad. Ya tengo 4 colores.",
     prenda: "Ropa de baño",
+    foto: "/marca/testi-azul.webp",
     fuente: "https://www.instagram.com/p/DT5kBgpjrMY/",
   },
   {

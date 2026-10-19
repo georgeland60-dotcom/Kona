@@ -11,7 +11,7 @@ export default function PreguntasFrecuentes() {
   if (preguntas.length === 0) return null;
 
   return (
-    <section className="bg-white">
+    <section className="bg-k-hueso border-t border-k-gris-claro">
       <div className="max-w-3xl mx-auto px-4 py-16 md:py-20">
         <div className="text-center mb-10">
           <p className="uppercase tracking-[0.35em] text-xs text-k-gris font-semibold mb-2">

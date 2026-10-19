@@ -30,8 +30,21 @@ export default function Testimonios() {
           {testimonios.map((t) => (
             <figure
               key={t.id}
-              className="bg-white rounded-3xl p-6 md:p-7 flex flex-col shadow-sm border border-k-gris-claro"
+              className="bg-white rounded-3xl overflow-hidden flex flex-col shadow-sm border border-k-gris-claro"
             >
+              {/* la foto del post, cuando la hay */}
+              {t.foto && (
+                <div className="relative aspect-[5/4] placeholder-box">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={t.foto}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover object-[center_25%]"
+                  />
+                </div>
+              )}
+
+              <div className="p-6 md:p-7 flex flex-col flex-1">
               <div className="flex gap-0.5 text-k-fucsia mb-4" aria-label="5 de 5">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <Estrella key={i} className="w-4 h-4" />
@@ -43,14 +56,6 @@ export default function Testimonios() {
               </blockquote>
 
               <figcaption className="mt-5 pt-4 border-t border-k-gris-claro flex items-center gap-3">
-                {t.foto && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={t.foto}
-                    alt=""
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                )}
                 <div className="min-w-0">
                   {/* Sin nombre real no se escribe ninguno. */}
                   <p className="font-semibold text-k-fucsia text-sm leading-tight">
@@ -63,6 +68,7 @@ export default function Testimonios() {
                   )}
                 </div>
               </figcaption>
+              </div>
             </figure>
           ))}
         </div>
