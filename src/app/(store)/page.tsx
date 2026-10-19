@@ -12,7 +12,8 @@ import Testimonios from "@/components/home/Testimonios";
 import Instagram from "@/components/home/Instagram";
 import PreguntasFrecuentes from "@/components/home/PreguntasFrecuentes";
 import { Corazon, Estrella, Flor, Trazo } from "@/components/brand/Garabatos";
-import { fotoPortada, fotoIntermedia } from "@/data/fotos-marca";
+import { fotosPortada, fotosHistoria } from "@/data/fotos-marca";
+import BannerRotativo from "@/components/home/BannerRotativo";
 
 // =============================================================
 //  INICIO DE LA TIENDA — version alineada al MANUAL DE MARCA
@@ -80,8 +81,8 @@ export default async function Home() {
       {/* Pop-up de promociones vigentes (no sale si no hay ninguna) */}
       <PromoPopup promos={promos} />
 
-      {/* ---- CINTA DE AVISOS (gris de marca, bajo la cabecera fucsia) ---- */}
-      <div className="bg-k-gris-texto text-white overflow-hidden whitespace-nowrap">
+      {/* ---- CINTA DE AVISOS (negra, bajo la cabecera fucsia) ---- */}
+      <div className="bg-black text-white overflow-hidden whitespace-nowrap">
         <div className="py-2">
           <div className="inline-flex animate-marquee">
             {[0, 1].map((k) => (
@@ -101,64 +102,57 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* ---- PORTADA: foto de marca + la frase ----
-           Antes esto era texto sobre un fondo casi blanco y la pagina
-           arrancaba apagada. Ahora entra una foto real de Kona y un
-           bloque fucsia: color desde el primer golpe de vista. */}
+      {/* ---- PORTADA: carrusel de fotos + la frase ----
+           Las fotos van a todo lo ancho y van rotando solas. El texto
+           no se pone encima a proposito: varias de estas fotos ya
+           traen su propio mensaje escrito ("Vivo orgullosa de mi"),
+           y superponerle otro titulo las ensuciaria. Por eso la frase
+           de marca va en la franja fucsia de abajo.
+           Para cambiar o reordenar las fotos: src/data/fotos-marca.ts */}
+      <section>
+        <BannerRotativo fotos={fotosPortada} />
+      </section>
+
       <section className="relative bg-k-fucsia text-white overflow-hidden">
-        <div className="grid md:grid-cols-2 items-stretch">
-          {/* texto */}
-          <div className="relative order-2 md:order-1 px-6 md:px-12 lg:px-16 py-12 md:py-20 flex flex-col justify-center">
-            {/* garabatos de marca, apenas insinuados */}
-            <Flor
-              className="absolute top-5 right-6 w-16 h-16 text-white/20 hidden md:block"
-              variante="linea"
-            />
-            <Estrella className="absolute bottom-8 right-12 w-6 h-6 text-white/25 hidden md:block" />
+        <Flor
+          className="absolute -top-2 right-6 w-20 h-20 text-white/15 hidden md:block"
+          variante="linea"
+        />
+        <Estrella className="absolute bottom-6 left-8 w-6 h-6 text-white/20 hidden md:block" />
 
-            <p className="uppercase tracking-[0.4em] text-xs text-white/80 font-semibold mb-4">
-              #KonaGirl
-            </p>
-            <h1 className="leading-[0.95]">
-              <span className="block text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                Vive Kona,
-              </span>
-              {/* la cursiva de marca, reservada a las frases especiales */}
-              <span className="block font-script text-6xl md:text-7xl lg:text-8xl leading-[1.05] mt-1">
-                vive orgullosa de ti
-              </span>
-            </h1>
+        <div className="relative max-w-5xl mx-auto px-4 py-10 md:py-14 text-center">
+          <p className="uppercase tracking-[0.4em] text-xs text-white/80 font-semibold mb-3">
+            #KonaGirl
+          </p>
+          <h1 className="leading-[0.95]">
+            <span className="block text-3xl md:text-5xl font-bold tracking-tight">
+              Vive Kona,
+            </span>
+            {/* la cursiva de marca, reservada a las frases especiales */}
+            <span className="block font-script text-5xl md:text-7xl leading-[1.05] mt-1">
+              vive orgullosa de ti
+            </span>
+          </h1>
 
-            <Trazo className="w-28 h-3 text-white/60 my-5" />
+          <Trazo className="w-24 h-3 text-white/60 mx-auto my-4" />
 
-            <p className="text-white/90 text-lg md:text-xl max-w-md leading-relaxed">
-              Ropa pensada para tu cuerpo real, en todas las tallas.
-            </p>
+          <p className="text-white/90 text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
+            Ropa pensada para tu cuerpo real, en todas las tallas.
+          </p>
 
-            <div className="flex flex-wrap gap-3 mt-8">
-              <Link
-                href="/tienda"
-                className="bg-white text-k-fucsia px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-hueso transition"
-              >
-                Ver la tienda
-              </Link>
-              <Link
-                href="/tienda?cat=nuevos-ingresos"
-                className="border-2 border-white text-white px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-white hover:text-k-fucsia transition"
-              >
-                Nuevos ingresos
-              </Link>
-            </div>
-          </div>
-
-          {/* foto */}
-          <div className="order-1 md:order-2 relative min-h-[320px] md:min-h-[560px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={fotoPortada.src}
-              alt={fotoPortada.alt}
-              className={`absolute inset-0 w-full h-full object-cover ${fotoPortada.position ?? ""}`}
-            />
+          <div className="flex flex-wrap justify-center gap-3 mt-7">
+            <Link
+              href="/tienda"
+              className="bg-white text-k-fucsia px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-hueso transition"
+            >
+              Ver la tienda
+            </Link>
+            <Link
+              href="/tienda?cat=nuevos-ingresos"
+              className="border-2 border-white text-white px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-white hover:text-k-fucsia transition"
+            >
+              Nuevos ingresos
+            </Link>
           </div>
         </div>
       </section>
@@ -206,36 +200,48 @@ export default async function Home() {
       </section>
 
       {/* ---- BANNER DEL MEDIO ----
-           Es el corte que pediste para que la pagina no sea una sabana
-           blanca: una foto de marca a todo lo ancho, a mitad de camino.
-           Para cambiarla, deja la foto nueva en /public/marca/ y cambia
-           la ruta en src/data/fotos-marca.ts. */}
-      <section className="relative bg-k-navy text-white overflow-hidden">
-        <div className="grid md:grid-cols-2 items-stretch">
-          <div className="relative min-h-[300px] md:min-h-[480px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={fotoIntermedia.src}
-              alt={fotoIntermedia.alt}
-              className={`absolute inset-0 w-full h-full object-cover ${fotoIntermedia.position ?? ""}`}
-            />
-          </div>
-
-          <div className="relative px-6 md:px-12 lg:px-16 py-12 md:py-20 flex flex-col justify-center">
-            <Corazon className="absolute top-8 right-8 w-9 h-9 text-white/20 hidden md:block" />
-            <p className="uppercase tracking-[0.4em] text-xs text-white/75 font-semibold mb-3">
+           Va en el lila del manual (#E0B5DF). Ojo con el texto: el lila
+           es claro, y en blanco daba 1.8:1 de contraste, o sea no se
+           leia. Por eso el titulo va en fucsia y el cuerpo en un gris
+           oscuro que llega a 5.8:1.
+           Las tres fotos se leen como una frase seguida: "self love" ->
+           "es poder elegir" -> "es estar siempre lista para vivir".
+           Para cambiarlas: src/data/fotos-marca.ts */}
+      <section className="bg-k-lila">
+        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+          <div className="text-center max-w-2xl mx-auto">
+            <p className="uppercase tracking-[0.4em] text-xs text-k-gris-oscuro font-semibold mb-3">
               Hecho para ti
             </p>
-            <h2 className="font-script text-5xl md:text-6xl lg:text-7xl leading-[1.05]">
+            <h2 className="font-script text-5xl md:text-7xl text-k-fucsia leading-[1.05]">
               quiérete en todas tus tallas
             </h2>
-            <p className="text-white/90 text-lg md:text-xl max-w-md mt-5 leading-relaxed">
+            <p className="text-k-gris-oscuro text-lg md:text-xl mt-5 leading-relaxed">
               Cada prenda se piensa para cuerpos reales: tallas que de verdad
               existen y detalles que se notan al ponértela.
             </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 md:gap-6 mt-10 md:mt-12">
+            {fotosHistoria.map((f) => (
+              <div
+                key={f.src}
+                className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-white/40"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={f.src}
+                  alt={f.alt}
+                  className={`absolute inset-0 w-full h-full object-cover ${f.position ?? ""}`}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-10">
             <Link
               href="/nosotros"
-              className="self-start mt-8 bg-white text-k-navy px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-hueso transition"
+              className="inline-block bg-k-fucsia text-white px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-fucsia-dark transition"
             >
               Conoce Kona
             </Link>
@@ -287,6 +293,9 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ---- TESTIMONIOS REALES ---- */}
+      <Testimonios />
+
       {/* ---- VALORES DE LA MARCA (textuales del manual) ---- */}
       <section className="bg-k-lila/25">
         <div className="max-w-5xl mx-auto px-4 py-14 md:py-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -307,8 +316,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ---- TESTIMONIOS REALES ---- */}
-      <Testimonios />
 
       {/* ---- INSTAGRAM ---- */}
       <Instagram productos={products} />

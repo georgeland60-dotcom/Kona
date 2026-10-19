@@ -45,6 +45,9 @@
   --k-fucsia-dark: #80004a; /* para hover sobre fucsia */
   --k-gris: #747678; /* el gris OFICIAL, no un gris cualquiera */
   --k-gris-texto: #5a5c5e; /* el mismo gris, mas oscuro, para leer comodo */
+  /* Sobre el lila, el gris de arriba se queda en 3.8:1 y el texto normal
+     necesita 4.5:1. Este llega a 5.8:1 sin salirse de la familia gris. */
+  --k-gris-oscuro: #3f4143;
 
   /* fila 1 del manual */
   --k-navy: #303a74;
@@ -89,6 +92,7 @@
   --color-k-fucsia-dark: var(--k-fucsia-dark);
   --color-k-gris: var(--k-gris);
   --color-k-gris-texto: var(--k-gris-texto);
+  --color-k-gris-oscuro: var(--k-gris-oscuro);
   --color-k-navy: var(--k-navy);
   --color-k-indigo: var(--k-indigo);
   --color-k-niebla: var(--k-niebla);
