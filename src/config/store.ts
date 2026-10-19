@@ -52,9 +52,11 @@ export const store = {
   currency: "PEN",
   currencySymbol: "S/",
 
-  // Redes sociales. Los de abajo tambien son de ejemplo: llevan a la
-  // portada de cada red, no a la cuenta de la tienda.
-  instagram: process.env.NEXT_PUBLIC_INSTAGRAM || "https://instagram.com/",
+  // Redes sociales. Instagram ya apunta a la cuenta real de Kona.
+  // Facebook sigue siendo de ejemplo: lleva a la portada de la red.
+  instagram:
+    process.env.NEXT_PUBLIC_INSTAGRAM || "https://www.instagram.com/konamoda.pe/",
+  instagramHandle: process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE || "@konamoda.pe",
   facebook: process.env.NEXT_PUBLIC_FACEBOOK || "https://facebook.com/",
 
   // Texto del aviso superior (la barra delgada arriba del menu)

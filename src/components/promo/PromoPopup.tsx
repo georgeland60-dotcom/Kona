@@ -13,14 +13,20 @@ import type { PromoItem } from "@/lib/promos-display";
 //  promociones cambian se muestra de nuevo.
 // =============================================================
 
-// Colores que se van alternando entre las promociones. Tailwind necesita
-// leer el nombre completo de la clase, por eso estan escritos enteros.
+// Colores del MANUAL DE MARCA.
+// Dos reglas que no se pueden romper:
+//  1) El fucsia es el primario y manda: el boton de accion es SIEMPRE
+//     fucsia, para que la clienta aprenda un solo color de "esto se
+//     pulsa". Los secundarios solo acompanan.
+//  2) Ningun color claro lleva texto encima. El turquesa con letra
+//     blanca daba un contraste de ~2:1, es decir, no se leia; aqui solo
+//     pinta la barrita lateral, que no tiene texto.
 const COLORES = [
-  { bar: "bg-v3-primary", chip: "bg-v3-primary", texto: "text-v3-primary" },
-  { bar: "bg-v3-teal", chip: "bg-v3-teal", texto: "text-v3-teal" },
-  { bar: "bg-v3-coral", chip: "bg-v3-coral", texto: "text-v3-coral" },
-  { bar: "bg-v3-lilac", chip: "bg-v3-lilac", texto: "text-v3-lilac" },
-  { bar: "bg-v3-amber", chip: "bg-v3-amber", texto: "text-v3-amber" },
+  { bar: "bg-k-fucsia", texto: "text-k-fucsia" },
+  { bar: "bg-k-indigo", texto: "text-k-indigo" },
+  { bar: "bg-k-magenta", texto: "text-k-magenta" },
+  { bar: "bg-k-navy", texto: "text-k-navy" },
+  { bar: "bg-k-turquesa", texto: "text-k-navy" },
 ];
 
 export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
@@ -82,12 +88,12 @@ export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
         type="button"
         aria-label="Cerrar promociones"
         onClick={cerrar}
-        className="absolute inset-0 bg-v3-ink/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-k-gris-texto/60 backdrop-blur-sm"
       />
 
-      <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl animate-v3-pop-in">
+      <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-3xl bg-white shadow-2xl animate-v3-pop-in">
         {/* Cabecera en el fucsia de la marca */}
-        <div className="relative bg-accent px-6 py-7 text-center text-white">
+        <div className="relative bg-k-fucsia px-6 py-7 text-center text-white">
           <p className="uppercase tracking-[0.3em] text-xs text-white/85">
             Aprovecha ahora
           </p>
@@ -114,7 +120,7 @@ export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
         </div>
 
         {/* Lista de promociones */}
-        <ul className="divide-y divide-line">
+        <ul className="divide-y divide-k-gris-claro">
           {promos.map((promo, idx) => {
             const color = COLORES[idx % COLORES.length];
             return (
@@ -139,16 +145,16 @@ export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
                     {promo.title}
                   </p>
                   {promo.scope && (
-                    <p className="font-semibold text-v3-ink text-base leading-snug">
+                    <p className="font-semibold text-k-gris-texto text-base leading-snug">
                       {promo.scope}
                     </p>
                   )}
-                  <p className="text-v3-ink-soft text-sm leading-snug mt-0.5">
+                  <p className="text-k-gris text-sm leading-snug mt-0.5">
                     {promo.detail}
                   </p>
                   {/* solo aparece cuando de verdad queda poco */}
                   {promo.urgency && (
-                    <p className="inline-block mt-1.5 bg-v3-amber/20 text-v3-ink text-xs font-bold px-2 py-1 rounded-full">
+                    <p className="inline-block mt-1.5 bg-k-lila/40 text-k-gris-texto text-xs font-bold px-2 py-1 rounded-full">
                       ¡{promo.urgency}!
                     </p>
                   )}
@@ -156,7 +162,7 @@ export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
                 <Link
                   href={promo.href}
                   onClick={cerrar}
-                  className={`self-center shrink-0 text-white text-xs font-bold uppercase tracking-wide px-4 py-2.5 rounded-full hover:opacity-90 transition ${color.chip}`}
+                  className={`self-center shrink-0 text-white text-xs font-bold uppercase tracking-wide px-4 py-2.5 rounded-full hover:opacity-90 transition bg-k-fucsia`}
                 >
                   {promo.cta}
                 </Link>
@@ -169,7 +175,7 @@ export default function PromoPopup({ promos }: { promos: PromoItem[] }) {
           <button
             type="button"
             onClick={cerrar}
-            className="w-full text-center text-v3-ink-soft text-base py-2 hover:text-accent transition"
+            className="w-full text-center text-k-gris text-base py-2 hover:text-k-fucsia transition"
           >
             Seguir viendo la tienda
           </button>

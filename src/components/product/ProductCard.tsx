@@ -13,7 +13,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="group">
-      <div className="relative aspect-[3/4] placeholder-box rounded-lg overflow-hidden">
+      <div className="relative aspect-[3/4] placeholder-box rounded-3xl overflow-hidden">
         <Link href={`/producto/${product.slug}`} className="block w-full h-full">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -49,7 +49,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
       <div className="mt-3">
         <Link href={`/producto/${product.slug}`}>
-          <h3 className="text-sm font-medium leading-snug hover:text-accent transition">
+          <h3 className="text-sm font-medium leading-snug text-k-gris-texto hover:text-k-fucsia transition">
             {product.name}
           </h3>
         </Link>
@@ -63,7 +63,7 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
         <button
           onClick={() => add(product)}
-          className="mt-3 w-full border border-foreground text-foreground text-xs uppercase tracking-wide py-2 rounded-full hover:bg-foreground hover:text-background transition"
+          className="mt-3 w-full bg-k-fucsia text-white text-xs font-bold uppercase tracking-wide py-2.5 rounded-full hover:bg-k-fucsia-dark transition"
         >
           Agregar
         </button>

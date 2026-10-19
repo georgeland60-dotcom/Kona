@@ -18,7 +18,8 @@ export type HomeBlock = {
   by: "category" | "collection";
   value: string; // slug de la categoria o de la coleccion
   image: string; // foto de respaldo si la categoria aun no tiene productos
-  // Clases de color (Tailwind necesita el nombre completo escrito,
+  // Clases de color del MANUAL DE MARCA (Tailwind necesita el nombre
+  // completo escrito,
   // por eso se guardan asi y no como "bg-" + color).
   badge: string;
   bar: string;
@@ -32,8 +33,8 @@ export const homeBlocks: HomeBlock[] = [
     by: "category",
     value: "blazers",
     image: "/products/chaleco-yess.webp",
-    badge: "bg-v3-lilac",
-    bar: "bg-v3-lilac",
+    badge: "bg-k-navy",
+    bar: "bg-k-navy",
   },
   {
     key: "denim",
@@ -42,8 +43,8 @@ export const homeBlocks: HomeBlock[] = [
     by: "category",
     value: "full-denim",
     image: "/products/casaca-jean-love.webp",
-    badge: "bg-v3-teal",
-    bar: "bg-v3-teal",
+    badge: "bg-k-indigo",
+    bar: "bg-k-indigo",
   },
   {
     key: "nuevos-ingresos",
@@ -52,8 +53,8 @@ export const homeBlocks: HomeBlock[] = [
     by: "collection",
     value: "nuevos-ingresos",
     image: "/products/cardigan-joy-rosa.webp",
-    badge: "bg-v3-coral",
-    bar: "bg-v3-coral",
+    badge: "bg-k-turquesa",
+    bar: "bg-k-turquesa",
   },
   {
     key: "vestidos",
@@ -62,8 +63,8 @@ export const homeBlocks: HomeBlock[] = [
     by: "category",
     value: "vestidos",
     image: "/products/vestido-dreams-rosa.webp",
-    badge: "bg-v3-primary",
-    bar: "bg-v3-primary",
+    badge: "bg-k-fucsia",
+    bar: "bg-k-fucsia",
   },
 ];
 

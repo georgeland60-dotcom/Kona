@@ -29,6 +29,40 @@
   --v3-lilac: #7c4dff;
 }
 
+/* ====== PALETA OFICIAL DEL MANUAL DE MARCA ======
+   Tomada del Manual de Marca Kona, no inventada.
+
+   PRIMARIOS (deben dominar la pagina):
+     fucsia  Pantone 227 C      · HTML A90061
+     gris    Pantone Cool Gray 9 C · HTML 747678
+
+   SECUNDARIOS: el manual dice textualmente que "no son identificadores
+   reconocidos de nuestra marca; se usan como acento y soporte de los
+   colores primarios". Por eso aqui se usan en detalles (barras, chips,
+   iconos) y nunca como protagonistas. */
+:root {
+  --k-fucsia: #a90061;
+  --k-fucsia-dark: #80004a; /* para hover sobre fucsia */
+  --k-gris: #747678; /* el gris OFICIAL, no un gris cualquiera */
+  --k-gris-texto: #5a5c5e; /* el mismo gris, mas oscuro, para leer comodo */
+
+  /* fila 1 del manual */
+  --k-navy: #303a74;
+  --k-indigo: #5d6eb0;
+  --k-niebla: #b5c0d4;
+  --k-lila: #e0b5df;
+  /* fila 2 */
+  --k-celeste: #9ac5d3;
+  --k-hielo: #d6f1f3;
+  --k-gris-claro: #ebebef;
+  --k-rosa: #f17fc5;
+  /* fila 3 */
+  --k-turquesa: #6fc4cd;
+  --k-menta: #c7ebdd;
+  --k-magenta: #e83ba6;
+  --k-hueso: #f6f7f2;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -49,6 +83,24 @@
   --color-v3-amber: var(--v3-amber);
   --color-v3-teal: var(--v3-teal);
   --color-v3-lilac: var(--v3-lilac);
+
+  /* colores del manual (generan clases como bg-k-fucsia, text-k-gris) */
+  --color-k-fucsia: var(--k-fucsia);
+  --color-k-fucsia-dark: var(--k-fucsia-dark);
+  --color-k-gris: var(--k-gris);
+  --color-k-gris-texto: var(--k-gris-texto);
+  --color-k-navy: var(--k-navy);
+  --color-k-indigo: var(--k-indigo);
+  --color-k-niebla: var(--k-niebla);
+  --color-k-lila: var(--k-lila);
+  --color-k-celeste: var(--k-celeste);
+  --color-k-hielo: var(--k-hielo);
+  --color-k-gris-claro: var(--k-gris-claro);
+  --color-k-rosa: var(--k-rosa);
+  --color-k-turquesa: var(--k-turquesa);
+  --color-k-menta: var(--k-menta);
+  --color-k-magenta: var(--k-magenta);
+  --color-k-hueso: var(--k-hueso);
 }
 
 body {
