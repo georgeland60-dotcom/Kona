@@ -1,5 +1,6 @@
 import { store } from "@/config/store";
 import { Corazon } from "@/components/brand/Garabatos";
+import Foto from "@/components/brand/Foto";
 import type { Product } from "@/lib/types";
 
 // =============================================================
@@ -31,7 +32,7 @@ export default function Instagram({
 
   return (
     <section className="bg-white">
-      <div className="max-w-6xl mx-auto px-4 py-16 md:py-20">
+      <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
         <div className="text-center mb-8 md:mb-10">
           <p className="uppercase tracking-[0.35em] text-xs text-k-gris font-semibold mb-2">
             Síguenos
@@ -54,11 +55,11 @@ export default function Instagram({
               className="group relative aspect-square overflow-hidden rounded-2xl placeholder-box"
               aria-label={`Ver Kona en Instagram (${store.instagramHandle})`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Foto
                 src={src}
                 alt=""
-                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                sizes="(min-width: 768px) 185px, 31vw"
+                className="group-hover:scale-105 transition-transform duration-500"
               />
               <span className="absolute inset-0 bg-k-fucsia/0 group-hover:bg-k-fucsia/35 transition flex items-center justify-center">
                 <Corazon className="w-7 h-7 text-white opacity-0 group-hover:opacity-100 transition" />

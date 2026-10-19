@@ -1,33 +1,37 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // =============================================================
-//  BANNER ROTATIVO DE LA PORTADA
-//  Va pasando las fotos solo, cada unos segundos, y deja cambiarlas
-//  a mano con los puntitos de abajo.
+//  CARRUSEL DE LA PORTADA
+//  Va pasando las fotos solo y deja cambiarlas con los puntitos.
+//
+//  El marco es VERTICAL (4:5) a proposito: las fotos de moda que
+//  tenemos son verticales, y meterlas en un marco ancho les cortaba
+//  la cabeza. Un marco del mismo formato que la foto no recorta nada
+//  importante y es, ademas, como se ven las portadas de moda.
 //
 //  Cuidados que no se ven pero importan:
-//   · Si la persona pidio "menos movimiento" en su telefono, no rota
-//     sola: se queda quieta y ella pasa las fotos si quiere.
-//   · Se detiene mientras el raton esta encima o el teclado esta
-//     dentro, para que no cambie justo cuando la estan mirando.
-//   · La primera foto se carga con prioridad y las demas despues, para
-//     que la pagina abra rapido en el celular.
+//   · Si el telefono pide "menos movimiento", no rota sola.
+//   · Se detiene mientras el raton esta encima o el teclado dentro.
+//   · La primera foto se carga con prioridad; las demas, despues.
 // =============================================================
 
 export type Diapositiva = {
   src: string;
   alt: string;
-  position?: string; // que parte no se puede recortar (la cara)
+  position?: string;
 };
 
 export default function BannerRotativo({
   fotos,
-  intervaloMs = 5000,
+  intervaloMs = 5500,
+  sizes,
 }: {
   fotos: Diapositiva[];
   intervaloMs?: number;
+  sizes: string;
 }) {
   const [actual, setActual] = useState(0);
   const [detenido, setDetenido] = useState(false);
@@ -57,7 +61,7 @@ export default function BannerRotativo({
 
   return (
     <div
-      className="relative w-full aspect-[4/3] md:aspect-[16/9] overflow-hidden bg-k-hueso"
+      className="relative w-full h-full overflow-hidden bg-k-gris-claro"
       onMouseEnter={() => setDetenido(true)}
       onMouseLeave={() => setDetenido(false)}
       onFocusCapture={() => setDetenido(true)}
@@ -68,25 +72,25 @@ export default function BannerRotativo({
       {fotos.map((f, i) => (
         <div
           key={f.src}
-          className={`absolute inset-0 transition-opacity duration-700 ${
+          className={`absolute inset-0 transition-opacity duration-[900ms] ease-out ${
             i === actual ? "opacity-100" : "opacity-0"
           }`}
           aria-hidden={i !== actual}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={f.src}
             alt={f.alt}
-            loading={i === 0 ? "eager" : "lazy"}
-            fetchPriority={i === 0 ? "high" : "auto"}
-            className={`w-full h-full object-cover ${f.position ?? ""}`}
+            fill
+            sizes={sizes}
+            priority={i === 0}
+            quality={88}
+            className={`object-cover ${f.position ?? "object-center"}`}
           />
         </div>
       ))}
 
-      {/* puntitos para pasar las fotos a mano */}
       {fotos.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2.5">
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
           {fotos.map((f, i) => (
             <button
               key={f.src}
@@ -94,11 +98,9 @@ export default function BannerRotativo({
               onClick={() => setActual(i)}
               aria-label={`Ver foto ${i + 1} de ${fotos.length}`}
               aria-current={i === actual}
-              className={`h-2.5 rounded-full transition-all ${
-                i === actual
-                  ? "w-7 bg-white"
-                  : "w-2.5 bg-white/60 hover:bg-white/90"
-              } shadow`}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === actual ? "w-8 bg-white" : "w-1.5 bg-white/55 hover:bg-white"
+              }`}
             />
           ))}
         </div>

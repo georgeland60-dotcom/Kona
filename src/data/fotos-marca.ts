@@ -1,11 +1,18 @@
 // =============================================================
 //  FOTOS DE MARCA DEL INICIO
 //  Salen de las publicaciones de Instagram de Kona que vinieron en el
-//  PDF de referencia (las de "Vivo orgullosa de mi" y "self love"), ya
-//  recortadas para quitarles los iconos de Instagram.
+//  PDF de referencia, ya recortadas para quitarles los iconos.
 //
-//  Para cambiar una foto, deja el archivo nuevo en /public/marca/ y
-//  cambia la ruta aqui. No hace falta tocar la maquetacion.
+//  REGLA QUE NO HAY QUE ROMPER: una foto nunca debe mostrarse mas
+//  ancha de lo que mide, porque al estirarla se pixela. Por eso aqui
+//  va anotado el tamano real de cada una, y por eso las columnas
+//  donde viven estan limitadas en la pagina.
+//
+//  SEGUNDA REGLA: las verticales van en marcos verticales y las
+//  horizontales en marcos horizontales. Mezclarlas en un mismo marco
+//  es lo que hacia que salieran recortadas y raras.
+//
+//  Para cambiar una foto: dejala en /public/marca/ y cambia la ruta.
 // =============================================================
 
 export type FotoMarca = {
@@ -16,68 +23,56 @@ export type FotoMarca = {
   position?: string;
 };
 
-// ---- LAS FOTOS QUE ROTAN EN LA PORTADA ----
-// El ORDEN de esta lista es el orden en que se ven: la primera es la
-// que aparece al abrir la pagina.
+// ---- PORTADA (marco vertical 4:5) ----
+// El ORDEN es el orden en que se ven: la primera es la que abre.
 //
-// PENDIENTE: faltan las tres fotos anchas nuevas (la de las dos chicas,
-// la del corazon con las manos y la de la cebra en horizontal). Cuando
-// lleguen, se dejan en /public/marca/ y se ponen aqui arriba del todo,
-// empezando por la de las dos chicas. Mientras tanto rotan estas, que
-// son las que ya estaban.
+// PENDIENTE: faltan las tres fotos anchas nuevas (las dos chicas, el
+// corazon con las manos, la cebra horizontal). No llegaron como
+// archivo. Cuando lleguen van al principio de esta lista, empezando
+// por la de las dos chicas.
 export const fotosPortada: FotoMarca[] = [
   {
-    src: "/marca/orgullosa.webp",
-    alt: "Clienta de Kona en ropa de baño junto a la piscina, con la frase “Vivo orgullosa de mí”",
-    position: "object-[70%_center]",
-  },
-  {
+    // 931 x 1236
     src: "/marca/selflove.webp",
     alt: "Clienta de Kona sonriendo con flores, con la frase “self love”",
-    position: "object-[center_25%]",
+    position: "object-[center_20%]",
   },
   {
+    // 837 x 1180
     src: "/marca/lista.webp",
     alt: "Clienta de Kona de espaldas con cartera floral, con la frase “es estar siempre lista para vivir”",
     position: "object-[center_30%]",
   },
-];
-
-// La foto del banner del medio, para cortar tanto blanco.
-export const fotoIntermedia: FotoMarca = {
-  src: "/marca/selflove.webp",
-  alt: "Clienta de Kona sonriendo con un vestido verde y flores, con la frase “self love”",
-  position: "object-[center_30%]",
-};
-
-// Las dos fotos que continuan la frase de "self love": juntas se leen
-// como una secuencia ("es poder elegir..." / "...es estar siempre lista
-// para vivir"). Por eso van en ese orden y no sueltas.
-export const fotosHistoria: FotoMarca[] = [
   {
-    src: "/marca/selflove.webp",
-    alt: "Clienta de Kona sonriendo con flores, con la frase “self love”",
-  },
-  {
+    // 835 x 1187
     src: "/marca/elegir.webp",
     alt: "Perchero con prendas de Kona en tonos pastel, con la frase “es poder elegir”",
-  },
-  {
-    src: "/marca/lista.webp",
-    alt: "Clienta de Kona de espaldas con cartera floral, con la frase “es estar siempre lista para vivir”",
+    position: "object-[center_40%]",
   },
 ];
 
-// Fotos que acompañan los testimonios.
+// ---- BANNER DEL MEDIO (marco horizontal 3:2) ----
+// Es la unica foto horizontal que tenemos, asi que va sola y en un
+// marco de su mismo formato. Antes estaba a todo lo ancho de la
+// pantalla, estirada casi al triple, y por eso se veia pixelada.
+export const fotoIntermedia: FotoMarca = {
+  // 1015 x 665
+  src: "/marca/orgullosa.webp",
+  alt: "Clienta de Kona en ropa de baño junto a la piscina, con la frase “Vivo orgullosa de mí”",
+  position: "object-[62%_center]",
+};
+
+// ---- TESTIMONIOS (marco vertical 4:5) ----
+// Son verticales (1015 x ~1295), asi que el marco tambien lo es.
 export const fotosTestimonios: Record<string, FotoMarca> = {
   T1: {
     src: "/marca/testi-negro.webp",
     alt: "Clienta de Kona con ropa de baño negra",
-    position: "object-[center_25%]",
+    position: "object-[center_20%]",
   },
   T2: {
     src: "/marca/testi-azul.webp",
     alt: "Clienta de Kona con ropa de baño azul en el agua",
-    position: "object-[center_30%]",
+    position: "object-[center_25%]",
   },
 };

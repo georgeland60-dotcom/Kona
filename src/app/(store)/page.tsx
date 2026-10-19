@@ -5,53 +5,54 @@ import { getCategorias } from "@/lib/categorias-data";
 import { buildPromos } from "@/lib/promos-display";
 import { getBestSellers, getTopCollections } from "@/lib/bestsellers";
 import { resolveBlocks } from "@/data/home-blocks";
+import { fotosPortada, fotoIntermedia } from "@/data/fotos-marca";
 import ProductGrid from "@/components/product/ProductGrid";
 import PromoPopup from "@/components/promo/PromoPopup";
 import TrackView from "@/components/TrackView";
 import Testimonios from "@/components/home/Testimonios";
 import Instagram from "@/components/home/Instagram";
 import PreguntasFrecuentes from "@/components/home/PreguntasFrecuentes";
-import { Corazon, Estrella, Flor, Trazo } from "@/components/brand/Garabatos";
-import { fotosPortada, fotosHistoria } from "@/data/fotos-marca";
 import BannerRotativo from "@/components/home/BannerRotativo";
+import Foto from "@/components/brand/Foto";
+import { Corazon, Estrella, Flor, Trazo } from "@/components/brand/Garabatos";
 
 // =============================================================
-//  INICIO DE LA TIENDA — version alineada al MANUAL DE MARCA
+//  INICIO DE LA TIENDA
 //
-//  No se perdio nada: la version anterior esta entera en /inicio-v3
-//  y la original en /inicio-anterior.
+//  No se perdio nada: /inicio-v3 guarda la version anterior y
+//  /inicio-anterior la original.
 //
-//  Decisiones de diseno, todas con su razon:
-//   · Solo mandan los dos colores primarios del manual (fucsia A90061
-//     y gris 747678). La paleta secundaria aparece en detalles, que es
-//     para lo unico que el manual la autoriza.
-//   · La cinta va en gris y la cabecera en fucsia: dos barras fucsia
-//     seguidas se peleaban entre si.
-//   · La cursiva (Sacramento) se reserva para las frases "especiales",
-//     como manda el manual; los contenidos van en la geometrica.
-//   · Los valores (COMODA, UNICA, MODERNA, LIBRE) salen del manual,
-//     no son texto inventado de relleno.
+//  LO QUE SE ARREGLO Y POR QUE (se veia pixelado y con fotos raras):
+//   1. Ninguna foto se muestra ya mas ancha de lo que mide. La de la
+//      portada tiene 1015 px y estaba puesta a lo ancho de pantallas
+//      de 2880: se estiraba casi al triple. Ahora viven en columnas
+//      limitadas y se sirven con next/image, que manda la medida
+//      justa a cada pantalla.
+//   2. Cada foto va en un marco de SU formato. Antes las verticales
+//      estaban metidas en un marco 16:9 y les cortaba la cabeza.
+//      Ahora: verticales en 4:5, la horizontal en 3:2.
+//
+//  SISTEMA VISUAL (para que se vea de marca y no de plantilla):
+//   · Mandan los dos primarios del manual, fucsia y gris. Los
+//     secundarios solo tocan detalles.
+//   · Un solo ritmo de aire entre secciones (py-16 md:py-24).
+//   · Un solo juego de esquinas: redondeado grande en fotos, redondo
+//     completo en botones.
+//   · La cursiva (Sacramento) se reserva a las frases especiales,
+//     como manda el manual.
 // =============================================================
 
-// Se arma en cada visita: asi el pop-up de promociones y "Los favoritos"
-// reflejan lo que hay ahora, sin tener que publicar la web de nuevo.
 export const dynamic = "force-dynamic";
 
-// Mensajes de la cinta. El delivery va primero porque es lo que mas
-// preguntan las clientas.
 const CINTA = [
   "DELIVERY LIMA EN 3 DÍAS",
   "PROVINCIA EN 7 DÍAS",
-  "PAGO SEGURO",
   "CAMBIOS EN 7 DÍAS",
+  "PAGO SEGURO",
   "VIVE LA MODA CON COMODIDAD",
 ];
 
-// Los cuatro valores, tal como estan en el manual de marca.
-// El titulo va SIEMPRE en fucsia: es el color primario y, ademas, los
-// secundarios claros sobre blanco no se leen (el turquesa daba 1.9:1,
-// menos de la mitad de lo minimo). El color lo pone la flor, que es
-// decorativa y no tiene que leerse.
+// Los cuatro valores, textuales del manual de marca.
 const VALORES = [
   { titulo: "Cómoda", texto: "Todas las tallas", flor: "text-k-fucsia" },
   { titulo: "Única", texto: "Detalles en cada prenda", flor: "text-k-indigo" },
@@ -77,23 +78,21 @@ export default async function Home() {
   return (
     <div className="bg-white text-k-gris-texto">
       <TrackView type="visit" />
-
-      {/* Pop-up de promociones vigentes (no sale si no hay ninguna) */}
       <PromoPopup promos={promos} />
 
-      {/* ---- CINTA DE AVISOS (negra, bajo la cabecera fucsia) ---- */}
+      {/* ---- CINTA DE AVISOS ---- */}
       <div className="bg-black text-white overflow-hidden whitespace-nowrap">
-        <div className="py-2">
+        <div className="py-2.5">
           <div className="inline-flex animate-marquee">
             {[0, 1].map((k) => (
               <span key={k} className="inline-flex">
                 {CINTA.map((texto, idx) => (
                   <span
                     key={idx}
-                    className="mx-5 uppercase tracking-[0.25em] text-[11px] font-semibold"
+                    className="mx-6 uppercase tracking-[0.3em] text-[10px] font-medium text-white/90"
                   >
-                    {texto}{" "}
-                    <Estrella className="w-2.5 h-2.5 text-white/70 align-middle" />
+                    {texto}
+                    <Estrella className="w-2 h-2 ml-3 text-k-fucsia align-middle" />
                   </span>
                 ))}
               </span>
@@ -102,164 +101,178 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* ---- PORTADA: carrusel de fotos + la frase ----
-           Las fotos van a todo lo ancho y van rotando solas. El texto
-           no se pone encima a proposito: varias de estas fotos ya
-           traen su propio mensaje escrito ("Vivo orgullosa de mi"),
-           y superponerle otro titulo las ensuciaria. Por eso la frase
-           de marca va en la franja fucsia de abajo.
-           Para cambiar o reordenar las fotos: src/data/fotos-marca.ts */}
-      <section>
-        <BannerRotativo fotos={fotosPortada} />
+      {/* ---- PORTADA ----
+           Dos columnas: la frase a la izquierda y la foto a la derecha,
+           en marco vertical. La columna de la foto no pasa de 580 px,
+           menos de lo que miden las fotos: por eso se ven nitidas. */}
+      <section className="bg-k-hueso">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 py-14 md:py-24">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center">
+            <div className="relative order-2 md:order-1">
+              <Flor
+                className="absolute -top-10 -left-4 w-16 h-16 text-k-lila/50 hidden md:block"
+                variante="linea"
+              />
+
+              <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris font-semibold mb-5">
+                #KonaGirl
+              </p>
+
+              <h1 className="leading-[0.88]">
+                <span className="block text-[2.6rem] md:text-6xl font-bold tracking-tight text-k-gris-texto">
+                  Vive Kona,
+                </span>
+                <span className="block font-script text-[3.4rem] md:text-[5rem] text-k-fucsia leading-[1.12] mt-1">
+                  vive orgullosa de ti
+                </span>
+              </h1>
+
+              <Trazo className="w-24 h-3 text-k-fucsia/40 my-7" />
+
+              <p className="text-k-gris-texto text-lg md:text-xl max-w-md leading-relaxed">
+                Ropa pensada para tu cuerpo real, en todas las tallas. Para que
+                te la pongas y te sientas tú.
+              </p>
+
+              <div className="flex flex-wrap gap-3 mt-9">
+                <Link
+                  href="/tienda"
+                  className="bg-k-fucsia text-white px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-k-fucsia-dark transition-colors"
+                >
+                  Ver la tienda
+                </Link>
+                <Link
+                  href="/tienda?cat=nuevos-ingresos"
+                  className="border border-k-gris-texto/30 text-k-gris-texto px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:border-k-fucsia hover:text-k-fucsia transition-colors"
+                >
+                  Nuevos ingresos
+                </Link>
+              </div>
+            </div>
+
+            <div className="order-1 md:order-2">
+              <div className="relative aspect-[4/5] w-full max-w-[580px] mx-auto overflow-hidden rounded-[2rem]">
+                <BannerRotativo
+                  fotos={fotosPortada}
+                  sizes="(min-width: 1024px) 580px, (min-width: 768px) 45vw, 92vw"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section className="relative bg-k-fucsia text-white overflow-hidden">
-        <Flor
-          className="absolute -top-2 right-6 w-20 h-20 text-white/15 hidden md:block"
-          variante="linea"
-        />
-        <Estrella className="absolute bottom-6 left-8 w-6 h-6 text-white/20 hidden md:block" />
-
-        <div className="relative max-w-5xl mx-auto px-4 py-10 md:py-14 text-center">
-          <p className="uppercase tracking-[0.4em] text-xs text-white/80 font-semibold mb-3">
-            #KonaGirl
-          </p>
-          <h1 className="leading-[0.95]">
-            <span className="block text-3xl md:text-5xl font-bold tracking-tight">
-              Vive Kona,
-            </span>
-            {/* la cursiva de marca, reservada a las frases especiales */}
-            <span className="block font-script text-5xl md:text-7xl leading-[1.05] mt-1">
-              vive orgullosa de ti
-            </span>
-          </h1>
-
-          <Trazo className="w-24 h-3 text-white/60 mx-auto my-4" />
-
-          <p className="text-white/90 text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
-            Ropa pensada para tu cuerpo real, en todas las tallas.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-3 mt-7">
+      {/* ---- CATEGORIAS ---- */}
+      <section className="bg-white">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <div className="flex items-end justify-between mb-8 md:mb-10">
+            <div>
+              <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris font-semibold mb-2">
+                Elige por dónde empezar
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-k-gris-texto">
+                Categorías
+              </h2>
+            </div>
             <Link
               href="/tienda"
-              className="bg-white text-k-fucsia px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-hueso transition"
+              className="hidden md:inline text-xs uppercase tracking-[0.12em] font-semibold text-k-fucsia hover:text-k-fucsia-dark transition-colors"
             >
-              Ver la tienda
-            </Link>
-            <Link
-              href="/tienda?cat=nuevos-ingresos"
-              className="border-2 border-white text-white px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-white hover:text-k-fucsia transition"
-            >
-              Nuevos ingresos
+              Ver todo →
             </Link>
           </div>
-        </div>
-      </section>
 
-      {/* ---- CUATRO BLOQUES DE CATEGORIA ---- */}
-      <section className="bg-k-hueso">
-        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
-          {bloques.map(({ block, image, count, href }) => (
-            <Link key={block.key} href={href} className="group block">
-              <div className="relative aspect-[3/4.4] overflow-hidden rounded-3xl placeholder-box shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={image}
-                  alt={block.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-
-                {count === 0 && (
-                  <span
-                    className={`absolute top-3 left-3 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${block.badge}`}
-                  >
-                    Próximamente
-                  </span>
-                )}
-
-                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
-                  <span
-                    aria-hidden="true"
-                    className={`block w-10 h-1 rounded-full mb-3 ${block.bar}`}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {bloques.map(({ block, image, count, href }) => (
+              <Link key={block.key} href={href} className="group block">
+                <div className="relative aspect-[3/4] overflow-hidden rounded-[1.5rem] placeholder-box">
+                  <Foto
+                    src={image}
+                    alt={block.name}
+                    sizes="(min-width: 1024px) 270px, 45vw"
+                    className="group-hover:scale-[1.04] transition-transform duration-700 ease-out"
                   />
-                  <h2 className="text-white text-lg md:text-2xl font-bold leading-tight">
-                    {block.name}
-                  </h2>
-                  <p className="text-white/85 text-sm md:text-base leading-snug mt-1">
-                    {block.tagline}
-                  </p>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+                  {count === 0 && (
+                    <span
+                      className={`absolute top-3 left-3 text-white text-[9px] font-bold uppercase tracking-[0.1em] px-2.5 py-1 rounded-full ${block.badge}`}
+                    >
+                      Próximamente
+                    </span>
+                  )}
+
+                  <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+                    <span
+                      aria-hidden="true"
+                      className={`block w-8 h-[3px] rounded-full mb-2.5 ${block.bar}`}
+                    />
+                    <h3 className="text-white text-base md:text-xl font-bold leading-tight">
+                      {block.name}
+                    </h3>
+                    <p className="text-white/80 text-xs md:text-sm leading-snug mt-1">
+                      {block.tagline}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-        </div>
-      </section>
-
-      {/* ---- BANNER DEL MEDIO ----
-           Va en el lila del manual (#E0B5DF). Ojo con el texto: el lila
-           es claro, y en blanco daba 1.8:1 de contraste, o sea no se
-           leia. Por eso el titulo va en fucsia y el cuerpo en un gris
-           oscuro que llega a 5.8:1.
-           Las tres fotos se leen como una frase seguida: "self love" ->
-           "es poder elegir" -> "es estar siempre lista para vivir".
-           Para cambiarlas: src/data/fotos-marca.ts */}
-      <section className="bg-k-lila">
-        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
-          <div className="text-center max-w-2xl mx-auto">
-            <p className="uppercase tracking-[0.4em] text-xs text-k-gris-oscuro font-semibold mb-3">
-              Hecho para ti
-            </p>
-            <h2 className="font-script text-5xl md:text-7xl text-k-fucsia leading-[1.05]">
-              quiérete en todas tus tallas
-            </h2>
-            <p className="text-k-gris-oscuro text-lg md:text-xl mt-5 leading-relaxed">
-              Cada prenda se piensa para cuerpos reales: tallas que de verdad
-              existen y detalles que se notan al ponértela.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 md:gap-6 mt-10 md:mt-12">
-            {fotosHistoria.map((f) => (
-              <div
-                key={f.src}
-                className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-white/40"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={f.src}
-                  alt={f.alt}
-                  className={`absolute inset-0 w-full h-full object-cover ${f.position ?? ""}`}
-                />
-              </div>
+              </Link>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div className="text-center mt-10">
-            <Link
-              href="/nosotros"
-              className="inline-block bg-k-fucsia text-white px-9 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-fucsia-dark transition"
-            >
-              Conoce Kona
-            </Link>
+      {/* ---- BANNER DEL MEDIO (lila del manual, color 4) ----
+           El texto NO va en blanco: sobre este lila da 1.8:1 de
+           contraste y no se lee. Titulo en fucsia, cuerpo en gris
+           oscuro (5.8:1).
+           La foto es la unica horizontal que hay, por eso va en marco
+           3:2 y en una columna que no pasa de su tamano real. */}
+      <section className="bg-k-lila">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center">
+            <div className="relative aspect-[3/2] w-full max-w-[600px] overflow-hidden rounded-[2rem]">
+              <Foto
+                src={fotoIntermedia.src}
+                alt={fotoIntermedia.alt}
+                position={fotoIntermedia.position}
+                sizes="(min-width: 1024px) 560px, (min-width: 768px) 45vw, 92vw"
+              />
+            </div>
+
+            <div className="relative">
+              <Corazon className="absolute -top-8 right-2 w-8 h-8 text-k-fucsia/30 hidden md:block" />
+              <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris-oscuro font-semibold mb-4">
+                Hecho para ti
+              </p>
+              <h2 className="font-script text-[3rem] md:text-[4rem] text-k-fucsia leading-[1.18] max-w-[14ch]">
+                quiérete en todas tus tallas
+              </h2>
+              <p className="text-k-gris-oscuro text-lg md:text-xl mt-6 leading-relaxed max-w-md">
+                Cada prenda se piensa para cuerpos reales: tallas que de verdad
+                existen y detalles que se notan al ponértela.
+              </p>
+              <Link
+                href="/nosotros"
+                className="inline-block mt-9 bg-k-fucsia text-white px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-k-fucsia-dark transition-colors"
+              >
+                Conoce Kona
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ---- LOS FAVORITOS (ordenados por ventas reales) ---- */}
+      {/* ---- LOS FAVORITOS ---- */}
       <section className="bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
-          <div className="text-center mb-8 md:mb-10">
-            <p className="uppercase tracking-[0.35em] text-xs text-k-gris font-semibold mb-2">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <div className="text-center mb-10">
+            <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris font-semibold mb-3">
               Lo más pedido
             </p>
-            <h2 className="font-script text-5xl md:text-6xl text-k-fucsia leading-none">
+            <h2 className="font-script text-[3rem] md:text-6xl text-k-fucsia leading-[1.1]">
               Los favoritos
             </h2>
-            <p className="text-k-gris-texto text-lg md:text-xl max-w-xl mx-auto mt-4 leading-relaxed">
+            <p className="text-k-gris-texto text-base md:text-lg max-w-lg mx-auto mt-4 leading-relaxed">
               {favoritos.basedOnSales
                 ? "Lo que más se está vendiendo ahora mismo. La lista se ordena sola con cada compra."
                 : "Nuestra selección del momento. En cuanto haya ventas, esta lista se ordena sola."}
@@ -267,12 +280,12 @@ export default async function Home() {
           </div>
 
           {topColecciones.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2.5 mb-10">
+            <div className="flex flex-wrap justify-center gap-2 mb-12">
               {topColecciones.map(({ col }) => (
                 <Link
                   key={col.slug}
                   href={`/tienda?cat=${col.slug}`}
-                  className="border border-k-gris-claro bg-white rounded-full px-5 py-2 text-base text-k-gris-texto hover:border-k-fucsia hover:text-k-fucsia transition"
+                  className="border border-k-gris-claro rounded-full px-5 py-2 text-sm text-k-gris-texto hover:border-k-fucsia hover:text-k-fucsia transition-colors"
                 >
                   {col.title}
                 </Link>
@@ -282,10 +295,10 @@ export default async function Home() {
 
           <ProductGrid products={favoritos.items} />
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-14">
             <Link
               href="/tienda"
-              className="inline-block bg-k-fucsia text-white px-10 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-fucsia-dark transition"
+              className="inline-block bg-k-fucsia text-white px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-k-fucsia-dark transition-colors"
             >
               Ver toda la tienda
             </Link>
@@ -293,29 +306,26 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ---- TESTIMONIOS REALES ---- */}
+      {/* ---- TESTIMONIOS ---- */}
       <Testimonios />
 
-      {/* ---- VALORES DE LA MARCA (textuales del manual) ---- */}
+      {/* ---- VALORES DEL MANUAL ---- */}
       <section className="bg-k-lila/25">
-        <div className="max-w-5xl mx-auto px-4 py-14 md:py-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div className="max-w-5xl mx-auto px-5 md:px-8 py-14 md:py-20 grid grid-cols-2 md:grid-cols-4 gap-10 text-center">
           {VALORES.map((v) => (
             <div key={v.titulo}>
               <Flor
-                className={`w-9 h-9 mx-auto mb-3 ${v.flor}`}
+                className={`w-8 h-8 mx-auto mb-3 ${v.flor}`}
                 variante="linea"
               />
               <h3 className="font-script text-3xl leading-none text-k-fucsia">
                 {v.titulo}
               </h3>
-              <p className="text-k-gris text-sm md:text-base mt-1.5 leading-snug">
-                {v.texto}
-              </p>
+              <p className="text-k-gris text-sm mt-2 leading-snug">{v.texto}</p>
             </div>
           ))}
         </div>
       </section>
-
 
       {/* ---- INSTAGRAM ---- */}
       <Instagram productos={products} />
@@ -325,17 +335,17 @@ export default async function Home() {
 
       {/* ---- CIERRE ---- */}
       <section className="bg-k-fucsia text-white">
-        <div className="max-w-3xl mx-auto px-4 py-16 md:py-20 text-center">
-          <Corazon className="w-10 h-10 mx-auto mb-4 text-white/80" />
-          <h2 className="font-script text-5xl md:text-7xl leading-none">
+        <div className="max-w-3xl mx-auto px-5 md:px-8 py-20 md:py-24 text-center">
+          <Corazon className="w-9 h-9 mx-auto mb-5 text-white/70" />
+          <h2 className="font-script text-[3rem] md:text-[4rem] leading-[1.18]">
             vive la moda con comodidad
           </h2>
-          <p className="text-white/90 text-lg md:text-xl max-w-md mx-auto mt-5 leading-relaxed">
+          <p className="text-white/85 text-lg max-w-sm mx-auto mt-5 leading-relaxed">
             Escríbenos y te ayudamos a encontrar tu talla.
           </p>
           <Link
             href="/contacto"
-            className="inline-block mt-8 bg-white text-k-fucsia px-10 py-4 rounded-full font-bold uppercase tracking-wide text-sm hover:bg-k-hueso transition"
+            className="inline-block mt-9 bg-white text-k-fucsia px-10 py-4 rounded-full font-semibold uppercase tracking-[0.12em] text-xs hover:bg-k-hueso transition-colors"
           >
             Hablar con Kona
           </Link>
