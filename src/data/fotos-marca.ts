@@ -31,12 +31,32 @@ export type FotoMarca = {
 // Van en su formato nativo (casi 2:1) y sin recortar, para no cortar
 // la tipografia que trae cada uno.
 //
-// Quedaron fuera a proposito los banners de campana ("BLACK WEEK 2x1",
-// "50% OFF MOM days"): anunciar una promocion que no esta activa es
-// prometerle a la clienta algo que el carrito no le va a cobrar.
+// OJO con el primero: anuncia "40% OFF". Para que lo prometido sea lo
+// que el carrito cobra, tiene que existir esa regla activa en /admin.
+// Si la campana termina, hay que sacar este banner de la lista o la
+// web estara prometiendo un descuento que no se aplica.
 //
 // El ORDEN es el orden en que se ven.
 export const fotosPortada: FotoMarca[] = [
+  {
+    // 1549 x 940. Es mas "cuadrada" que el marco, asi que se ancla
+    // arriba: lo que se recorta es el borde de la piscina, no el
+    // "swim SALE" ni el 40%.
+    src: "/marca/hero-swimsale.webp",
+    alt: "Dos clientas de Kona en ropa de baño azul con rosas: swim sale, 40% de descuento",
+    position: "object-top",
+  },
+  {
+    // 1534 x 940, mismo caso: anclada arriba para no comerse el
+    // "love is a holiday".
+    src: "/marca/hero-loveholiday.webp",
+    alt: "Clienta de Kona con un conjunto rosa y rosas, con la frase “love is a holiday”",
+    position: "object-top",
+  },
+  {
+    src: "/marca/hero-bannerwebali.webp",
+    alt: "Clienta de Kona en ropa de baño naranja junto a la piscina",
+  },
   {
     src: "/marca/hero-bannerweb.webp",
     alt: "Dos clientas de Kona sonriendo en una terraza de Lima",
@@ -48,18 +68,6 @@ export const fotosPortada: FotoMarca[] = [
   {
     src: "/marca/hero-bannerswim1.webp",
     alt: "Clienta de Kona en una piscina, con la frase “Vivo orgullosa de mí”",
-  },
-  {
-    src: "/marca/hero-bannerwebali.webp",
-    alt: "Clienta de Kona en ropa de baño naranja junto a la piscina",
-  },
-  {
-    src: "/marca/hero-banner-UNICA.webp",
-    alt: "Clientas de Kona: única, detalles en cada prenda",
-  },
-  {
-    src: "/marca/hero-banner-MODERNA.webp",
-    alt: "Clientas de Kona: moderna, diseños en tendencia",
   },
 ];
 

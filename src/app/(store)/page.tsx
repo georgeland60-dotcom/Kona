@@ -81,8 +81,11 @@ export default async function Home() {
       <TrackView type="visit" />
       <PromoPopup promos={promos} />
 
-      {/* ---- CINTA DE AVISOS ---- */}
-      <div className="bg-black text-white overflow-hidden whitespace-nowrap">
+      {/* ---- CINTA DE AVISOS ----
+           En el rosa de la paleta. No lleva letra blanca: sobre este
+           rosa daria 2.4:1 y no se leeria. Con la tinta oscura llega
+           a 5.3:1. Y se distingue del encabezado, que ya es fucsia. */}
+      <div className="bg-k-rosa text-k-tinta overflow-hidden whitespace-nowrap">
         <div className="py-2.5">
           <div className="inline-flex animate-marquee">
             {[0, 1].map((k) => (
@@ -90,7 +93,7 @@ export default async function Home() {
                 {CINTA.map((texto, idx) => (
                   <span
                     key={idx}
-                    className="mx-6 uppercase tracking-[0.3em] text-[10px] font-medium text-white/90"
+                    className="mx-6 uppercase tracking-[0.3em] text-[10px] font-semibold"
                   >
                     {texto}
                     <Estrella className="w-2 h-2 ml-3 text-k-fucsia align-middle" />
