@@ -24,10 +24,21 @@ type Sugerencia = {
   tallas: string[];
 };
 
+// La guía de tallas de una prenda, tal como la manda el servidor.
+type Tabla = {
+  nombre: string;
+  campos: string[];
+  filas: { talla: string; medidas: Record<string, number> }[];
+  nota: string;
+  modelo?: string;
+};
+
 type Mensaje = {
   rol: "cliente" | "asistente";
   texto: string;
   productos?: Sugerencia[];
+  tabla?: Tabla;
+  whatsapp?: { url: string; texto: string };
 };
 
 const SALUDO: Mensaje = {
@@ -181,6 +192,8 @@ export default function KonaAssistant() {
           rol: "asistente",
           texto: data.respuesta ?? "No pude responder ahora mismo.",
           productos: data.productos ?? [],
+          tabla: data.tabla,
+          whatsapp: data.whatsapp,
         },
       ]);
     } catch {
@@ -331,6 +344,74 @@ export default function KonaAssistant() {
                 >
                   {m.texto}
                 </div>
+
+                {/* La guía de tallas, en tabla. En un párrafo ("S busto
+                    87, M busto 92…") no hay quien la lea. */}
+                {m.tabla && m.tabla.filas.length > 0 && (
+                  <div className="mt-3 border border-line rounded-xl overflow-hidden">
+                    <div className="px-3 py-2 bg-soft">
+                      <p className="text-xs font-medium">
+                        Guía de tallas · {m.tabla.nombre}
+                      </p>
+                      {m.tabla.modelo && (
+                        <p className="text-[11px] text-muted mt-0.5">
+                          {m.tabla.modelo}
+                        </p>
+                      )}
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="text-muted text-left">
+                          <tr className="border-b border-line">
+                            <th className="py-1.5 px-3 font-medium">Talla</th>
+                            {m.tabla.campos.map((c) => (
+                              <th
+                                key={c}
+                                className="py-1.5 px-3 font-medium capitalize whitespace-nowrap"
+                              >
+                                {c.replace(/_/g, " ")}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-line">
+                          {m.tabla.filas.map((f) => (
+                            <tr key={f.talla}>
+                              <td className="py-1.5 px-3 font-medium">
+                                {f.talla}
+                              </td>
+                              {m.tabla!.campos.map((c) => (
+                                <td key={c} className="py-1.5 px-3 whitespace-nowrap">
+                                  {f.medidas[c] ? `${f.medidas[c]} cm` : "—"}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[11px] text-muted px-3 py-2">
+                      {m.tabla.nota}
+                    </p>
+                  </div>
+                )}
+
+                {/* Hablar con una persona: un botón, no un número que
+                    haya que copiar a mano. */}
+                {m.whatsapp && (
+                  <a
+                    href={m.whatsapp.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 flex items-center justify-center gap-2 bg-[#25D366] text-white rounded-full py-2.5 text-sm font-medium hover:opacity-90 transition"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.7.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5 0-.2 0-.4 0-.5 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.2.2 2.1 3.2 5.1 4.4.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3z" />
+                      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z" />
+                    </svg>
+                    {m.whatsapp.texto}
+                  </a>
+                )}
 
                 {m.productos && m.productos.length > 0 && (
                   <div className="mt-3 space-y-2">

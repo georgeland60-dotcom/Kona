@@ -28,7 +28,7 @@ import {
   escapar,
 } from "@/lib/agent/telegram";
 import { guardarImagen } from "@/lib/imagenes";
-import { anotarFoto, vaciarFotos } from "@/lib/agent/fotos";
+import { anotarFoto, vaciarFotos, verFotos } from "@/lib/agent/fotos";
 
 // Pasado este tiempo, Vercel MATA la función sin avisar a nadie: no sale
 // ni la respuesta ni un error. Por eso el agente trabaja con un
@@ -63,6 +63,12 @@ type TelegramUpdate = {
     message?: { message_id: number; chat: { id: number; type?: string } };
   };
 };
+
+// Las fotos ya enganchadas a una acción del plan.
+function lista(args: Record<string, unknown>, campo: string): string[] {
+  const bruto = args[campo];
+  return Array.isArray(bruto) ? bruto.filter((x): x is string => typeof x === "string") : [];
+}
 
 // La foto más grande que mandó Telegram (o una imagen enviada como
 // archivo, que es lo que pasa cuando se manda "sin comprimir").
@@ -210,7 +216,8 @@ async function atenderMensaje(update: TelegramUpdate): Promise<void> {
       if (!texto) {
         await enviarMensaje(
           chatId,
-          `📸 Foto guardada (${cuantas} en total). Cuando me digas qué producto es, se la pongo.\n\n` +
+          `📸 Foto guardada (${cuantas} en total). Cuando me digas qué producto es, se la pongo.\n` +
+            "<i>Si ya te mostré un producto para confirmar, esta foto también entra: se la pongo al confirmar.</i>\n\n" +
             "<i>Para darlo de alta necesito: nombre, precio, categoría y tallas.</i>",
           undefined,
           { responderA: enGrupo ? mensaje.message_id : undefined }
@@ -343,6 +350,21 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
   }
 
   await responderBoton(consulta.id, "Aplicando…");
+
+  // Última pasada por las fotos que están esperando. Al armar el plan
+  // puede que todavía no hubieran llegado (se manda primero el texto y
+  // después la foto), y entonces el producto se creaba oculto aunque la
+  // foto ya estuviera ahí cuando se apretó Confirmar.
+  const altas = acciones.filter((a) => a.herramienta.includes("agregar_producto"));
+  if (altas.length === 1) {
+    // Vale lo que haya en la bandeja AHORA, no lo que había al armar el
+    // plan: si mandó la foto después de ver la lista (o mandó una más),
+    // entra igual. Antes se quedaba fuera y el producto nacía oculto
+    // aunque la foto estuviera ahí.
+    const fotos = await verFotos(chatId);
+    if (fotos.length > 0) altas[0].args = { ...altas[0].args, fotos };
+  }
+
   const { hechos, fallos, detalle } = await aplicarPlan(acciones);
 
   if (hechos.length > 0) refrescarTienda();

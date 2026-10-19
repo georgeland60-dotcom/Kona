@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Product, Category } from "@/lib/types";
 import { saveProductAction } from "@/app/admin/productos-actions";
+import { guiaATexto, medidasATexto } from "@/lib/medidas";
 
 type Row = { size: string; stock: number };
 
@@ -210,6 +211,83 @@ export default function ProductForm({
         <p className="text-xs text-muted mt-2">
           El código (SKU) de cada talla se genera solo al guardar.
         </p>
+      </div>
+
+      {/* Ayuda con la talla: lo que la tienda y el asistente usan para
+          que la clienta pida segura. Es opcional, pero es lo que más
+          reduce cambios y devoluciones. */}
+      <div className="bg-background border border-line rounded-xl p-5 space-y-4">
+        <div>
+          <label className="block text-sm font-medium">
+            Ayuda con la talla
+          </label>
+          <p className="text-xs text-muted mt-1">
+            Opcional. Mientras esto esté vacío, la tienda muestra medidas
+            estimadas por categoría y avisa de que son referenciales.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs text-muted mb-1">
+              Talla que usa la modelo
+            </label>
+            <input
+              name="modelo_talla"
+              defaultValue={product?.modeloFoto?.talla || ""}
+              placeholder="M, 30, 38..."
+              className={field}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">
+              Altura de la modelo (cm)
+            </label>
+            <input
+              name="modelo_altura"
+              type="number"
+              min={100}
+              max={220}
+              defaultValue={product?.modeloFoto?.altura || ""}
+              placeholder="168"
+              className={field}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">
+              Medidas de la modelo
+            </label>
+            <input
+              name="modelo_medidas"
+              defaultValue={medidasATexto(product?.modeloFoto?.medidas)}
+              placeholder="busto 86, cintura 66, cadera 94"
+              className={field}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted -mt-1">
+          La talla tiene que ser una de las de arriba. Si no lo es, no se
+          guarda: la tienda no puede decir que la modelo usa una talla que
+          no se puede pedir.
+        </p>
+
+        <div>
+          <label className="block text-xs text-muted mb-1">
+            Medidas de la prenda, una talla por línea
+          </label>
+          <textarea
+            name="guia_tallas"
+            rows={5}
+            defaultValue={guiaATexto(product?.guiaTallas)}
+            placeholder={"S: busto 87, largo 60\nM: busto 92, largo 62\nL: busto 97, largo 64"}
+            className={`${field} font-mono text-xs`}
+          />
+          <p className="text-xs text-muted mt-1">
+            Formato: talla, dos puntos y las medidas en centímetros. Se
+            escriben como se dicen (busto 92, largo 62). Solo se guardan
+            las tallas que existan arriba.
+          </p>
+        </div>
       </div>
 
       {/* Opciones */}

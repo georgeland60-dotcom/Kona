@@ -12,6 +12,7 @@ import {
   nextProductId,
   skuFor,
 } from "@/lib/store-data";
+import { leerGuiaDeTexto, leerMedidas } from "@/lib/medidas";
 import type { Product, Variant } from "@/lib/types";
 
 // Texto -> slug en minúsculas (para URL del producto).
@@ -80,22 +81,76 @@ export async function saveProductAction(formData: FormData) {
   const uploaded = file ? await saveImage(file, slug) : null;
   const image = uploaded || currentImage || undefined;
 
+  // La modelo de las fotos y las medidas por talla. Es lo que la tienda
+  // usa para ayudar con la talla, así que se carga desde aquí igual que
+  // desde el bot.
+  const modeloTalla = String(formData.get("modelo_talla") || "").trim();
+  const modeloAlturaRaw = String(formData.get("modelo_altura") || "").trim();
+  const modeloAltura = modeloAlturaRaw ? Number(modeloAlturaRaw) : undefined;
+  const modeloMedidas = leerMedidas(String(formData.get("modelo_medidas") || ""));
+  // Solo las tallas que la prenda tiene: una fila de "M" en un jean que
+  // va por números no la puede pedir nadie.
+  const guiaTallas = leerGuiaDeTexto(String(formData.get("guia_tallas") || "")).filter(
+    (m) =>
+      variants.some(
+        (v) => v.size.trim().toLowerCase() === m.talla.trim().toLowerCase()
+      )
+  );
+
+  // Una talla de modelo que la prenda no tiene no se guarda: en un jean
+  // que va del 28 al 40 una "M" no se puede pedir, y la tienda acabaría
+  // afirmándola en la ficha.
+  const tieneTalla = variants.some(
+    (v) => v.size.trim().toLowerCase() === modeloTalla.trim().toLowerCase()
+  );
+
   const finalId = id || (await nextProductId());
 
+  // Lo que el formulario no toca se conserva. Guardar el producto
+  // entero de cero borraba en silencio la galería de fotos, las
+  // colecciones y las medidas cargadas: se editaba un precio y se
+  // perdía el resto.
+  const anterior = id ? await getProductById(id, { raw: true }) : null;
+
   const product: Product = {
+    ...(anterior ?? {}),
     id: finalId,
     slug,
     name,
     price,
     category,
     image,
+    images: anterior?.images,
     description: description || undefined,
     variants,
     featured,
     onSale,
     oldPrice: oldPrice && oldPrice > 0 ? oldPrice : undefined,
     active,
+    ...(guiaTallas.length > 0
+      ? { guiaTallas }
+      : { guiaTallas: undefined }),
+    ...(modeloTalla && tieneTalla
+      ? {
+          modeloFoto: {
+            talla: modeloTalla,
+            ...(modeloAltura && modeloAltura > 0
+              ? { altura: Math.round(modeloAltura) }
+              : {}),
+            ...(Object.keys(modeloMedidas).length > 0
+              ? { medidas: modeloMedidas }
+              : {}),
+          },
+        }
+      : { modeloFoto: undefined }),
   };
+
+  // Si se subió una foto nueva, entra también en la galería para no
+  // perder las que ya había.
+  if (uploaded) {
+    const galeria = [uploaded, ...(anterior?.images ?? []).filter((i) => i !== uploaded)];
+    product.images = galeria;
+  }
 
   await upsertProduct(product);
   revalidateAll(slug);

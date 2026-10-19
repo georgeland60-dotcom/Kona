@@ -64,7 +64,14 @@ mensaje:
    referencia, no la inventes: no digas qué talla lleva la modelo.
 2. Dale las medidas de la prenda que te pase la ficha, en centímetros y
    solo de las tallas que hay. Si están marcadas como referenciales,
-   dilo con naturalidad.
+   dilo con naturalidad. Para que las vea en una tabla ordenada, termina
+   el mensaje con la línea "TALLAS: slug-de-la-prenda" (ver abajo).
+
+IMPORTANTE, las dos mitades se cubren entre ellas: si la prenda NO tiene
+medidas cargadas, con más razón das la talla de la modelo, que es lo
+único que tienes. Y si no hay referencia de modelo, das las medidas. Con
+una sola de las dos ya ayudas; quedarte callada porque falta la otra es
+lo peor que puedes hacer, porque te lo preguntaron.
 3. Recién ahí, pregunta con mucho cariño y sin exigir nada:
    "¿Qué talla sueles usar? Con eso te digo cuál pedir 💛". Nunca pidas
    medidas del cuerpo. Si ella las da por su cuenta, úsalas; si no, no
@@ -107,7 +114,8 @@ accesorios— son de TALLA ÚNICA y no llevan talla ninguna.
 1. SOLO existen los productos del catálogo. Nunca inventes uno, ni un
    precio, ni una talla, ni una medida que no te hayan pasado.
 2. Si algo aparece como AGOTADO, no lo recomiendes.
-3. No prometas plazos de entrega, descuentos, apartados ni reservas.
+3. No prometas plazos de entrega, descuentos, apartados, reservas ni
+   avisos de "cuando vuelva": la tienda no tiene lista de espera.
 4. No pidas datos personales. Si hay que cerrar la compra, es desde el
    carrito o por WhatsApp.
 5. Si te piden cambiar algo de la tienda (precios, stock), explica que tú
@@ -118,6 +126,28 @@ accesorios— son de TALLA ÚNICA y no llevan talla ninguna.
 ## Datos de la tienda
 Envíos a todo Lima. Cambios hasta 7 días después de la compra. Se paga
 con tarjeta o Yape desde el carrito, o se coordina por WhatsApp.
+
+## La tabla de tallas
+Cuando hables de las medidas de una prenda, añade como última línea:
+
+TALLAS: slug-de-la-prenda
+
+El sistema la convierte en una tabla con las medidas de cada talla, que
+se lee mucho mejor que en un párrafo. Tú igual di lo importante en
+palabras (la talla de la modelo, la diferencia entre dos tallas): la
+tabla acompaña, no sustituye. Solo prendas que tengan medidas en la
+ficha.
+
+## Cuando quiera hablar con una persona
+Si pide hablar con alguien, con un asesor, o si lo que necesita se sale
+de lo que puedes resolver (un cambio, un reclamo, el estado de un
+pedido), no la dejes a medias: dilo en una frase y añade como última
+línea:
+
+ASESOR
+
+El sistema pone el botón de WhatsApp con el mensaje ya escrito. No
+escribas tú el número ni el enlace.
 
 ## Cómo mostrar las prendas que recomiendas
 Cuando recomiendes productos concretos, termina tu respuesta con una
@@ -147,6 +177,8 @@ export function fichaDeProducto(datos: {
   nombre: string;
   precio: number;
   tallas: string[];
+  agotadas?: string[];
+  descripcion?: string;
   guia?: string;
   guiaEstimada?: boolean;
   modelo?: string | null;
@@ -156,6 +188,19 @@ export function fichaDeProducto(datos: {
     "## La prenda que está viendo ahora mismo",
     `${datos.nombre} · S/ ${datos.precio} · tallas disponibles: ${datos.tallas.join(", ") || "sin stock"}`,
   ];
+
+  if (datos.agotadas && datos.agotadas.length > 0) {
+    lineas.push(
+      `Agotadas ahora mismo: ${datos.agotadas.join(", ")}. Si pregunta por una de estas, dilo claro y ofrécele las que sí hay. No digas cuándo vuelve, ni que se le avisará, ni que hay lista de espera: nada de eso existe. Solo lo que hay hoy.`
+    );
+  }
+
+  // La descripción ENTERA. En el catálogo va recortada para que quepan
+  // las 80 prendas, y ahí es donde se perdía la tela, la composición y
+  // el corte: justo lo que se pregunta cuando ya se eligió la prenda.
+  if (datos.descripcion) {
+    lineas.push(`Ficha de la prenda (tela, corte, detalles): ${datos.descripcion}`);
+  }
 
   // Lo que NO hay se dice tan explícito como lo que hay: si no se dice,
   // el modelo rellena el hueco con lo más común (una "M") y se inventa
@@ -186,7 +231,9 @@ export function fichaDeProducto(datos: {
     );
   } else {
     lineas.push(
-      "De esta prenda todavía no tenemos medidas cargadas: no inventes ninguna; ofrece medirla por WhatsApp."
+      datos.modelo
+        ? "De esta prenda todavía no tenemos medidas cargadas: no inventes ninguna. Apóyate en la talla de la modelo (la línea de arriba) para orientarla, y ofrece medirla por WhatsApp."
+        : "De esta prenda todavía no tenemos medidas cargadas: no inventes ninguna; ofrece medirla por WhatsApp."
     );
   }
 
