@@ -34,6 +34,10 @@ export type DireccionEncontrada = {
   // prueban en ese orden contra la tabla de envíos: en Lima el distrito
   // suele venir como "suburb"; en provincia lo que calza es la ciudad.
   candidatos: string[];
+  // Cómo llamar a la zona cuando NINGÚN candidato está en la tabla. Es
+  // el distrito, no el barrio: decirle "Las Virreinas" a quien vive en
+  // Lurín no le dice nada, y encima salían tres opciones iguales.
+  zona?: string;
 };
 
 export function geocodificadorEnUso(): "google" | "osm" {
@@ -97,6 +101,7 @@ async function buscarEnOsm(texto: string): Promise<DireccionEncontrada[]> {
     return {
       direccion: d.display_name ?? texto,
       candidatos: [...new Set(candidatos)],
+      zona: a.city_district || a.town || a.village || a.city || a.county,
     };
   });
 }
@@ -141,6 +146,7 @@ async function buscarEnGoogle(texto: string): Promise<DireccionEncontrada[]> {
 
     return {
       direccion: p.formattedAddress ?? texto,
+      zona: porTipo("locality")[0] ?? porTipo("administrative_area_level_2")[0],
       candidatos: [
         ...new Set([
           ...porTipo("sublocality_level_1"),

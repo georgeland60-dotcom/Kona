@@ -41,7 +41,9 @@ export async function GET(req: Request) {
       const envio = destinoDeCandidatos(d.candidatos);
       return {
         direccion: d.direccion,
-        destino: envio.destino,
+        // Si está en la tabla, el nombre de la tienda. Si no, el del
+        // distrito, que es lo que la clienta reconoce.
+        destino: envio.conocido ? envio.destino : (d.zona ?? envio.destino),
         costo: envio.costo,
         conocido: envio.conocido,
       };
