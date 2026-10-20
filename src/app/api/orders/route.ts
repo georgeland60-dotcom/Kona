@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/orders-data";
 import { priceForItems } from "@/lib/pricing";
+import { costoDeEnvio } from "@/lib/envios";
 import type { OrderItem, OrderMethod } from "@/lib/types";
 
 // Crea un pedido (usado por el checkout de WhatsApp). El precio de cada
@@ -10,6 +11,7 @@ export async function POST(req: Request) {
   const body = (await req.json()) as {
     method?: OrderMethod;
     items?: OrderItem[];
+    destino?: string;
     customer?: { name?: string; phone?: string; email?: string };
   };
 
@@ -26,13 +28,21 @@ export async function POST(req: Request) {
     );
   }
 
-  const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+  // El envío se busca por nombre en la tabla de la tienda: lo que diga
+  // el navegador sobre el precio da igual.
+  const envio = costoDeEnvio(body.destino);
+  const total =
+    items.reduce((s, i) => s + i.price * i.qty, 0) + envio.costo;
+
   const resultado = await createOrder({
     items,
     total,
     method: body.method === "mercadopago" ? "mercadopago" : "whatsapp",
     status: "pendiente",
     customer: body.customer,
+    ...(envio.destino
+      ? { envio: { destino: envio.destino, costo: envio.costo } }
+      : {}),
   });
 
   // Alguien se llevó la última unidad entre que armó el carrito y
@@ -51,5 +61,9 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, id: resultado.order.id });
+  return NextResponse.json({
+    ok: true,
+    id: resultado.order.id,
+    envio: { destino: envio.destino, costo: envio.costo, conocido: envio.conocido },
+  });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { createOrder } from "@/lib/orders-data";
 import { priceForItems } from "@/lib/pricing";
+import { costoDeEnvio } from "@/lib/envios";
 
 // Esta funcion corre en el SERVIDOR (seguro). Aqui se usa el token secreto
 // para crear el cobro. El navegador del cliente nunca ve el token.
@@ -29,7 +30,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const { items: rawItems } = (await req.json()) as { items: IncomingItem[] };
+  const { items: rawItems, destino } = (await req.json()) as {
+    items: IncomingItem[];
+    destino?: string;
+  };
   if (!rawItems || rawItems.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
   }
@@ -41,7 +45,11 @@ export async function POST(req: Request) {
   if (items.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
   }
-  const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+  // El envío, igual que los precios, sale de la tabla de la tienda y no
+  // de lo que mande el navegador.
+  const envio = costoDeEnvio(destino);
+  const total =
+    items.reduce((s, i) => s + i.price * i.qty, 0) + envio.costo;
 
   // Registramos el pedido como "pendiente" antes de mandar a pagar. Eso
   // le RESERVA el stock: mientras esté pagando, nadie más se lleva esas
@@ -51,6 +59,9 @@ export async function POST(req: Request) {
     total,
     method: "mercadopago",
     status: "pendiente",
+    ...(envio.destino
+      ? { envio: { destino: envio.destino, costo: envio.costo } }
+      : {}),
   });
 
   if (!resultado.ok) {
@@ -74,13 +85,28 @@ export async function POST(req: Request) {
     const result = await preference.create({
       body: {
         external_reference: order.id,
-        items: items.map((i, idx) => ({
-          id: String(idx),
-          title: i.size ? `${i.name} (Talla ${i.size})` : i.name,
-          quantity: i.qty,
-          unit_price: i.price,
-          currency_id: "PEN",
-        })),
+        items: [
+          ...items.map((i, idx) => ({
+            id: String(idx),
+            title: i.size ? `${i.name} (Talla ${i.size})` : i.name,
+            quantity: i.qty,
+            unit_price: i.price,
+            currency_id: "PEN",
+          })),
+          // El envío va como una línea más: Mercado Pago cobra la suma
+          // de lo que se le manda, así que si no va aquí, no se cobra.
+          ...(envio.costo > 0
+            ? [
+                {
+                  id: "envio",
+                  title: `Envío a ${envio.destino}`,
+                  quantity: 1,
+                  unit_price: envio.costo,
+                  currency_id: "PEN",
+                },
+              ]
+            : []),
+        ],
         back_urls: {
           success: `${site}/pago/exito`,
           failure: `${site}/pago/error`,

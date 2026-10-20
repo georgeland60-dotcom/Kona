@@ -82,6 +82,10 @@ export type Order = {
   method: OrderMethod;
   status: OrderStatus;
   customer?: { name?: string; phone?: string; email?: string };
+  // A dónde va y cuánto se cobró por llevarlo. Va aparte de los items
+  // porque no es un producto: no tiene stock ni descuentos, y mezclarlo
+  // con la mercadería descuadraba el inventario.
+  envio?: { destino: string; costo: number };
   // true = este pedido tiene stock reservado (se reserva al crearlo).
   stockApplied?: boolean;
   // Cuándo se soltó lo reservado por llevar demasiado tiempo sin pagar.

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/components/cart/CartContext";
 import { store } from "@/config/store";
 import { formatPrice } from "@/lib/format";
+import { costoDeEnvio, destinosAgrupados } from "@/lib/envios";
+import { OTRAS_ZONAS } from "@/data/envios";
 import type { Product } from "@/lib/types";
 
 // Devuelve el SKU de la talla elegida (o el de la única variante).
@@ -18,6 +20,32 @@ export default function CartDrawer() {
     useCart();
   const [loading, setLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+
+  // A dónde va el pedido. Se recuerda entre visitas: quien ya dijo su
+  // distrito no tiene por qué repetirlo cada vez.
+  const [destino, setDestino] = useState("");
+  useEffect(() => {
+    try {
+      const guardado = localStorage.getItem("kona-destino");
+      if (guardado) setDestino(guardado);
+    } catch {
+      // Modo incógnito: simplemente no se recuerda.
+    }
+  }, []);
+
+  const elegirDestino = (valor: string) => {
+    setDestino(valor);
+    try {
+      localStorage.setItem("kona-destino", valor);
+    } catch {
+      // Da igual: solo significa que la próxima vez lo vuelve a elegir.
+    }
+  };
+
+  // El costo que se MUESTRA. El que se cobra lo vuelve a calcular el
+  // servidor con esta misma tabla, así que no pueden discrepar.
+  const envio = costoDeEnvio(destino);
+  const totalConEnvio = total + envio.costo;
 
   // Pago online con Mercado Pago (tarjeta / Yape)
   const payOnline = async () => {
@@ -37,6 +65,7 @@ export default function CartDrawer() {
             qty: i.qty,
             size: i.size,
           })),
+          destino,
         }),
       });
       const data = await res.json();
@@ -78,6 +107,7 @@ export default function CartDrawer() {
             qty: i.qty,
             size: i.size,
           })),
+          destino,
         }),
       });
 
@@ -112,8 +142,13 @@ export default function CartDrawer() {
     const mensaje =
       `¡Hola ${store.name}! Quiero hacer este pedido:\n\n` +
       lineas.join("\n") +
-      `\n\nTotal: ${formatPrice(total)}` +
-      `\n\nMi nombre es: \nDireccion de entrega: `;
+      (envio.conocido
+        ? `\n\nEnvío a ${envio.destino}: ${formatPrice(envio.costo)}`
+        : "") +
+      `\n\nTotal: ${formatPrice(totalConEnvio)}` +
+      (envio.conocido
+        ? `\n\nMi nombre es: \nDireccion de entrega (${envio.destino}): `
+        : `\n\nMi nombre es: \nDistrito: \nDireccion de entrega: `);
 
     const url = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(
       mensaje
@@ -286,6 +321,41 @@ export default function CartDrawer() {
                 </div>
               </div>
             )}
+            {/* El envío, antes del total: enterarse del costo recién al
+                pagar es la razón número uno de carritos abandonados. */}
+            <div className="border-t border-line pt-3 space-y-2">
+              <label className="block text-sm">
+                ¿A dónde te lo enviamos?
+                <select
+                  value={destino}
+                  onChange={(e) => elegirDestino(e.target.value)}
+                  className="mt-1.5 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
+                >
+                  <option value="">Elige tu distrito…</option>
+                  {destinosAgrupados().map((g) => (
+                    <optgroup key={g.grupo} label={g.grupo}>
+                      {g.destinos.map((d) => (
+                        <option key={d.nombre} value={d.nombre}>
+                          {d.nombre} — {formatPrice(d.precio)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  <option value="otra">No está en la lista</option>
+                </select>
+              </label>
+
+              {envio.conocido && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Envío a {envio.destino}</span>
+                  <span>{formatPrice(envio.costo)}</span>
+                </div>
+              )}
+              {!!destino && !envio.conocido && (
+                <p className="text-xs text-muted">{OTRAS_ZONAS}</p>
+              )}
+            </div>
+
             <div className="flex justify-between text-base items-baseline">
               <span>
                 Total
@@ -299,9 +369,14 @@ export default function CartDrawer() {
                     {formatPrice(precio.totalLista)}
                   </span>
                 )}
-                {formatPrice(total)}
+                {formatPrice(totalConEnvio)}
               </span>
             </div>
+            {!destino && (
+              <p className="text-xs text-muted -mt-2">
+                Elige tu distrito arriba para ver el costo del envío.
+              </p>
+            )}
             {precio && precio.ahorro > 0 && (
               <p className="text-sm text-green-700 font-medium -mt-2">
                 Ahorras {formatPrice(precio.ahorro)}
