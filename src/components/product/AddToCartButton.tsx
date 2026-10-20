@@ -3,10 +3,16 @@
 import { useState } from "react";
 import { Product, totalStock } from "@/lib/types";
 import { useCart } from "@/components/cart/CartContext";
+import { compararTallas } from "@/lib/tallas";
 
 export default function AddToCartButton({ product }: { product: Product }) {
   const { add } = useCart();
-  const variants = product.variants ?? [];
+  // Ordenadas de la mas chica a la mas grande. En los datos vienen
+  // alfabeticas ("L", "M", "S", "XL"), que es como se cargaron, y asi
+  // la clienta tiene que buscar su talla en vez de recorrerlas.
+  const variants = [...(product.variants ?? [])].sort((a, b) =>
+    compararTallas(a.size, b.size)
+  );
   const hasSizes = variants.length > 0;
   const agotado = totalStock(product) <= 0;
   const [size, setSize] = useState<string | undefined>(undefined);

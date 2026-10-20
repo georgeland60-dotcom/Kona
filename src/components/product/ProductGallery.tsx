@@ -24,10 +24,14 @@ export default function ProductGallery({
   return (
     // Móvil: foto grande arriba, miniaturas en fila debajo.
     // Desktop (md+): miniaturas en columna a la izquierda.
-    <div className="flex flex-col-reverse gap-3 md:flex-row">
+    <div className="flex flex-col-reverse gap-3 md:flex-row min-w-0">
       {/* Miniaturas */}
       {gallery.length > 1 && (
-        <div className="flex flex-row gap-3 overflow-x-auto md:flex-col md:w-20 md:max-h-[640px] md:overflow-y-auto md:overflow-x-visible shrink-0 pb-1 md:pb-0 md:pr-1">
+        // min-w-0 es lo que hace que overflow-x-auto sirva de algo: por
+        // defecto un hijo de flex/grid tiene min-width:auto y no encoge
+        // por debajo de su contenido, asi que en vez de scrollear por
+        // dentro empujaba a todos sus padres.
+        <div className="flex flex-row gap-3 overflow-x-auto md:flex-col md:w-20 md:max-h-[640px] md:overflow-y-auto md:overflow-x-visible shrink-0 min-w-0 pb-1 md:pb-0 md:pr-1">
           {gallery.map((src, i) => (
             <button
               key={src}
