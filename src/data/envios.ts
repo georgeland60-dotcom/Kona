@@ -14,16 +14,20 @@ export type Destino = {
   nombre: string;
   precio: number;
   zona: "Lima" | "Provincia";
+  // Cómo llama el mapa a esta misma zona. OpenStreetMap dice "Santiago
+  // de Surco" donde la tienda dice "Surco", y "Lurigancho" donde dice
+  // "Chosica". Sin esto, esas direcciones quedarían sin precio.
+  alias?: string[];
 };
 
 export const DESTINOS: Destino[] = [
   // ---- Lima, S/ 10 ----
-  { nombre: "Surco", precio: 10, zona: "Lima" },
+  { nombre: "Surco", precio: 10, zona: "Lima", alias: ["Santiago de Surco"] },
   { nombre: "San Borja", precio: 10, zona: "Lima" },
   { nombre: "La Molina", precio: 10, zona: "Lima" },
   { nombre: "Camacho", precio: 10, zona: "Lima" },
   { nombre: "Santa Anita", precio: 10, zona: "Lima" },
-  { nombre: "Ate Vitarte", precio: 10, zona: "Lima" },
+  { nombre: "Ate Vitarte", precio: 10, zona: "Lima", alias: ["Ate"] },
   { nombre: "San Luis", precio: 10, zona: "Lima" },
   { nombre: "San Isidro", precio: 10, zona: "Lima" },
   { nombre: "Surquillo", precio: 10, zona: "Lima" },
@@ -35,9 +39,9 @@ export const DESTINOS: Destino[] = [
   { nombre: "Lince", precio: 10, zona: "Lima" },
   { nombre: "La Victoria", precio: 10, zona: "Lima" },
   { nombre: "Chorrillos", precio: 10, zona: "Lima" },
-  { nombre: "Lima Cercado", precio: 10, zona: "Lima" },
+  { nombre: "Lima Cercado", precio: 10, zona: "Lima", alias: ["Cercado de Lima"] },
   { nombre: "Salamanca", precio: 10, zona: "Lima" },
-  { nombre: "Magdalena", precio: 10, zona: "Lima" },
+  { nombre: "Magdalena", precio: 10, zona: "Lima", alias: ["Magdalena del Mar"] },
 
   // ---- Lima, S/ 12 ----
   { nombre: "Los Olivos", precio: 12, zona: "Lima" },
@@ -57,16 +61,27 @@ export const DESTINOS: Destino[] = [
   { nombre: "Comas", precio: 15, zona: "Lima" },
   { nombre: "Independencia", precio: 15, zona: "Lima" },
   { nombre: "Carabayllo", precio: 15, zona: "Lima" },
-  { nombre: "Ventanilla", precio: 15, zona: "Lima" },
-  { nombre: "Callao", precio: 15, zona: "Lima" },
+  { nombre: "Ventanilla", precio: 15, zona: "Lima", alias: ["Mi Perú"] },
+  { nombre: "Callao", precio: 15, zona: "Lima", alias: ["Carmen de la Legua Reynoso"] },
   { nombre: "La Punta", precio: 15, zona: "Lima" },
   { nombre: "Ancón", precio: 15, zona: "Lima" },
-  { nombre: "Chosica", precio: 15, zona: "Lima" },
+  { nombre: "Chosica", precio: 15, zona: "Lima", alias: ["Lurigancho", "Lurigancho-Chosica"] },
   { nombre: "Chaclacayo", precio: 15, zona: "Lima" },
   { nombre: "Cieneguilla", precio: 15, zona: "Lima" },
 
   // ---- Lima, S/ 18 ----
-  { nombre: "Playas de Lima", precio: 18, zona: "Lima" },
+  {
+    nombre: "Playas de Lima",
+    precio: 18,
+    zona: "Lima",
+    alias: [
+      "Punta Hermosa",
+      "Punta Negra",
+      "San Bartolo",
+      "Santa María del Mar",
+      "Pucusana",
+    ],
+  },
 
   // ---- Provincias ----
   { nombre: "Huancayo", precio: 12, zona: "Provincia" },
@@ -74,8 +89,8 @@ export const DESTINOS: Destino[] = [
   { nombre: "Huaral", precio: 12, zona: "Provincia" },
   { nombre: "Ica", precio: 12, zona: "Provincia" },
   { nombre: "Huacho", precio: 12, zona: "Provincia" },
-  { nombre: "Trujillo (La Libertad)", precio: 15, zona: "Provincia" },
-  { nombre: "Áncash", precio: 15, zona: "Provincia" },
+  { nombre: "Trujillo (La Libertad)", precio: 15, zona: "Provincia", alias: ["Trujillo", "La Libertad"] },
+  { nombre: "Áncash", precio: 15, zona: "Provincia", alias: ["Huaraz", "Chimbote"] },
   { nombre: "Cajamarca", precio: 18, zona: "Provincia" },
   { nombre: "Chiclayo", precio: 18, zona: "Provincia" },
   { nombre: "Piura", precio: 18, zona: "Provincia" },

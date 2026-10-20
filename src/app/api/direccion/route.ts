@@ -46,9 +46,14 @@ export async function GET(req: Request) {
         conocido: envio.conocido,
       };
     })
-    // Dos resultados de la misma dirección no aportan nada.
+    // Una opción por distrito. El mapa devuelve la misma avenida con
+    // tres códigos postales distintos, y tres veces "Miraflores · S/ 10"
+    // no es una elección, es ruido.
     .filter(
-      (o, i, todas) => todas.findIndex((x) => x.direccion === o.direccion) === i
+      (o, i, todas) =>
+        todas.findIndex((x) =>
+          o.destino ? x.destino === o.destino : x.direccion === o.direccion
+        ) === i
     );
 
   return Response.json({ opciones, motor: geocodificadorEnUso() });

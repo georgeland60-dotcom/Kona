@@ -48,9 +48,15 @@ const vacio = costoDeEnvio("");
 igual("sin destino no cobra", vacio.costo, 0);
 igual("sin destino no hay nombre", vacio.destino, null);
 
-// "Ate" solo no puede elegir entre Ate Vitarte y Ate Santa Clara: son
-// precios distintos (10 y 15) y acertar por azar sería peor.
-igual("un nombre ambiguo no adivina", buscarDestino("Ate"), null);
+// "San Juan" no puede elegir entre San Juan de Lurigancho y San Juan de
+// Miraflores: son precios distintos (12 y 15) y acertar por azar sería
+// peor que preguntar.
+igual("un nombre ambiguo no adivina", buscarDestino("San Juan"), null);
+
+// "Ate" sí se resuelve, y a propósito: el mapa dice "Ate" para todo el
+// distrito, y la mayoría es Vitarte. Queda elegido Ate Vitarte (S/ 10)
+// y el selector sigue a la vista para corregir a Santa Clara (S/ 15).
+igual("Ate se toma como Ate Vitarte", costoDeEnvio("Ate").destino, "Ate Vitarte");
 
 // --- Lo que devuelve el mapa ------------------------------------------
 // Vienen de lo más preciso a lo más general. Tiene que ganar el
@@ -74,6 +80,21 @@ const fuera = destinoDeCandidatos(["Centro", "Cusco", "Cusco"]);
 igual("y una que no, no cobra", fuera.costo, 0);
 igual("pero conserva lo que dijo el mapa", fuera.destino, "Centro");
 igual("sin candidatos no hay destino", destinoDeCandidatos([]).destino, null);
+
+// --- Los nombres que usa el mapa -------------------------------------
+igual("Santiago de Surco es Surco", costoDeEnvio("Santiago de Surco").costo, 10);
+igual("Cercado de Lima es Lima Cercado", costoDeEnvio("Cercado de Lima").costo, 10);
+igual("Lurigancho es Chosica", costoDeEnvio("Lurigancho").costo, 15);
+igual("Punta Hermosa son playas", costoDeEnvio("Punta Hermosa").costo, 18);
+igual("Magdalena del Mar es Magdalena", costoDeEnvio("Magdalena del Mar").costo, 10);
+igual("Miraflores Lima sigue siendo Miraflores", costoDeEnvio("Miraflores Lima").costo, 10);
+
+// El fallo que se vio con direcciones de verdad: la ciudad "Lima" caía
+// en "Lima Cercado", así que a un distrito que no está en la tabla se
+// le cobraban S/ 10 en vez de avisar que hay que coordinar.
+const soloLima = destinoDeCandidatos(["Lurín", "Lima", "Lima Metropolitana"]);
+igual("un distrito que no está no se cuela por 'Lima'", soloLima.conocido, false);
+igual("y no se le cobra de menos", soloLima.costo, 0);
 
 // --- La tabla en sí --------------------------------------------------
 ok("no hay destinos repetidos",
