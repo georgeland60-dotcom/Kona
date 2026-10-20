@@ -5,7 +5,12 @@
 // fijo de la tienda, así que esto comprueba justo lo que puede
 // romperse al editarla (un nombre que ya no encuentra su precio).
 
-import { costoDeEnvio, buscarDestino, destinosAgrupados } from "@/lib/envios";
+import {
+  costoDeEnvio,
+  buscarDestino,
+  destinoDeCandidatos,
+  destinosAgrupados,
+} from "@/lib/envios";
 import { DESTINOS } from "@/data/envios";
 
 let fallos = 0;
@@ -46,6 +51,29 @@ igual("sin destino no hay nombre", vacio.destino, null);
 // "Ate" solo no puede elegir entre Ate Vitarte y Ate Santa Clara: son
 // precios distintos (10 y 15) y acertar por azar sería peor.
 igual("un nombre ambiguo no adivina", buscarDestino("Ate"), null);
+
+// --- Lo que devuelve el mapa ------------------------------------------
+// Vienen de lo más preciso a lo más general. Tiene que ganar el
+// distrito: si ganara "Lima", a toda la ciudad le cobraríamos igual.
+igual(
+  "el distrito manda sobre la ciudad",
+  destinoDeCandidatos(["Miraflores", "Lima", "Lima"]).costo,
+  10
+);
+igual(
+  "si el primero no está en la tabla, prueba el siguiente",
+  destinoDeCandidatos(["Urbanización Santa Cruz", "Miraflores", "Lima"]).destino,
+  "Miraflores"
+);
+igual(
+  "una ciudad de provincia que sí está",
+  destinoDeCandidatos(["Centro", "Arequipa", "Arequipa"]).costo,
+  18
+);
+const fuera = destinoDeCandidatos(["Centro", "Cusco", "Cusco"]);
+igual("y una que no, no cobra", fuera.costo, 0);
+igual("pero conserva lo que dijo el mapa", fuera.destino, "Centro");
+igual("sin candidatos no hay destino", destinoDeCandidatos([]).destino, null);
 
 // --- La tabla en sí --------------------------------------------------
 ok("no hay destinos repetidos",

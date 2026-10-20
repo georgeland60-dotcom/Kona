@@ -59,6 +59,24 @@ export function costoDeEnvio(nombre?: string | null): Envio {
   return { destino: destino.nombre, costo: destino.precio, conocido: true };
 }
 
+// De lo que devuelve el mapa a un destino de la tabla. Se prueban los
+// candidatos de lo más preciso a lo más general: "Miraflores" antes que
+// "Lima", porque si gana el general, a todo Lima le cobraríamos igual.
+export function destinoDeCandidatos(candidatos: string[]): Envio {
+  for (const candidato of candidatos) {
+    const destino = buscarDestino(candidato);
+    if (destino) {
+      return { destino: destino.nombre, costo: destino.precio, conocido: true };
+    }
+  }
+  return {
+    destino: candidatos[0] ?? null,
+    costo: 0,
+    conocido: false,
+    aviso: OTRAS_ZONAS,
+  };
+}
+
 // Para el selector del carrito: agrupados y ordenados, que la lista es
 // larga y buscar a ojo en 50 distritos desordenados cansa.
 export function destinosAgrupados(): { grupo: string; destinos: Destino[] }[] {
