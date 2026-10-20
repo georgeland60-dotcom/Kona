@@ -76,7 +76,15 @@ async function buscarEnOsm(texto: string): Promise<DireccionEncontrada[]> {
     const a = d.address ?? {};
     // El distrito aparece en campos distintos según la zona: en Lima
     // casi siempre "suburb"; en provincia, "city" o "town".
+    // De lo más fino a lo más grueso. Los dos primeros parecían de más
+    // y resultaron ser justo donde OpenStreetMap mete el distrito en el
+    // centro de Lima ("Urbanización Cercado de Lima" viene como barrio,
+    // no como suburb), así que sin ellos esas direcciones se quedaban
+    // sin precio.
     const candidatos = [
+      a.neighbourhood,
+      a.quarter,
+      a.residential,
       a.suburb,
       a.city_district,
       a.town,
