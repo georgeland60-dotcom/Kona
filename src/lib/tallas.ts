@@ -149,22 +149,35 @@ export type GuiaDeTallas = {
   nota: string;
 };
 
-// De la más chica a la más grande. Una tabla en el orden en que se
-// cargaron las tallas (L, M, S, XL) se lee fatal: hay que buscar la
-// fila en vez de recorrerla.
+// Cuanto "vale" una talla para ordenarla: primero las de letra en su
+// escala, despues las de numero (calzado), y al final lo que no se
+// reconozca, que se queda como venia.
+function claveDeTalla(talla: string, tipo?: keyof typeof MOLDES): number {
+  const enEscala = ESCALA.indexOf(talla.trim().toUpperCase());
+  if (enEscala >= 0) return enEscala;
+  const numero = Number(talla.replace(",", "."));
+  if (Number.isFinite(numero)) return 100 + numero;
+  const porTipo = tipo ? distanciaALaBase(talla, tipo) : null;
+  return porTipo === null ? 1000 : porTipo;
+}
+
+// De la mas chica a la mas grande. Sirve para la tabla de medidas y
+// tambien para los botones de talla de la ficha: los productos vienen
+// con las tallas en orden alfabetico ("L", "M", "S", "XL"), que es el
+// orden en que se cargaron, y asi se leen fatal. Ordenar al pintar y no
+// en los datos es a proposito: son 58 productos y la proxima
+// importacion volveria a traerlos desordenados.
+export function compararTallas(a: string, b: string): number {
+  return claveDeTalla(a) - claveDeTalla(b);
+}
+
 function ordenarPorTalla(
   medidas: MedidaTalla[],
   tipo?: keyof typeof MOLDES
 ): MedidaTalla[] {
-  const clave = (m: MedidaTalla): number => {
-    const enEscala = ESCALA.indexOf(m.talla.trim().toUpperCase());
-    if (enEscala >= 0) return enEscala;
-    const numero = Number(m.talla.replace(",", "."));
-    if (Number.isFinite(numero)) return 100 + numero;
-    const porTipo = tipo ? distanciaALaBase(m.talla, tipo) : null;
-    return porTipo === null ? 1000 : porTipo;
-  };
-  return [...medidas].sort((a, b) => clave(a) - clave(b));
+  return [...medidas].sort(
+    (a, b) => claveDeTalla(a.talla, tipo) - claveDeTalla(b.talla, tipo)
+  );
 }
 
 export function guiaDeProducto(producto: Product): GuiaDeTallas | null {

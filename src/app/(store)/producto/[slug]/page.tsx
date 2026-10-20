@@ -58,7 +58,12 @@ export default async function ProductPage({
         / <span className="text-foreground">{product.name}</span>
       </nav>
 
-      <div className="grid md:grid-cols-2 gap-10">
+      {/* grid-cols-1 no es decorativo: sin el, en celular la columna
+          es "auto", o sea del ancho del contenido, y la tira de
+          miniaturas (10 fotos = 748 px) estiraba la pagina entera.
+          grid-cols-1 la define como minmax(0,1fr), que si se deja
+          encoger hasta el ancho de la pantalla. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* Galería de fotos */}
         <ProductGallery
           images={
@@ -115,8 +120,8 @@ export default async function ProductPage({
           <GuiaTallas product={product} />
 
           <div className="mt-8 text-sm text-muted space-y-1">
-            <p>· Envios a todo Lima</p>
-            <p>· Cambios hasta 7 dias despues de la compra</p>
+            <p>· Envíos a todo Lima</p>
+            <p>· Cambios hasta 7 días después de la compra</p>
             <p>· Pago seguro</p>
           </div>
         </div>

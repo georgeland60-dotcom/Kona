@@ -300,8 +300,17 @@ export default async function Home() {
               <p className="uppercase tracking-[0.45em] text-[11px] text-k-gris-oscuro font-semibold mb-4">
                 Hecho para ti
               </p>
-              <h2 className="font-script text-[3rem] md:text-[4rem] text-k-fucsia leading-[1.18] max-w-[14ch]">
-                quiérete en todas tus tallas
+              {/* La frase va en dos letras a proposito: la palabra que
+                  carga el sentimiento en la manuscrita, y el resto en la
+                  de cuerpo. Toda la frase en manuscrita se leia con
+                  esfuerzo, sobre todo en celular. */}
+              <h2 className="text-k-fucsia">
+                <span className="block font-script text-[3.5rem] md:text-[4.5rem] leading-[1.05] pb-1">
+                  quiérete
+                </span>
+                <span className="block text-[1.75rem] md:text-[2.25rem] font-semibold tracking-tight leading-[1.15]">
+                  en todas tus tallas
+                </span>
               </h2>
               <p className="text-k-gris-oscuro text-lg md:text-xl mt-6 leading-relaxed max-w-md">
                 Cada prenda se piensa para cuerpos reales: tallas que de verdad
