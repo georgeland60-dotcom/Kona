@@ -13,6 +13,8 @@ type OpcionDireccion = {
   destino: string | null;
   costo: number;
   conocido: boolean;
+  // true = el distrito salió de lo que ella escribió, no del mapa.
+  segunTexto?: boolean;
 };
 
 // Devuelve el SKU de la talla elegida (o el de la única variante).
@@ -70,6 +72,12 @@ export default function CartDrawer() {
             "No encontré esa dirección. Escríbela con el distrito (ej: Av. Larco 1234, Miraflores) o elige tu distrito de la lista."
         );
         setManual(true);
+      } else if (utiles.length === 1 && utiles[0].segunTexto) {
+        // Se tomó el distrito que ella escribió. Se dice, para que lo
+        // corrija si se equivocó al escribirlo.
+        setAvisoMapa(
+          `No pude ubicar la dirección exacta en el mapa, así que tomé el distrito que escribiste (${utiles[0].destino}). Si no es ese, cámbialo abajo.`
+        );
       }
     } catch {
       setAvisoMapa("No pude consultar el mapa. Elige tu distrito de la lista.");

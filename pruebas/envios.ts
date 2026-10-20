@@ -9,6 +9,7 @@ import {
   costoDeEnvio,
   buscarDestino,
   destinoDeCandidatos,
+  destinoEnTexto,
   destinosAgrupados,
 } from "@/lib/envios";
 import { DESTINOS } from "@/data/envios";
@@ -111,6 +112,26 @@ igual("un nombre corto no se cuela", buscarDestino("Jirón Ica"), null);
 const soloLima = destinoDeCandidatos(["Lurín", "Lima", "Lima Metropolitana"]);
 igual("un distrito que no está no se cuela por 'Lima'", soloLima.conocido, false);
 igual("y no se le cobra de menos", soloLima.costo, 0);
+
+// --- El distrito escrito en la propia dirección ----------------------
+// El caso que falló de verdad: el mapa no sabe resolver manzana y lote,
+// pero el distrito estaba escrito ahí mismo.
+igual(
+  "lee el distrito de una dirección por manzana y lote",
+  destinoEnTexto("Calle 3 Mz.E - Lt.24, San Martín de Porres 15112, Perú").costo,
+  12
+);
+igual(
+  "gana el distrito del final, no la calle del principio",
+  destinoEnTexto("Calle Ica 123, Miraflores").destino,
+  "Miraflores"
+);
+igual(
+  "una dirección sin distrito conocido no inventa",
+  destinoEnTexto("Calle 3 Mz.E - Lt.24, Lurín").conocido,
+  false
+);
+igual("y un texto vacío tampoco", destinoEnTexto("").conocido, false);
 
 // --- La tabla en sí --------------------------------------------------
 ok("no hay destinos repetidos",
