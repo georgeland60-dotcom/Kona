@@ -43,6 +43,20 @@ export type Diapositiva = {
 //  Las clases van escritas enteras porque Tailwind lee el archivo
 //  como texto: un nombre de clase armado a pedazos no existiria.
 // =============================================================
+//  En CELULAR, cuando el texto va encima de la foto, el velo tiene que
+//  ser distinto: alli el texto ocupa casi todo el ancho, asi que no
+//  sirve un charco en una esquina; hace falta una franja de abajo a
+//  todo lo ancho, y mas cargada, porque la pantalla es pequena y el
+//  texto queda mas pegado a la foto.
+const VELOS_CELULAR = {
+  suave:
+    "bg-[linear-gradient(to_top,rgba(0,0,0,0.66)_0%,rgba(0,0,0,0.36)_24%,rgba(0,0,0,0)_50%)]",
+  medio:
+    "bg-[linear-gradient(to_top,rgba(0,0,0,0.74)_0%,rgba(0,0,0,0.46)_26%,rgba(0,0,0,0)_54%)]",
+  fuerte:
+    "bg-[linear-gradient(to_top,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.58)_30%,rgba(0,0,0,0)_60%)]",
+} as const;
+
 const VELOS = {
   suave: {
     franja:
@@ -68,10 +82,15 @@ export default function BannerRotativo({
   fotos,
   intervaloMs = 5500,
   sizes,
+  veloEnCelular = false,
 }: {
   fotos: Diapositiva[];
   intervaloMs?: number;
   sizes: string;
+  // Solo se enciende cuando el texto va encima de la foto tambien en
+  // celular. Por defecto el celular no lleva velo, porque alli el
+  // texto va debajo sobre fucsia y no hay nada que leer sobre la foto.
+  veloEnCelular?: boolean;
 }) {
   const [actual, setActual] = useState(0);
   const [detenido, setDetenido] = useState(false);
@@ -135,6 +154,14 @@ export default function BannerRotativo({
               celular no hace falta: alli el texto va debajo, sobre
               fucsia. pointer-events-none o se tragaria los clics de
               los puntitos, que estan debajo en el HTML. */}
+          {veloEnCelular && (
+            <div
+              aria-hidden="true"
+              className={`md:hidden absolute inset-0 pointer-events-none ${
+                VELOS_CELULAR[f.velo ?? "medio"]
+              }`}
+            />
+          )}
           <div
             aria-hidden="true"
             className={`hidden md:block absolute inset-0 pointer-events-none ${

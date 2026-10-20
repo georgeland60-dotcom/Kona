@@ -131,7 +131,15 @@ function TextoPortada({ sobreFoto }: { sobreFoto: boolean }) {
   );
 }
 
-export default async function Home() {
+export default async function Home(props: PageProps<"/">) {
+  // PRUEBA, para poder comparar en el mismo telefono:
+  //   /            -> la frase va DEBAJO, en la franja fucsia
+  //   /?portada=encima -> la frase va ENCIMA de la foto
+  // Es temporal: cuando se decida cual queda, se deja una sola y esto
+  // se borra. La pagina ya era dynamic, asi que leer la URL no cambia
+  // como se renderiza.
+  const encimaEnCelular = (await props.searchParams).portada === "encima";
+
   const [products, banners, rules, categorias] = await Promise.all([
     getProducts(),
     getActiveBanners(),
@@ -190,15 +198,34 @@ export default async function Home() {
            en display:none), asi que un lector de pantalla lee el texto
            una vez, no dos. */}
       <section className="relative">
-        <div className="relative w-full aspect-[1920/939] overflow-hidden">
-          <BannerRotativo fotos={fotosPortada} sizes="100vw" />
+        <div
+          className={`relative w-full overflow-hidden ${
+            // Con la frase encima, el celular necesita un marco ALTO o
+            // no cabe el texto. El precio esta medido: el banner es
+            // casi 2:1 y en un marco 4:5 solo se ve el 39% de su ancho,
+            // asi que se pierde el texto que trae pintado a la derecha
+            // ("swim SALE", "40% OFF"). En escritorio no cambia nada.
+            encimaEnCelular
+              ? "aspect-[4/5] md:aspect-[1920/939]"
+              : "aspect-[1920/939]"
+          }`}
+        >
+          <BannerRotativo
+            fotos={fotosPortada}
+            sizes="100vw"
+            veloEnCelular={encimaEnCelular}
+          />
 
           {/* El velo que deja leer el texto ya no vive aqui: viaja con
               cada foto dentro de BannerRotativo, porque cada banner
               necesita una cantidad distinta y asi se desvanece junto
               con su propia foto. */}
 
-          <div className="hidden md:flex absolute inset-0 items-end pointer-events-none">
+          <div
+            className={`absolute inset-0 items-end pointer-events-none ${
+              encimaEnCelular ? "flex" : "hidden md:flex"
+            }`}
+          >
             <div className="w-full max-w-6xl mx-auto px-5 md:px-8 pb-8 md:pb-14">
               <div className="pointer-events-auto">
                 <TextoPortada sobreFoto />
@@ -207,12 +234,14 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* en celular, la frase va debajo */}
-        <div className="md:hidden bg-k-fucsia">
-          <div className="px-5 py-8">
-            <TextoPortada sobreFoto={false} />
+        {/* en celular, la frase va debajo (salvo en la prueba de arriba) */}
+        {!encimaEnCelular && (
+          <div className="md:hidden bg-k-fucsia">
+            <div className="px-5 py-8">
+              <TextoPortada sobreFoto={false} />
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* ---- CATEGORIAS ---- */}
