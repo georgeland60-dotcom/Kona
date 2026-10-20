@@ -89,6 +89,22 @@ igual("Punta Hermosa son playas", costoDeEnvio("Punta Hermosa").costo, 18);
 igual("Magdalena del Mar es Magdalena", costoDeEnvio("Magdalena del Mar").costo, 10);
 igual("Miraflores Lima sigue siendo Miraflores", costoDeEnvio("Miraflores Lima").costo, 10);
 
+// Lo que devuelve el mapa de verdad para el centro de Lima: el nombre
+// va dentro de otro más largo y tiene que encontrarse igual.
+igual(
+  "Urbanización Cercado de Lima es Lima Cercado",
+  costoDeEnvio("Urbanización Cercado de Lima").costo,
+  10
+);
+igual(
+  "Villa El Salvador dentro de un nombre largo",
+  costoDeEnvio("Asentamiento Villa El Salvador Sector 2").costo,
+  15
+);
+// Pero un nombre corto NO se engancha dentro de otra palabra ni de
+// cualquier frase: "Ica" aparece en mil sitios.
+igual("un nombre corto no se cuela", buscarDestino("Jirón Ica"), null);
+
 // El fallo que se vio con direcciones de verdad: la ciudad "Lima" caía
 // en "Lima Cercado", así que a un distrito que no está en la tabla se
 // le cobraban S/ 10 en vez de avisar que hay que coordinar.

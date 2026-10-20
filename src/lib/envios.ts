@@ -56,7 +56,17 @@ export function buscarDestino(nombre: string): Destino | null {
   const parecidos = DESTINOS.filter((d) =>
     [d.nombre, ...(d.alias ?? [])].some((n) => {
       const nombreDestino = normalizar(n);
-      return buscado.startsWith(nombreDestino + " ");
+      if (buscado.startsWith(nombreDestino + " ")) return true;
+
+      // Y los nombres de varias palabras valen aunque vengan metidos en
+      // medio: el mapa devuelve "Urbanización Cercado de Lima", y eso es
+      // Cercado de Lima. Solo de dos palabras para arriba, y pegando
+      // palabras enteras: con nombres cortos ("Ica", "Lince") esto
+      // engancharía cualquier cosa.
+      if (nombreDestino.includes(" ")) {
+        return ` ${buscado} `.includes(` ${nombreDestino} `);
+      }
+      return false;
     })
   );
   return parecidos.length === 1 ? parecidos[0] : null;
