@@ -37,14 +37,27 @@ export function buscarDestino(nombre: string): Destino | null {
   const buscado = normalizar(nombre);
   if (!buscado) return null;
 
-  const exacto = DESTINOS.find((d) => normalizar(d.nombre) === buscado);
+  // Primero el nombre exacto, y los nombres con los que lo llama el
+  // mapa ("Santiago de Surco" es Surco).
+  const exacto = DESTINOS.find(
+    (d) =>
+      normalizar(d.nombre) === buscado ||
+      (d.alias ?? []).some((a) => normalizar(a) === buscado)
+  );
   if (exacto) return exacto;
 
-  // "Trujillo" tiene que encontrar "Trujillo (La Libertad)", y "Ate"
-  // no puede elegir al azar entre Ate Vitarte y Ate Santa Clara: si hay
-  // más de uno, no se adivina.
-  const parecidos = DESTINOS.filter(
-    (d) => normalizar(d.nombre).startsWith(buscado) || buscado.startsWith(normalizar(d.nombre))
+  // Y si no, el nombre del destino tiene que estar COMPLETO al principio
+  // de lo buscado ("Miraflores Lima" es Miraflores).
+  //
+  // Lo que ya no vale es al revés, que lo buscado sea el principio del
+  // destino: con eso, una dirección cuya ciudad es "Lima" caía en "Lima
+  // Cercado" y se le cobraban S/ 10 a cualquier distrito que no
+  // estuviera en la tabla. Mejor decir que no se sabe.
+  const parecidos = DESTINOS.filter((d) =>
+    [d.nombre, ...(d.alias ?? [])].some((n) => {
+      const nombreDestino = normalizar(n);
+      return buscado.startsWith(nombreDestino + " ");
+    })
   );
   return parecidos.length === 1 ? parecidos[0] : null;
 }
