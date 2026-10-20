@@ -76,6 +76,20 @@ export default async function PedidoDetallePage({
             ))}
           </tbody>
           <tfoot>
+            {/* El envío va como su propia línea: si no, el total no
+                cuadra con la suma de los artículos y parece un error. */}
+            {order.envio && (
+              <tr className="border-t border-line">
+                <td colSpan={2} className="px-4 py-3 text-right text-muted">
+                  Envío a {order.envio.destino}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {order.envio.costo > 0
+                    ? formatPrice(order.envio.costo)
+                    : "a coordinar"}
+                </td>
+              </tr>
+            )}
             <tr className="border-t border-line">
               <td colSpan={2} className="px-4 py-3 font-medium text-right">
                 Total

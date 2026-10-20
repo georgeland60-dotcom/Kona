@@ -100,6 +100,7 @@ export async function createOrder(input: {
   method: Order["method"];
   status?: OrderStatus;
   customer?: Order["customer"];
+  envio?: Order["envio"];
 }): Promise<ResultadoPedido> {
   return conCandado("stock", async () => {
     const data = await readOrders();
@@ -124,6 +125,7 @@ export async function createOrder(input: {
       method: input.method,
       status: input.status ?? "pendiente",
       customer: input.customer,
+      ...(input.envio ? { envio: input.envio } : {}),
       stockApplied: true,
     };
     data.orders.push(order);
