@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     method?: OrderMethod;
     items?: OrderItem[];
     destino?: string;
+    direccion?: string;
     customer?: { name?: string; phone?: string; email?: string };
   };
 
@@ -40,8 +41,14 @@ export async function POST(req: Request) {
     method: body.method === "mercadopago" ? "mercadopago" : "whatsapp",
     status: "pendiente",
     customer: body.customer,
-    ...(envio.destino
-      ? { envio: { destino: envio.destino, costo: envio.costo } }
+    ...(envio.destino || body.direccion
+      ? {
+          envio: {
+            destino: envio.destino ?? "",
+            costo: envio.costo,
+            ...(body.direccion ? { direccion: body.direccion.slice(0, 200) } : {}),
+          },
+        }
       : {}),
   });
 

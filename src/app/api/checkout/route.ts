@@ -30,9 +30,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const { items: rawItems, destino } = (await req.json()) as {
+  const { items: rawItems, destino, direccion } = (await req.json()) as {
     items: IncomingItem[];
     destino?: string;
+    direccion?: string;
   };
   if (!rawItems || rawItems.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
@@ -59,8 +60,14 @@ export async function POST(req: Request) {
     total,
     method: "mercadopago",
     status: "pendiente",
-    ...(envio.destino
-      ? { envio: { destino: envio.destino, costo: envio.costo } }
+    ...(envio.destino || direccion
+      ? {
+          envio: {
+            destino: envio.destino ?? "",
+            costo: envio.costo,
+            ...(direccion ? { direccion: direccion.slice(0, 200) } : {}),
+          },
+        }
       : {}),
   });
 

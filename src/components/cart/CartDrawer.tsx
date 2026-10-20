@@ -8,6 +8,13 @@ import { costoDeEnvio, destinosAgrupados } from "@/lib/envios";
 import { OTRAS_ZONAS } from "@/data/envios";
 import type { Product } from "@/lib/types";
 
+type OpcionDireccion = {
+  direccion: string;
+  destino: string | null;
+  costo: number;
+  conocido: boolean;
+};
+
 // Devuelve el SKU de la talla elegida (o el de la única variante).
 function skuOf(product: Product, size?: string): string | undefined {
   const vs = product.variants ?? [];
@@ -32,6 +39,45 @@ export default function CartDrawer() {
       // Modo incógnito: simplemente no se recuerda.
     }
   }, []);
+
+  // Lo que escribió y lo que encontró el mapa.
+  const [direccion, setDireccion] = useState("");
+  const [buscando, setBuscando] = useState(false);
+  const [opciones, setOpciones] = useState<OpcionDireccion[]>([]);
+  const [avisoMapa, setAvisoMapa] = useState<string | null>(null);
+  const [manual, setManual] = useState(false);
+
+  const buscarDireccion = async () => {
+    const texto = direccion.trim();
+    if (texto.length < 6 || buscando) return;
+    setBuscando(true);
+    setAvisoMapa(null);
+    setOpciones([]);
+    try {
+      const res = await fetch(`/api/direccion?q=${encodeURIComponent(texto)}`);
+      const datos = await res.json();
+      const encontradas: OpcionDireccion[] = datos.opciones ?? [];
+      setOpciones(encontradas);
+
+      // Una sola coincidencia con distrito conocido: se elige sola, que
+      // hacerla confirmar lo obvio es un paso de más.
+      const utiles = encontradas.filter((o) => o.conocido);
+      if (utiles.length === 1) elegirDestino(utiles[0].destino!);
+
+      if (encontradas.length === 0) {
+        setAvisoMapa(
+          datos.aviso ??
+            "No encontré esa dirección. Escríbela con el distrito (ej: Av. Larco 1234, Miraflores) o elige tu distrito de la lista."
+        );
+        setManual(true);
+      }
+    } catch {
+      setAvisoMapa("No pude consultar el mapa. Elige tu distrito de la lista.");
+      setManual(true);
+    } finally {
+      setBuscando(false);
+    }
+  };
 
   const elegirDestino = (valor: string) => {
     setDestino(valor);
@@ -66,6 +112,7 @@ export default function CartDrawer() {
             size: i.size,
           })),
           destino,
+          direccion,
         }),
       });
       const data = await res.json();
@@ -108,6 +155,7 @@ export default function CartDrawer() {
             size: i.size,
           })),
           destino,
+          direccion,
         }),
       });
 
@@ -146,9 +194,13 @@ export default function CartDrawer() {
         ? `\n\nEnvío a ${envio.destino}: ${formatPrice(envio.costo)}`
         : "") +
       `\n\nTotal: ${formatPrice(totalConEnvio)}` +
-      (envio.conocido
-        ? `\n\nMi nombre es: \nDireccion de entrega (${envio.destino}): `
-        : `\n\nMi nombre es: \nDistrito: \nDireccion de entrega: `);
+      (direccion.trim()
+        ? `\n\nDirección de entrega: ${direccion.trim()}` +
+          (envio.destino ? ` (${envio.destino})` : "") +
+          "\n\nMi nombre es: "
+        : envio.conocido
+          ? `\n\nMi nombre es: \nDireccion de entrega (${envio.destino}): `
+          : `\n\nMi nombre es: \nDistrito: \nDireccion de entrega: `);
 
     const url = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(
       mensaje
@@ -326,6 +378,74 @@ export default function CartDrawer() {
             <div className="border-t border-line pt-3 space-y-2">
               <label className="block text-sm">
                 ¿A dónde te lo enviamos?
+                <span className="mt-1.5 flex gap-2">
+                  <input
+                    value={direccion}
+                    onChange={(e) => setDireccion(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        buscarDireccion();
+                      }
+                    }}
+                    placeholder="Av. Larco 1234, Miraflores"
+                    className="flex-1 border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={buscarDireccion}
+                    disabled={buscando || direccion.trim().length < 6}
+                    className="px-3 rounded-lg border border-accent text-accent text-sm disabled:opacity-40"
+                  >
+                    {buscando ? "…" : "Buscar"}
+                  </button>
+                </span>
+              </label>
+
+              {/* Lo que encontró el mapa. Si hay varias, elige ella:
+                  adivinar entre dos direcciones parecidas sale caro. */}
+              {opciones.length > 1 && (
+                <div className="space-y-1">
+                  {opciones.map((o) => (
+                    <button
+                      key={o.direccion}
+                      type="button"
+                      onClick={() => {
+                        if (o.destino) elegirDestino(o.destino);
+                        setDireccion(o.direccion);
+                        setOpciones([]);
+                      }}
+                      className={`w-full text-left text-xs border rounded-lg px-3 py-2 transition ${
+                        destino === o.destino
+                          ? "border-accent"
+                          : "border-line hover:border-foreground"
+                      }`}
+                    >
+                      <span className="block">{o.direccion}</span>
+                      <span className="text-muted">
+                        {o.conocido
+                          ? `${o.destino} · ${formatPrice(o.costo)}`
+                          : "fuera de las zonas con precio cerrado"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {avisoMapa && <p className="text-xs text-muted">{avisoMapa}</p>}
+
+              {!manual && !destino && (
+                <button
+                  type="button"
+                  onClick={() => setManual(true)}
+                  className="text-xs text-muted underline"
+                >
+                  Prefiero elegir mi distrito de una lista
+                </button>
+              )}
+
+              <label className={`block text-sm ${manual || destino ? "" : "hidden"}`}>
+                <span className="text-muted text-xs">Distrito</span>
                 <select
                   value={destino}
                   onChange={(e) => elegirDestino(e.target.value)}
