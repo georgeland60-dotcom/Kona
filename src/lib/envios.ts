@@ -100,6 +100,37 @@ export function destinoDeCandidatos(candidatos: string[]): Envio {
   };
 }
 
+// El distrito escrito dentro de una dirección entera.
+//
+// Hace falta porque media Lima vive en direcciones que el mapa no sabe
+// resolver ("Calle 3 Mz. E Lt. 24"), pero que SÍ traen el distrito
+// escrito al final. Si ella ya lo dijo, no hay por qué pedírselo otra
+// vez ni dejarla sin precio.
+export function destinoEnTexto(texto: string): Envio {
+  const buscado = ` ${normalizar(texto)} `;
+  let mejor: { destino: Destino; donde: number } | null = null;
+
+  for (const destino of DESTINOS) {
+    for (const nombre of [destino.nombre, ...(destino.alias ?? [])]) {
+      const aguja = ` ${normalizar(nombre)} `;
+      const donde = buscado.lastIndexOf(aguja);
+      if (donde < 0) continue;
+
+      // Gana el que aparece MÁS AL FINAL: una dirección se escribe de
+      // lo pequeño a lo grande ("Calle Ica 123, Miraflores"), así que
+      // lo último es el distrito y lo primero suele ser la calle.
+      if (!mejor || donde > mejor.donde) mejor = { destino, donde };
+    }
+  }
+
+  if (!mejor) return SIN_DESTINO;
+  return {
+    destino: mejor.destino.nombre,
+    costo: mejor.destino.precio,
+    conocido: true,
+  };
+}
+
 // Para el selector del carrito: agrupados y ordenados, que la lista es
 // larga y buscar a ojo en 50 distritos desordenados cansa.
 export function destinosAgrupados(): { grupo: string; destinos: Destino[] }[] {

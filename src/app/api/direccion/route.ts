@@ -11,7 +11,7 @@
 // =============================================================
 
 import { buscarDireccion, geocodificadorEnUso } from "@/lib/geocodificador";
-import { destinoDeCandidatos } from "@/lib/envios";
+import { destinoDeCandidatos, destinoEnTexto } from "@/lib/envios";
 import { huellaDe } from "@/lib/asistente/limites";
 import { contar } from "@/lib/kv";
 
@@ -57,6 +57,28 @@ export async function GET(req: Request) {
           o.destino ? x.destino === o.destino : x.direccion === o.direccion
         ) === i
     );
+
+  // El mapa no pudo (o no reconoció la zona), pero ella escribió el
+  // distrito. Pasa con las direcciones por manzana y lote, que OSM casi
+  // no tiene y que aquí son de lo más normal.
+  if (!opciones.some((o) => o.conocido)) {
+    const escrito = destinoEnTexto(texto);
+    if (escrito.conocido) {
+      return Response.json({
+        opciones: [
+          {
+            direccion: texto.trim(),
+            destino: escrito.destino,
+            costo: escrito.costo,
+            conocido: true,
+            segunTexto: true,
+          },
+          ...opciones,
+        ],
+        motor: geocodificadorEnUso(),
+      });
+    }
+  }
 
   return Response.json({ opciones, motor: geocodificadorEnUso() });
 }
