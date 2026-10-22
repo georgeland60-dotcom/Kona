@@ -120,6 +120,10 @@ export async function POST(req: Request) {
           pending: `${site}/pago/pendiente`,
         },
         auto_return: "approved",
+        // A dónde avisar cuando el pago se resuelva. Es lo que hace que
+        // un pago por Yape (que se termina en otra app) marque el
+        // pedido aunque la clienta no vuelva a la tienda.
+        notification_url: `${site}/api/pagos/mercadopago`,
       },
     });
 
