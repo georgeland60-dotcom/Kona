@@ -4,17 +4,21 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/components/cart/CartContext";
 import { store } from "@/config/store";
 import { formatPrice } from "@/lib/format";
-import { costoDeEnvio, destinosAgrupados } from "@/lib/envios";
+import {
+  LIMA_Y_CALLAO,
+  destinoDelFormulario,
+  distritosDeLima,
+  provincias,
+} from "@/lib/envios";
 import { OTRAS_ZONAS } from "@/data/envios";
 import type { Product } from "@/lib/types";
 
-type OpcionDireccion = {
+// Dónde cayó la dirección en el mapa, para enseñárselo y que confirme.
+type Mapa = {
   direccion: string;
-  destino: string | null;
-  costo: number;
-  conocido: boolean;
-  // true = el distrito salió de lo que ella escribió, no del mapa.
-  segunTexto?: boolean;
+  lat: number;
+  lon: number;
+  zona: string | null;
 };
 
 // Devuelve el SKU de la talla elegida (o el de la única variante).
@@ -30,76 +34,84 @@ export default function CartDrawer() {
   const [loading, setLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
-  // A dónde va el pedido. Se recuerda entre visitas: quien ya dijo su
-  // distrito no tiene por qué repetirlo cada vez.
-  const [destino, setDestino] = useState("");
+  // A dónde va el pedido: los tres datos, obligatorios. Antes bastaba
+  // con escribir algo y buscarlo; con eso llegaban pedidos a "Mz E Lt
+  // 24" sin distrito, y había que perseguir a la clienta por WhatsApp
+  // para poder despachar.
+  const [direccion, setDireccion] = useState("");
+  const [distrito, setDistrito] = useState("");
+  const [provincia, setProvincia] = useState("");
+
+  const [mapa, setMapa] = useState<Mapa | null>(null);
+  const [avisoMapa, setAvisoMapa] = useState<string | null>(null);
+  const [buscando, setBuscando] = useState(false);
+
+  // Se recuerda entre visitas: quien ya dio su dirección no tiene por
+  // qué repetirla cada vez.
   useEffect(() => {
     try {
-      const guardado = localStorage.getItem("kona-destino");
-      if (guardado) setDestino(guardado);
+      const guardado = localStorage.getItem("kona-entrega");
+      if (guardado) {
+        const e = JSON.parse(guardado);
+        setDireccion(e.direccion ?? "");
+        setDistrito(e.distrito ?? "");
+        setProvincia(e.provincia ?? "");
+      }
     } catch {
       // Modo incógnito: simplemente no se recuerda.
     }
   }, []);
 
-  // Lo que escribió y lo que encontró el mapa.
-  const [direccion, setDireccion] = useState("");
-  const [buscando, setBuscando] = useState(false);
-  const [opciones, setOpciones] = useState<OpcionDireccion[]>([]);
-  const [avisoMapa, setAvisoMapa] = useState<string | null>(null);
-  const [manual, setManual] = useState(false);
-
-  const buscarDireccion = async () => {
-    const texto = direccion.trim();
-    if (texto.length < 6 || buscando) return;
-    setBuscando(true);
-    setAvisoMapa(null);
-    setOpciones([]);
+  const recordar = (cambio: Partial<{ direccion: string; distrito: string; provincia: string }>) => {
+    const entrega = { direccion, distrito, provincia, ...cambio };
     try {
-      const res = await fetch(`/api/direccion?q=${encodeURIComponent(texto)}`);
-      const datos = await res.json();
-      const encontradas: OpcionDireccion[] = datos.opciones ?? [];
-      setOpciones(encontradas);
-
-      // Una sola coincidencia con distrito conocido: se elige sola, que
-      // hacerla confirmar lo obvio es un paso de más.
-      const utiles = encontradas.filter((o) => o.conocido);
-      if (utiles.length === 1) elegirDestino(utiles[0].destino!);
-
-      if (encontradas.length === 0) {
-        setAvisoMapa(
-          datos.aviso ??
-            "No encontré esa dirección. Escríbela con el distrito (ej: Av. Larco 1234, Miraflores) o elige tu distrito de la lista."
-        );
-        setManual(true);
-      } else if (utiles.length === 1 && utiles[0].segunTexto) {
-        // Se tomó el distrito que ella escribió. Se dice, para que lo
-        // corrija si se equivocó al escribirlo.
-        setAvisoMapa(
-          `No pude ubicar la dirección exacta en el mapa, así que tomé el distrito que escribiste (${utiles[0].destino}). Si no es ese, cámbialo abajo.`
-        );
-      }
+      localStorage.setItem("kona-entrega", JSON.stringify(entrega));
     } catch {
-      setAvisoMapa("No pude consultar el mapa. Elige tu distrito de la lista.");
-      setManual(true);
-    } finally {
-      setBuscando(false);
-    }
-  };
-
-  const elegirDestino = (valor: string) => {
-    setDestino(valor);
-    try {
-      localStorage.setItem("kona-destino", valor);
-    } catch {
-      // Da igual: solo significa que la próxima vez lo vuelve a elegir.
+      // Da igual: solo significa que la próxima vez lo vuelve a escribir.
     }
   };
 
   // El costo que se MUESTRA. El que se cobra lo vuelve a calcular el
   // servidor con esta misma tabla, así que no pueden discrepar.
-  const envio = costoDeEnvio(destino);
+  const envio = destinoDelFormulario({ provincia, distrito });
   const totalConEnvio = total + envio.costo;
+
+  // Sin los tres datos no se puede despachar, así que no se deja pagar.
+  const faltanDatos =
+    direccion.trim().length < 5 || !distrito.trim() || !provincia.trim();
+
+  const verEnElMapa = async () => {
+    if (faltanDatos || buscando) return;
+    setBuscando(true);
+    setAvisoMapa(null);
+    try {
+      const url =
+        `/api/direccion?direccion=${encodeURIComponent(direccion)}` +
+        `&distrito=${encodeURIComponent(distrito)}` +
+        `&provincia=${encodeURIComponent(provincia)}`;
+      const res = await fetch(url);
+      const datos = await res.json();
+      setMapa(datos.mapa ?? null);
+      setAvisoMapa(datos.aviso ?? null);
+    } catch {
+      setMapa(null);
+      setAvisoMapa("No pude consultar el mapa, pero puedes seguir con tu compra.");
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  // El mapa se pide solo cuando los tres datos están completos, con una
+  // pausa para no consultar en cada tecla.
+  useEffect(() => {
+    if (faltanDatos) {
+      setMapa(null);
+      return;
+    }
+    const t = setTimeout(verEnElMapa, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direccion, distrito, provincia]);
 
   // Pago online con Mercado Pago (tarjeta / Yape)
   const payOnline = async () => {
@@ -119,8 +131,8 @@ export default function CartDrawer() {
             qty: i.qty,
             size: i.size,
           })),
-          destino,
-          direccion,
+          destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
+          direccion: `${direccion}, ${distrito}, ${provincia}`,
         }),
       });
       const data = await res.json();
@@ -162,8 +174,8 @@ export default function CartDrawer() {
             qty: i.qty,
             size: i.size,
           })),
-          destino,
-          direccion,
+          destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
+          direccion: `${direccion}, ${distrito}, ${provincia}`,
         }),
       });
 
@@ -202,13 +214,10 @@ export default function CartDrawer() {
         ? `\n\nEnvío a ${envio.destino}: ${formatPrice(envio.costo)}`
         : "") +
       `\n\nTotal: ${formatPrice(totalConEnvio)}` +
-      (direccion.trim()
-        ? `\n\nDirección de entrega: ${direccion.trim()}` +
-          (envio.destino ? ` (${envio.destino})` : "") +
-          "\n\nMi nombre es: "
-        : envio.conocido
-          ? `\n\nMi nombre es: \nDireccion de entrega (${envio.destino}): `
-          : `\n\nMi nombre es: \nDistrito: \nDireccion de entrega: `);
+      `\n\nDirección de entrega: ${direccion.trim()}` +
+      `\nDistrito: ${distrito} · ${provincia}` +
+      (mapa ? `\nUbicación: https://www.openstreetmap.org/?mlat=${mapa.lat}&mlon=${mapa.lon}` : "") +
+      "\n\nMi nombre es: ";
 
     const url = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(
       mensaje
@@ -382,96 +391,115 @@ export default function CartDrawer() {
               </div>
             )}
             {/* El envío, antes del total: enterarse del costo recién al
-                pagar es la razón número uno de carritos abandonados. */}
+                pagar es la razón número uno de carritos abandonados.
+                Y los tres datos son obligatorios porque sin ellos no
+                hay manera de despachar el pedido. */}
             <div className="border-t border-line pt-3 space-y-2">
-              <label className="block text-sm">
-                ¿A dónde te lo enviamos?
-                <span className="mt-1.5 flex gap-2">
-                  <input
-                    value={direccion}
-                    onChange={(e) => setDireccion(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        buscarDireccion();
-                      }
-                    }}
-                    placeholder="Av. Larco 1234, Miraflores"
-                    className="flex-1 border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
-                  />
-                  <button
-                    type="button"
-                    onClick={buscarDireccion}
-                    disabled={buscando || direccion.trim().length < 6}
-                    className="px-3 rounded-lg border border-accent text-accent text-sm disabled:opacity-40"
-                  >
-                    {buscando ? "…" : "Buscar"}
-                  </button>
-                </span>
+              <p className="text-sm font-medium">¿A dónde te lo enviamos?</p>
+
+              <label className="block">
+                <span className="text-xs text-muted">Provincia</span>
+                <select
+                  value={provincia}
+                  onChange={(e) => {
+                    setProvincia(e.target.value);
+                    // Cambiar de provincia invalida el distrito elegido.
+                    setDistrito("");
+                    recordar({ provincia: e.target.value, distrito: "" });
+                  }}
+                  className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
+                >
+                  <option value="">Elige tu provincia…</option>
+                  {provincias().map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
               </label>
 
-              {/* Lo que encontró el mapa. Si hay varias, elige ella:
-                  adivinar entre dos direcciones parecidas sale caro. */}
-              {opciones.length > 1 && (
-                <div className="space-y-1">
-                  {opciones.map((o) => (
-                    <button
-                      key={o.direccion}
-                      type="button"
-                      onClick={() => {
-                        if (o.destino) elegirDestino(o.destino);
-                        setDireccion(o.direccion);
-                        setOpciones([]);
-                      }}
-                      className={`w-full text-left text-xs border rounded-lg px-3 py-2 transition ${
-                        destino === o.destino
-                          ? "border-accent"
-                          : "border-line hover:border-foreground"
-                      }`}
+              <label className="block">
+                <span className="text-xs text-muted">Distrito</span>
+                {provincia === LIMA_Y_CALLAO ? (
+                  <select
+                    value={distrito}
+                    onChange={(e) => {
+                      setDistrito(e.target.value);
+                      recordar({ distrito: e.target.value });
+                    }}
+                    className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
+                  >
+                    <option value="">Elige tu distrito…</option>
+                    {distritosDeLima().map((d) => (
+                      <option key={d.nombre} value={d.nombre}>
+                        {d.nombre} — {formatPrice(d.precio)}
+                      </option>
+                    ))}
+                    <option value="otro">No está en la lista</option>
+                  </select>
+                ) : (
+                  <input
+                    value={distrito}
+                    onChange={(e) => {
+                      setDistrito(e.target.value);
+                      recordar({ distrito: e.target.value });
+                    }}
+                    placeholder={provincia ? "Tu distrito" : "Elige antes la provincia"}
+                    disabled={!provincia}
+                    className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent disabled:opacity-50"
+                  />
+                )}
+              </label>
+
+              <label className="block">
+                <span className="text-xs text-muted">
+                  Dirección (calle, número, referencia)
+                </span>
+                <input
+                  value={direccion}
+                  onChange={(e) => {
+                    setDireccion(e.target.value);
+                    recordar({ direccion: e.target.value });
+                  }}
+                  placeholder="Av. José Larco 1234, dpto. 502"
+                  className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
+                />
+              </label>
+
+              {/* El mapa: que vea el punto y lo confirme. Una dirección
+                  escrita se lee de mil formas; un punto, no. */}
+              {buscando && (
+                <p className="text-xs text-muted">Buscando en el mapa…</p>
+              )}
+
+              {mapa && (
+                <div className="border border-line rounded-xl overflow-hidden">
+                  <iframe
+                    title="Dónde queda tu dirección"
+                    className="w-full h-44 border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                      mapa.lon - 0.004
+                    }%2C${mapa.lat - 0.003}%2C${mapa.lon + 0.004}%2C${
+                      mapa.lat + 0.003
+                    }&layer=mapnik&marker=${mapa.lat}%2C${mapa.lon}`}
+                  />
+                  <p className="text-[11px] text-muted px-3 py-2">
+                    {mapa.direccion}
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${mapa.lat}&mlon=${mapa.lon}#map=17/${mapa.lat}/${mapa.lon}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline ml-1"
                     >
-                      <span className="block">{o.direccion}</span>
-                      <span className="text-muted">
-                        {o.conocido
-                          ? `${o.destino} · ${formatPrice(o.costo)}`
-                          : "fuera de las zonas con precio cerrado"}
-                      </span>
-                    </button>
-                  ))}
+                      ver más grande
+                    </a>
+                  </p>
                 </div>
               )}
 
               {avisoMapa && <p className="text-xs text-muted">{avisoMapa}</p>}
-
-              {!manual && !destino && (
-                <button
-                  type="button"
-                  onClick={() => setManual(true)}
-                  className="text-xs text-muted underline"
-                >
-                  Prefiero elegir mi distrito de una lista
-                </button>
-              )}
-
-              <label className={`block text-sm ${manual || destino ? "" : "hidden"}`}>
-                <span className="text-muted text-xs">Distrito</span>
-                <select
-                  value={destino}
-                  onChange={(e) => elegirDestino(e.target.value)}
-                  className="mt-1.5 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
-                >
-                  <option value="">Elige tu distrito…</option>
-                  {destinosAgrupados().map((g) => (
-                    <optgroup key={g.grupo} label={g.grupo}>
-                      {g.destinos.map((d) => (
-                        <option key={d.nombre} value={d.nombre}>
-                          {d.nombre} — {formatPrice(d.precio)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                  <option value="otra">No está en la lista</option>
-                </select>
-              </label>
 
               {envio.conocido && (
                 <div className="flex justify-between text-sm">
@@ -479,7 +507,7 @@ export default function CartDrawer() {
                   <span>{formatPrice(envio.costo)}</span>
                 </div>
               )}
-              {!!destino && !envio.conocido && (
+              {!!distrito && !!provincia && !envio.conocido && (
                 <p className="text-xs text-muted">{OTRAS_ZONAS}</p>
               )}
             </div>
@@ -500,9 +528,10 @@ export default function CartDrawer() {
                 {formatPrice(totalConEnvio)}
               </span>
             </div>
-            {!destino && (
+            {faltanDatos && (
               <p className="text-xs text-muted -mt-2">
-                Elige tu distrito arriba para ver el costo del envío.
+                Completa provincia, distrito y dirección para ver el envío y
+                poder pagar.
               </p>
             )}
             {precio && precio.ahorro > 0 && (
@@ -512,7 +541,7 @@ export default function CartDrawer() {
             )}
             <button
               onClick={payOnline}
-              disabled={loading}
+              disabled={loading || faltanDatos}
               className="w-full bg-accent text-white py-3 rounded-full font-medium hover:bg-accent-dark transition disabled:opacity-60"
             >
               {loading ? "Redirigiendo..." : "Pagar ahora (tarjeta o Yape)"}
@@ -528,7 +557,8 @@ export default function CartDrawer() {
 
             <button
               onClick={checkout}
-              className="w-full bg-[#25D366] text-white py-3 rounded-full font-medium flex items-center justify-center gap-2 hover:opacity-90 transition"
+              disabled={faltanDatos}
+              className="w-full bg-[#25D366] text-white py-3 rounded-full font-medium flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-40"
             >
               Coordinar por WhatsApp
             </button>

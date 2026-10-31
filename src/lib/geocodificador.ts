@@ -38,6 +38,10 @@ export type DireccionEncontrada = {
   // el distrito, no el barrio: decirle "Las Virreinas" a quien vive en
   // Lurín no le dice nada, y encima salían tres opciones iguales.
   zona?: string;
+  // Dónde cae en el mapa, para poder enseñárselo y que confirme. Una
+  // dirección escrita se lee de mil formas; un punto en el mapa, no.
+  lat?: number;
+  lon?: number;
 };
 
 export function geocodificadorEnUso(): "google" | "osm" {
@@ -61,6 +65,8 @@ async function esperarTurno() {
 type ResultadoOsm = {
   display_name?: string;
   address?: Record<string, string>;
+  lat?: string;
+  lon?: string;
 };
 
 async function buscarEnOsm(texto: string): Promise<DireccionEncontrada[]> {
@@ -102,6 +108,8 @@ async function buscarEnOsm(texto: string): Promise<DireccionEncontrada[]> {
       direccion: d.display_name ?? texto,
       candidatos: [...new Set(candidatos)],
       zona: a.city_district || a.town || a.village || a.city || a.county,
+      lat: d.lat ? Number(d.lat) : undefined,
+      lon: d.lon ? Number(d.lon) : undefined,
     };
   });
 }

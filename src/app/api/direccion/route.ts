@@ -1,84 +1,107 @@
 // =============================================================
-//  "¿A qué distrito corresponde esta dirección?"
+//  "¿DÓNDE QUEDA ESTO?"
 //
-//  Recibe lo que la clienta escribió y devuelve las direcciones que
-//  encontró el mapa, cada una con su distrito y lo que cuesta llevarle
-//  el pedido ahí.
+//  Recibe los tres datos que la clienta rellena —dirección, distrito y
+//  provincia— y devuelve dos cosas:
 //
-//  El precio sale SIEMPRE de la tabla de la tienda. El mapa solo dice
-//  en qué distrito cae la dirección; cuánto vale ese distrito lo decide
-//  la tienda, y se vuelve a comprobar al cobrar.
+//   1. El punto en el mapa, para enseñárselo y que confirme. Una
+//      dirección escrita se lee de mil maneras; un punto, no.
+//   2. Lo que cuesta llevarle el pedido ahí.
+//
+//  El precio sale de lo que ELLA eligió en el formulario, no de lo que
+//  diga el mapa: quien sabe dónde vive es ella. El mapa solo confirma
+//  el punto, y si cree que el distrito es otro, se avisa sin cambiar
+//  nada por nuestra cuenta.
 // =============================================================
 
 import { buscarDireccion, geocodificadorEnUso } from "@/lib/geocodificador";
-import { destinoDeCandidatos, destinoEnTexto } from "@/lib/envios";
+import {
+  LIMA_Y_CALLAO,
+  buscarDestino,
+  destinoDelFormulario,
+} from "@/lib/envios";
 import { huellaDe } from "@/lib/asistente/limites";
 import { contar } from "@/lib/kv";
 
 export const maxDuration = 20;
 
+function normalizar(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 export async function GET(req: Request) {
-  const texto = new URL(req.url).searchParams.get("q") ?? "";
-  if (texto.trim().length < 6) {
-    return Response.json({ opciones: [] });
+  const params = new URL(req.url).searchParams;
+  const direccion = (params.get("direccion") ?? params.get("q") ?? "").trim();
+  const distrito = (params.get("distrito") ?? "").trim();
+  const provincia = (params.get("provincia") ?? "").trim();
+
+  // El precio no depende del mapa, así que se calcula aunque el mapa
+  // falle o no encuentre nada.
+  const envio = destinoDelFormulario({ provincia, distrito });
+
+  if (direccion.length < 5) {
+    return Response.json({ envio, mapa: null, aviso: null });
   }
 
   // Tope propio, aparte del de la IA: el mapa es gratis pero de otra
   // gente, y una tienda no necesita más de unas pocas búsquedas por
-  // minuto y persona. Así nadie lo usa de buscador a nuestra costa.
+  // minuto y persona.
   const consultas = await contar(`direccion-${huellaDe(req)}`, 60);
   if (consultas > 20) {
     return Response.json({
-      opciones: [],
-      aviso: "Probaste muchas direcciones seguidas. Espera un momento o elige tu distrito de la lista.",
+      envio,
+      mapa: null,
+      aviso:
+        "Probaste muchas direcciones seguidas. Espera un momento y vuelve a intentarlo.",
     });
   }
 
-  const encontradas = await buscarDireccion(texto);
+  // Se le da al mapa todo lo que ella escribió: con el distrito y la
+  // provincia delante acierta mucho más que con la calle sola.
+  const consulta = [direccion, distrito, provincia === LIMA_Y_CALLAO ? "Lima" : provincia, "Perú"]
+    .filter(Boolean)
+    .join(", ");
 
-  const opciones = encontradas
-    .map((d) => {
-      const envio = destinoDeCandidatos(d.candidatos);
-      return {
-        direccion: d.direccion,
-        // Si está en la tabla, el nombre de la tienda. Si no, el del
-        // distrito, que es lo que la clienta reconoce.
-        destino: envio.conocido ? envio.destino : (d.zona ?? envio.destino),
-        costo: envio.costo,
-        conocido: envio.conocido,
-      };
-    })
-    // Una opción por distrito. El mapa devuelve la misma avenida con
-    // tres códigos postales distintos, y tres veces "Miraflores · S/ 10"
-    // no es una elección, es ruido.
-    .filter(
-      (o, i, todas) =>
-        todas.findIndex((x) =>
-          o.destino ? x.destino === o.destino : x.direccion === o.direccion
-        ) === i
-    );
+  const encontradas = await buscarDireccion(consulta);
+  const mejor = encontradas.find((d) => d.lat !== undefined && d.lon !== undefined);
 
-  // El mapa no pudo (o no reconoció la zona), pero ella escribió el
-  // distrito. Pasa con las direcciones por manzana y lote, que OSM casi
-  // no tiene y que aquí son de lo más normal.
-  if (!opciones.some((o) => o.conocido)) {
-    const escrito = destinoEnTexto(texto);
-    if (escrito.conocido) {
-      return Response.json({
-        opciones: [
-          {
-            direccion: texto.trim(),
-            destino: escrito.destino,
-            costo: escrito.costo,
-            conocido: true,
-            segunTexto: true,
-          },
-          ...opciones,
-        ],
-        motor: geocodificadorEnUso(),
-      });
-    }
+  if (!mejor) {
+    return Response.json({
+      envio,
+      mapa: null,
+      aviso:
+        "No pude ubicar esa dirección exacta en el mapa (pasa con las direcciones por manzana y lote). El envío se calcula igual con tu distrito; si quieres, agrega una referencia.",
+    });
   }
 
-  return Response.json({ opciones, motor: geocodificadorEnUso() });
+  // ¿El mapa cree que esto está en otro distrito? No se cambia nada: se
+  // dice, y ella decide. Corregirlo por nuestra cuenta sería cobrarle
+  // un precio distinto del que eligió sin avisar.
+  const delMapa = mejor.candidatos
+    .map((c) => buscarDestino(c))
+    .find((d) => d !== null);
+
+  const esperado = provincia === LIMA_Y_CALLAO ? distrito : provincia;
+  const discrepa =
+    !!delMapa &&
+    !!esperado &&
+    normalizar(delMapa.nombre) !== normalizar(esperado);
+
+  return Response.json({
+    envio,
+    mapa: {
+      direccion: mejor.direccion,
+      lat: mejor.lat,
+      lon: mejor.lon,
+      zona: delMapa?.nombre ?? mejor.zona ?? null,
+    },
+    aviso: discrepa
+      ? `Ojo: en el mapa esa dirección sale en ${delMapa!.nombre}, no en ${esperado}. Si te equivocaste, corrígelo arriba.`
+      : null,
+    motor: geocodificadorEnUso(),
+  });
 }

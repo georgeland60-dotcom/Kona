@@ -131,6 +131,40 @@ export function destinoEnTexto(texto: string): Envio {
   };
 }
 
+// Las provincias del formulario. "Lima y Callao" primero porque es de
+// donde viene casi todo el pedido.
+export const LIMA_Y_CALLAO = "Lima y Callao";
+
+export function provincias(): string[] {
+  const otras = DESTINOS.filter((d) => d.zona === "Provincia")
+    .map((d) => d.nombre)
+    .sort((a, b) => a.localeCompare(b, "es"));
+  return [LIMA_Y_CALLAO, ...otras];
+}
+
+export function distritosDeLima(): Destino[] {
+  return DESTINOS.filter((d) => d.zona === "Lima")
+    .slice()
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
+// El precio según lo que ELIGIÓ en el formulario. Manda lo que dice
+// ella, no lo que diga el mapa: el mapa sirve para confirmar el punto,
+// pero quien sabe dónde vive es ella.
+export function destinoDelFormulario(datos: {
+  provincia?: string;
+  distrito?: string;
+}): Envio {
+  const provincia = (datos.provincia ?? "").trim();
+  if (!provincia) return SIN_DESTINO;
+
+  // En Lima el precio depende del distrito; en provincia, de la ciudad.
+  if (provincia === LIMA_Y_CALLAO) {
+    return costoDeEnvio(datos.distrito);
+  }
+  return costoDeEnvio(provincia);
+}
+
 // Para el selector del carrito: agrupados y ordenados, que la lista es
 // larga y buscar a ojo en 50 distritos desordenados cansa.
 export function destinosAgrupados(): { grupo: string; destinos: Destino[] }[] {
