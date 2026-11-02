@@ -13,7 +13,7 @@ import {
   destinosAgrupados,
 } from "@/lib/envios";
 import { DESTINOS } from "@/data/envios";
-import { soloLaCalle } from "@/lib/geocodificador";
+import { soloLaCalle, sinTipoDeVia } from "@/lib/geocodificador";
 
 let fallos = 0;
 
@@ -170,6 +170,12 @@ igual(
   soloLaCalle("Avenida Universitaria"),
   "Avenida Universitaria"
 );
+
+igual("quita el Jr. de delante", sinTipoDeVia("Jr. Rio Oxapampa"), "Rio Oxapampa");
+igual("quita la Av. de delante", sinTipoDeVia("Av. José Larco"), "José Larco");
+igual("una calle sin tipo no se toca", sinTipoDeVia("Universitaria"), "Universitaria");
+// "Calle 3" se quedaría en "3", que no es una calle: se deja entera.
+igual("no deja un nombre vacío", sinTipoDeVia("Calle"), "Calle");
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);
 process.exit(fallos === 0 ? 0 : 1);

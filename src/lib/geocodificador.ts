@@ -178,6 +178,19 @@ export type Precision = "exacta" | "calle" | "zona";
 // "Río Oxapampa 583" no devuelve nada y "Río Oxapampa" devuelve la
 // calle entera. Buscar la calle es infinitamente mejor que no mostrar
 // nada.
+// "Av.", "Jr.", "Calle"... Son las que la gente escribe y el mapa no
+// siempre reconoce: OpenStreetMap encuentra "Río Oxapampa" pero no
+// "Jr. Río Oxapampa".
+const TIPO_DE_VIA =
+  /^(av|avda|avenida|jr|jiron|jirón|ca|calle|pasaje|psje|psj|prolongación|prolongacion)\.?$/i;
+
+export function sinTipoDeVia(calle: string): string {
+  const palabras = calle.trim().split(/\s+/);
+  return palabras.length > 1 && TIPO_DE_VIA.test(palabras[0])
+    ? palabras.slice(1).join(" ")
+    : calle.trim();
+}
+
 export function soloLaCalle(direccion: string): string {
   const base = direccion
     // Lo que va después de una coma suele ser el detalle del portal.
@@ -196,7 +209,7 @@ export function soloLaCalle(direccion: string): string {
   // Ojo: hay calles que SE LLAMAN con un número ("Calle 3"). Si al
   // quitar el número no queda nombre —solo "Calle" o "Jr."— es que ese
   // número era el nombre, no la puerta, y hay que dejarlo.
-  const TIPO = /^(av|avda|avenida|jr|jiron|jirón|ca|calle|pasaje|psje|psj|prolongación|prolongacion)\.?$/i;
+  const TIPO = TIPO_DE_VIA;
   const quedaNombre = sinNumero
     .split(" ")
     .filter((palabra) => palabra && !TIPO.test(palabra)).length;
@@ -221,6 +234,14 @@ export async function ubicar(datos: {
   // Solo si quitar el número cambia algo; si no, se ahorra la consulta.
   if (calle && calle.toLowerCase() !== datos.direccion.trim().toLowerCase()) {
     intentos.push({ texto: `${calle}, ${cola}`, precision: "calle" });
+  }
+
+  // Y la calle sin el tipo de vía delante. Parece de más y no lo es:
+  // "Jr. Río Oxapampa" no devuelve nada y "Río Oxapampa" devuelve la
+  // calle. Es el caso de media Lima.
+  const pelada = sinTipoDeVia(calle);
+  if (pelada && pelada.toLowerCase() !== calle.toLowerCase()) {
+    intentos.push({ texto: `${pelada}, ${cola}`, precision: "calle" });
   }
   if (datos.distrito) {
     intentos.push({ texto: cola, precision: "zona" });
