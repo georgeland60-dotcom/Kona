@@ -14,7 +14,7 @@
 //  nada por nuestra cuenta.
 // =============================================================
 
-import { buscarDireccion, geocodificadorEnUso } from "@/lib/geocodificador";
+import { ubicar, geocodificadorEnUso } from "@/lib/geocodificador";
 import {
   LIMA_Y_CALLAO,
   buscarDestino,
@@ -60,23 +60,26 @@ export async function GET(req: Request) {
     });
   }
 
-  // Se le da al mapa todo lo que ella escribió: con el distrito y la
-  // provincia delante acierta mucho más que con la calle sola.
-  const consulta = [direccion, distrito, provincia === LIMA_Y_CALLAO ? "Lima" : provincia, "Perú"]
-    .filter(Boolean)
-    .join(", ");
+  // Se busca de lo más preciso a lo más general: la dirección entera,
+  // la calle sin número y, si no, la zona. En Perú muchísimas calles
+  // están mapeadas pero sus números no, así que buscar solo con el
+  // número puesto devolvía nada y parecía que la calle no existía.
+  const encontrado = await ubicar({
+    direccion,
+    distrito,
+    ciudad: provincia === LIMA_Y_CALLAO ? "Lima" : provincia,
+  });
 
-  const encontradas = await buscarDireccion(consulta);
-  const mejor = encontradas.find((d) => d.lat !== undefined && d.lon !== undefined);
-
-  if (!mejor) {
+  if (!encontrado) {
     return Response.json({
       envio,
       mapa: null,
       aviso:
-        "No pude ubicar esa dirección exacta en el mapa (pasa con las direcciones por manzana y lote). El envío se calcula igual con tu distrito; si quieres, agrega una referencia.",
+        "No pude ubicar esa dirección en el mapa. El envío se calcula igual con tu distrito.",
     });
   }
+
+  const { lugar: mejor, precision } = encontrado;
 
   // ¿El mapa cree que esto está en otro distrito? No se cambia nada: se
   // dice, y ella decide. Corregirlo por nuestra cuenta sería cobrarle
@@ -91,6 +94,14 @@ export async function GET(req: Request) {
     !!esperado &&
     normalizar(delMapa.nombre) !== normalizar(esperado);
 
+  // Se dice con qué precisión se encontró: marcar la cuadra no es lo
+  // mismo que marcar el portal, y callarlo haría que confiara de más.
+  const porPrecision: Record<string, string | null> = {
+    exacta: null,
+    calle: "Encontré la calle pero no el número: el punto marca la cuadra, no el portal.",
+    zona: "No pude ubicar la calle, así que el mapa muestra tu distrito. Añade una referencia para quien reparte.",
+  };
+
   return Response.json({
     envio,
     mapa: {
@@ -98,10 +109,11 @@ export async function GET(req: Request) {
       lat: mejor.lat,
       lon: mejor.lon,
       zona: delMapa?.nombre ?? mejor.zona ?? null,
+      precision,
     },
     aviso: discrepa
       ? `Ojo: en el mapa esa dirección sale en ${delMapa!.nombre}, no en ${esperado}. Si te equivocaste, corrígelo arriba.`
-      : null,
+      : porPrecision[precision],
     motor: geocodificadorEnUso(),
   });
 }

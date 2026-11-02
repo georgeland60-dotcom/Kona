@@ -169,6 +169,71 @@ async function buscarEnGoogle(texto: string): Promise<DireccionEncontrada[]> {
 
 // ---- La puerta de entrada -------------------------------------------
 
+// Qué tan fino se pudo ubicar. Importa decirlo: no es lo mismo marcar
+// el portal que marcar el distrito entero.
+export type Precision = "exacta" | "calle" | "zona";
+
+// La dirección sin el número ni los añadidos de portal. En Perú media
+// ciudad vive en calles que SÍ están mapeadas pero cuyos números NO:
+// "Río Oxapampa 583" no devuelve nada y "Río Oxapampa" devuelve la
+// calle entera. Buscar la calle es infinitamente mejor que no mostrar
+// nada.
+export function soloLaCalle(direccion: string): string {
+  const base = direccion
+    // Lo que va después de una coma suele ser el detalle del portal.
+    .split(",")[0]
+    // Manzana, lote, departamento, interior, piso, oficina...
+    .replace(
+      /\b(mz|mza|manzana|lt|lote|dpto|depto|departamento|int|interior|piso|of|oficina)\b\.?\s*[\w-]*/gi,
+      " "
+    )
+    .replace(/[#°]/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  const sinNumero = base.replace(/\s+\d{1,5}\s*$/, "").trim();
+
+  // Ojo: hay calles que SE LLAMAN con un número ("Calle 3"). Si al
+  // quitar el número no queda nombre —solo "Calle" o "Jr."— es que ese
+  // número era el nombre, no la puerta, y hay que dejarlo.
+  const TIPO = /^(av|avda|avenida|jr|jiron|jirón|ca|calle|pasaje|psje|psj|prolongación|prolongacion)\.?$/i;
+  const quedaNombre = sinNumero
+    .split(" ")
+    .filter((palabra) => palabra && !TIPO.test(palabra)).length;
+
+  return quedaNombre > 0 ? sinNumero : base;
+}
+
+// Busca de lo más preciso a lo más general y se queda con lo primero
+// que encuentre. Tres intentos como mucho: la calle con número, la
+// calle sola y, si no, la zona.
+export async function ubicar(datos: {
+  direccion: string;
+  distrito?: string;
+  ciudad?: string;
+}): Promise<{ lugar: DireccionEncontrada; precision: Precision } | null> {
+  const cola = [datos.distrito, datos.ciudad, "Perú"].filter(Boolean).join(", ");
+  const calle = soloLaCalle(datos.direccion);
+
+  const intentos: { texto: string; precision: Precision }[] = [
+    { texto: `${datos.direccion}, ${cola}`, precision: "exacta" },
+  ];
+  // Solo si quitar el número cambia algo; si no, se ahorra la consulta.
+  if (calle && calle.toLowerCase() !== datos.direccion.trim().toLowerCase()) {
+    intentos.push({ texto: `${calle}, ${cola}`, precision: "calle" });
+  }
+  if (datos.distrito) {
+    intentos.push({ texto: cola, precision: "zona" });
+  }
+
+  for (const intento of intentos) {
+    const encontradas = await buscarDireccion(intento.texto);
+    const lugar = encontradas.find((d) => d.lat !== undefined && d.lon !== undefined);
+    if (lugar) return { lugar, precision: intento.precision };
+  }
+  return null;
+}
+
 export async function buscarDireccion(
   texto: string
 ): Promise<DireccionEncontrada[]> {

@@ -13,6 +13,7 @@ import {
   destinosAgrupados,
 } from "@/lib/envios";
 import { DESTINOS } from "@/data/envios";
+import { soloLaCalle } from "@/lib/geocodificador";
 
 let fallos = 0;
 
@@ -144,6 +145,31 @@ const grupos = destinosAgrupados();
 igual("hay dos grupos en el selector", grupos.length, 2);
 igual("el selector no pierde ningún destino",
   grupos.reduce((s, g) => s + g.destinos.length, 0), DESTINOS.length);
+
+
+// --- Quitar el número para poder encontrar la calle ------------------
+// El caso real: "Jr. Río Oxapampa 583" no devuelve nada del mapa, pero
+// "Río Oxapampa" sí. Sin esto parecía que la calle no existía.
+igual(
+  "quita el número de puerta",
+  soloLaCalle("Jr. Rio Oxapampa 583"),
+  "Jr. Rio Oxapampa"
+);
+igual(
+  "quita manzana y lote",
+  soloLaCalle("Calle 3 Mz. E Lt. 24"),
+  "Calle 3"
+);
+igual(
+  "se queda con la calle y tira el detalle del portal",
+  soloLaCalle("Av. José Larco 1234, dpto. 502"),
+  "Av. José Larco"
+);
+igual(
+  "una calle sin número se queda igual",
+  soloLaCalle("Avenida Universitaria"),
+  "Avenida Universitaria"
+);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);
 process.exit(fallos === 0 ? 0 : 1);

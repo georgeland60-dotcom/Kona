@@ -19,6 +19,7 @@ type Mapa = {
   lat: number;
   lon: number;
   zona: string | null;
+  precision?: "exacta" | "calle" | "zona";
 };
 
 // Devuelve el SKU de la talla elegida (o el de la única variante).
@@ -486,6 +487,11 @@ export default function CartDrawer() {
                     }&layer=mapnik&marker=${mapa.lat}%2C${mapa.lon}`}
                   />
                   <p className="text-[11px] text-muted px-3 py-2">
+                    {mapa.precision === "zona"
+                      ? "Zona aproximada: "
+                      : mapa.precision === "calle"
+                        ? "Cuadra de "
+                        : ""}
                     {mapa.direccion}
                     <a
                       href={`https://www.openstreetmap.org/?mlat=${mapa.lat}&mlon=${mapa.lon}#map=17/${mapa.lat}/${mapa.lon}`}
