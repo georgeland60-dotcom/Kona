@@ -58,6 +58,11 @@ export default function MapaEntrega({
   const mapa = useRef<MapaLeaflet | null>(null);
   const pin = useRef<Marker | null>(null);
 
+  // El mapa se crea una sola vez y se queda con la función de aquel
+  // momento; por la referencia siempre avisa a la de ahora.
+  const avisar = useRef(onMover);
+  avisar.current = onMover;
+
   const [movido, setMovido] = useState(false);
   const [grande, setGrande] = useState(false);
 
@@ -101,7 +106,7 @@ export default function MapaEntrega({
       const anotar = (p: { lat: number; lng: number }) => {
         setMovido(true);
         // Seis decimales son ~10 cm: más es ruido.
-        onMover({
+        avisar.current({
           lat: Number(p.lat.toFixed(6)),
           lon: Number(p.lng.toFixed(6)),
         });
