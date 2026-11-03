@@ -1,4 +1,4 @@
-import { SeedProduct } from "@/lib/types";
+import type { SeedProduct } from "@/lib/types";
 
 // =============================================================
 //  CATÁLOGO COMPLETO — sincronizado desde konamoda.pe (Store API)

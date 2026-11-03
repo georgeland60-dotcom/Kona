@@ -24,13 +24,18 @@ type Sugerencia = {
   tallas: string[];
 };
 
-// La guía de tallas de una prenda, tal como la manda el servidor.
+// La guía de tallas, tal como la manda el servidor. Trae una tabla por
+// prenda: un conjunto tiene dos (polera y pantalón miden cosas
+// distintas y no caben en la misma tabla).
 type Tabla = {
   nombre: string;
-  campos: string[];
-  filas: { talla: string; medidas: Record<string, number> }[];
   nota: string;
   modelo?: string;
+  prendas: {
+    nombre?: string;
+    campos: string[];
+    filas: { talla: string; medidas: Record<string, number | string> }[];
+  }[];
 };
 
 type Mensaje = {
@@ -54,6 +59,15 @@ const ATAJOS_TIENDA = [
   "Algo cómodo para diario",
   "Lo más nuevo",
 ];
+
+// Cuando la conversación se reinicia por cambiar de ficha, se dice:
+// ver el chat vacío de golpe, sin saber por qué, desconcierta.
+function saludoDeProducto(slug: string): Mensaje {
+  return {
+    rol: "asistente",
+    texto: `Empezamos de nuevo 💛 Ahora estamos viendo ${comoTitulo(slug)}. Pregúntame lo que quieras de esta prenda: la tela, el largo o qué talla te conviene.`,
+  };
+}
 
 // El slug es lo único que se tiene a mano en el navegador; para
 // enseñarlo basta con quitarle los guiones.
@@ -96,14 +110,30 @@ export default function KonaAssistant() {
   // aparecería contestando a algo que ya se borró.
   const turno = useRef(0);
 
-  // Si se va a otra ficha, deja de hablar de la anterior. Antes la
-  // prenda elegida se quedaba pegada para siempre: se preguntaba por
-  // otra cosa y seguía contestando sobre la primera.
+  // Al entrar a OTRA ficha, la conversación empieza de cero.
+  //
+  // Antes solo se soltaba la prenda elegida, pero los mensajes de
+  // antes seguían ahí, y con ellos el asistente seguía contestando
+  // sobre la prenda anterior: se le preguntaba "¿qué talla?" de la
+  // nueva y respondía con las medidas de la vieja.
+  //
+  // La primera vez no borra nada (no hay nada que borrar) y quedarse
+  // en la misma ficha tampoco: solo el cambio de una prenda a otra.
+  const fichaAnterior = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (productoDeLaRuta) {
-      setElegida(undefined);
-      setSinEnfoque(false);
-    }
+    if (!productoDeLaRuta) return;
+    const primeraVez = fichaAnterior.current === undefined;
+    const cambio = fichaAnterior.current !== productoDeLaRuta;
+    fichaAnterior.current = productoDeLaRuta;
+    if (primeraVez || !cambio) return;
+
+    turno.current += 1;
+    setMensajes([SALUDO, saludoDeProducto(productoDeLaRuta)]);
+    setElegida(undefined);
+    setSinEnfoque(false);
+    setTexto("");
+    setPensando(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productoDeLaRuta]);
 
   // Cada mensaje nuevo deja la conversación abajo, como cualquier chat.
@@ -347,7 +377,7 @@ export default function KonaAssistant() {
 
                 {/* La guía de tallas, en tabla. En un párrafo ("S busto
                     87, M busto 92…") no hay quien la lea. */}
-                {m.tabla && m.tabla.filas.length > 0 && (
+                {m.tabla && m.tabla.prendas.length > 0 && (
                   <div className="mt-3 border border-line rounded-xl overflow-hidden">
                     <div className="px-3 py-2 bg-soft">
                       <p className="text-xs font-medium">
@@ -359,37 +389,53 @@ export default function KonaAssistant() {
                         </p>
                       )}
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead className="text-muted text-left">
-                          <tr className="border-b border-line">
-                            <th className="py-1.5 px-3 font-medium">Talla</th>
-                            {m.tabla.campos.map((c) => (
-                              <th
-                                key={c}
-                                className="py-1.5 px-3 font-medium capitalize whitespace-nowrap"
-                              >
-                                {c.replace(/_/g, " ")}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-line">
-                          {m.tabla.filas.map((f) => (
-                            <tr key={f.talla}>
-                              <td className="py-1.5 px-3 font-medium">
-                                {f.talla}
-                              </td>
-                              {m.tabla!.campos.map((c) => (
-                                <td key={c} className="py-1.5 px-3 whitespace-nowrap">
-                                  {f.medidas[c] ? `${f.medidas[c]} cm` : "—"}
-                                </td>
+                    {m.tabla.prendas.map((prenda, j) => (
+                      <div key={prenda.nombre ?? j}>
+                        {/* El nombre solo aparece en los conjuntos:
+                            ahí sin él no se sabe qué tabla es cuál. */}
+                        {prenda.nombre && (
+                          <p className="text-[11px] font-medium px-3 pt-2">
+                            {prenda.nombre}
+                          </p>
+                        )}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead className="text-muted text-left">
+                              <tr className="border-b border-line">
+                                <th className="py-1.5 px-3 font-medium">Talla</th>
+                                {prenda.campos.map((c) => (
+                                  <th
+                                    key={c}
+                                    className="py-1.5 px-3 font-medium capitalize whitespace-nowrap"
+                                  >
+                                    {c.replace(/_/g, " ")}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-line">
+                              {prenda.filas.map((f) => (
+                                <tr key={f.talla}>
+                                  <td className="py-1.5 px-3 font-medium">
+                                    {f.talla}
+                                  </td>
+                                  {prenda.campos.map((c) => (
+                                    <td
+                                      key={c}
+                                      className="py-1.5 px-3 whitespace-nowrap"
+                                    >
+                                      {f.medidas[c] !== undefined
+                                        ? `${f.medidas[c]} cm`
+                                        : "—"}
+                                    </td>
+                                  ))}
+                                </tr>
                               ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
                     <p className="text-[11px] text-muted px-3 py-2">
                       {m.tabla.nota}
                     </p>

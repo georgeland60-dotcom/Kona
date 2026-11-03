@@ -67,11 +67,17 @@ type Sugerencia = {
 // La tabla de medidas de una prenda, para pintarla en el chat. Leerla
 // en una tabla es la diferencia entre entenderla y saltársela.
 type Tabla = {
-  nombre: string;
-  campos: string[];
-  filas: { talla: string; medidas: Record<string, number> }[];
+  nombre: string; // el producto
   nota: string;
   modelo?: string;
+  // Una tabla por prenda. Un conjunto tiene dos (la polera mide busto,
+  // la palazzo mide cintura): en una sola tabla no se entiende cuál es
+  // cuál, que es justo lo que pasaba con el Set Majo.
+  prendas: {
+    nombre?: string;
+    campos: string[];
+    filas: { talla: string; medidas: Record<string, number | string> }[];
+  }[];
 };
 
 function tablaDe(producto: Product): Tabla | null {
@@ -79,10 +85,13 @@ function tablaDe(producto: Product): Tabla | null {
   if (!guia) return null;
   return {
     nombre: producto.name,
-    campos: [...new Set(guia.medidas.flatMap((m) => Object.keys(m.medidas)))],
-    filas: guia.medidas,
     nota: guia.nota,
     modelo: modeloEnTexto(producto) ?? undefined,
+    prendas: guia.prendas.map((prenda) => ({
+      nombre: prenda.nombre,
+      campos: [...new Set(prenda.medidas.flatMap((m) => Object.keys(m.medidas)))],
+      filas: prenda.medidas,
+    })),
   };
 }
 

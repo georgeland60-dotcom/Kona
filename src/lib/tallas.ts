@@ -14,6 +14,7 @@
 
 import type { MedidaTalla, Product } from "@/lib/types";
 import { store } from "@/config/store";
+import { guiaDelModelo } from "@/data/guias-tallas";
 
 // Qué se mide en cada tipo de prenda, y cuánto mide en la talla base
 // (la M de ropa, el 37 de calzado). El resto de tallas sale sumando.
@@ -144,7 +145,10 @@ function redondear(n: number): number {
 }
 
 export type GuiaDeTallas = {
-  medidas: MedidaTalla[];
+  // Las prendas con medidas. Son varias cuando el producto es un
+  // conjunto: la polera mide busto y la palazzo mide cintura, y
+  // meterlas en la misma tabla no se entiende.
+  prendas: { nombre?: string; medidas: MedidaTalla[] }[];
   estimada: boolean;
   nota: string;
 };
@@ -181,21 +185,49 @@ function ordenarPorTalla(
 }
 
 export function guiaDeProducto(producto: Product): GuiaDeTallas | null {
-  // Lo cargado manda siempre.
+  // Lo cargado a mano manda siempre: si alguien midió la prenda, eso
+  // es más cierto que cualquier tabla general.
   if (producto.guiaTallas && producto.guiaTallas.length > 0) {
     return {
-      medidas: ordenarPorTalla(
-        producto.guiaTallas,
-        POR_CATEGORIA[producto.category]
-      ),
+      prendas: [
+        {
+          medidas: ordenarPorTalla(
+            producto.guiaTallas,
+            POR_CATEGORIA[producto.category]
+          ),
+        },
+      ],
       estimada: false,
       nota: "Medidas de la prenda, en centímetros.",
     };
   }
 
-  // Sin medidas cargadas: o se estiman, o se remite a la tabla que la
-  // tienda pone en las fotos. Dos tablas distintas para la misma prenda
-  // confunden más que ninguna.
+  // Después, la tabla que la tienda publica en las fotos del producto,
+  // transcrita a mano. Son las medidas de verdad.
+  const delModelo = guiaDelModelo(producto.slug);
+  if (delModelo) {
+    const tipo = POR_CATEGORIA[producto.category];
+    // Solo las tallas que esta prenda vende de verdad. Las fotos a
+    // veces traen una talla que ya no se maneja (o al revés), y una
+    // fila de una talla que no se puede pedir solo despista.
+    const prendas = delModelo.prendas
+      .map((prenda) => ({
+        nombre: prenda.nombre,
+        medidas: ordenarPorTalla(
+          prenda.medidas.filter((m) => tieneTalla(producto, m.talla)),
+          tipo
+        ),
+      }))
+      .filter((prenda) => prenda.medidas.length > 0);
+
+    if (prendas.length > 0) {
+      return { prendas, estimada: false, nota: delModelo.nota };
+    }
+  }
+
+  // Y si no hay ninguna de las dos: o se estiman, o se remite a la
+  // tabla que la tienda pone en las fotos. Dos tablas distintas para la
+  // misma prenda confunden más que ninguna.
   if (!store.medidasEstimadas) return null;
 
   const tipo = POR_CATEGORIA[producto.category];
@@ -217,7 +249,7 @@ export function guiaDeProducto(producto: Product): GuiaDeTallas | null {
   if (medidas.length === 0) return null;
 
   return {
-    medidas: ordenarPorTalla(medidas, tipo),
+    prendas: [{ medidas: ordenarPorTalla(medidas, tipo) }],
     estimada: true,
     nota:
       "Medidas referenciales en centímetros. Todavía no tenemos medidas exactas de esta prenda: si quieres, te la medimos por WhatsApp antes de que decidas.",
@@ -226,15 +258,22 @@ export function guiaDeProducto(producto: Product): GuiaDeTallas | null {
 
 // Cómo se lee una guía en una línea de texto (para el asistente).
 export function guiaEnTexto(guia: GuiaDeTallas): string {
-  return guia.medidas
-    .map(
-      (m) =>
-        `${m.talla}: ` +
-        Object.entries(m.medidas)
-          .map(([campo, valor]) => `${campo.replace(/_/g, " ")} ${valor} cm`)
-          .join(", ")
-    )
-    .join(" · ");
+  return guia.prendas
+    .map((prenda) => {
+      const filas = prenda.medidas
+        .map(
+          (m) =>
+            `${m.talla}: ` +
+            Object.entries(m.medidas)
+              .map(([campo, valor]) => `${campo.replace(/_/g, " ")} ${valor} cm`)
+              .join(", ")
+        )
+        .join(" · ");
+      // El nombre de la prenda importa justo en los conjuntos, que es
+      // donde hay dos tablas y hay que saber cuál es cuál.
+      return prenda.nombre ? `${prenda.nombre} — ${filas}` : filas;
+    })
+    .join(" || ");
 }
 
 // La referencia de la modelo de las fotos.

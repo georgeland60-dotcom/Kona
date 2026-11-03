@@ -40,10 +40,6 @@ export default function GuiaTallas({ product }: { product: Product }) {
     );
   }
 
-  const campos = guia
-    ? [...new Set(guia.medidas.flatMap((m) => Object.keys(m.medidas)))]
-    : [];
-
   return (
     <details className="mt-4 border border-line rounded-xl overflow-hidden group">
       <summary className="px-4 py-3 text-sm cursor-pointer select-none flex items-center justify-between">
@@ -71,37 +67,53 @@ export default function GuiaTallas({ product }: { product: Product }) {
           </p>
         )}
 
-        {guia && (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-muted text-left">
-                  <tr>
-                    <th className="py-1 pr-4 font-medium">Talla</th>
-                    {campos.map((c) => (
-                      <th key={c} className="py-1 pr-4 font-medium capitalize">
-                        {c.replace(/_/g, " ")}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {guia.medidas.map((m) => (
-                    <tr key={m.talla}>
-                      <td className="py-1.5 pr-4 font-medium">{m.talla}</td>
-                      {campos.map((c) => (
-                        <td key={c} className="py-1.5 pr-4">
-                          {m.medidas[c] ? `${m.medidas[c]} cm` : "—"}
-                        </td>
+        {guia &&
+          guia.prendas.map((prenda, i) => {
+            // Cada prenda mide lo suyo: la polera, busto; la palazzo,
+            // cintura. Las columnas salen de la prenda, no del producto.
+            const campos = [
+              ...new Set(prenda.medidas.flatMap((m) => Object.keys(m.medidas))),
+            ];
+            return (
+              <div key={prenda.nombre ?? i} className="space-y-1">
+                {/* El nombre solo aparece en los conjuntos, que es
+                    donde hay dos tablas y hay que saber cuál es cuál. */}
+                {prenda.nombre && (
+                  <p className="text-sm font-medium">{prenda.nombre}</p>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-muted text-left">
+                      <tr>
+                        <th className="py-1 pr-4 font-medium">Talla</th>
+                        {campos.map((c) => (
+                          <th key={c} className="py-1 pr-4 font-medium capitalize">
+                            {c.replace(/_/g, " ")}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {prenda.medidas.map((m) => (
+                        <tr key={m.talla}>
+                          <td className="py-1.5 pr-4 font-medium">{m.talla}</td>
+                          {campos.map((c) => (
+                            <td key={c} className="py-1.5 pr-4 whitespace-nowrap">
+                              {m.medidas[c] !== undefined
+                                ? `${m.medidas[c]} cm`
+                                : "—"}
+                            </td>
+                          ))}
+                        </tr>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-muted">{guia.nota}</p>
-          </>
-        )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+
+        {guia && <p className="text-xs text-muted">{guia.nota}</p>}
       </div>
     </details>
   );

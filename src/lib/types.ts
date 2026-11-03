@@ -21,7 +21,10 @@ export type Variant = {
 // Obligar a todas al mismo molde dejaría medidas vacías o inventadas.
 export type MedidaTalla = {
   talla: string; // "S", "M", "38"...
-  medidas: Record<string, number>; // { busto: 92, largo: 62 }
+  // { busto: 92, largo: 62 } o { busto: "80-100" }. El valor puede ser
+  // un RANGO porque así lo publica la tienda en sus guías: la tela cede
+  // y un número solo prometería una precisión que no existe.
+  medidas: Record<string, number | string>;
 };
 
 // La referencia de quien sale en las fotos. Es lo que de verdad ayuda a

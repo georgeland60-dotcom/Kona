@@ -38,8 +38,11 @@ export function leerMedidas(bruto: unknown): Record<string, number> {
   return medidas;
 }
 
-// { busto: 92, largo: 62 } -> "busto 92, largo 62"
-export function medidasATexto(medidas?: Record<string, number>): string {
+// { busto: 92, largo: 62 } -> "busto 92, largo 62". El valor puede ser
+// un rango ("80-100"), que es como vienen las guías de la tienda.
+export function medidasATexto(
+  medidas?: Record<string, number | string>
+): string {
   if (!medidas) return "";
   return Object.entries(medidas)
     .map(([campo, valor]) => `${campo.replace(/_/g, " ")} ${valor}`)

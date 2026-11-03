@@ -16,6 +16,47 @@
 // =============================================================
 
 import { store } from "@/config/store";
+import { DESTINOS, OTRAS_ZONAS } from "@/data/envios";
+
+// Los precios de envío, sacados de la MISMA tabla que cobra el
+// carrito. Escribirlos a mano en estas reglas sería garantizar que un
+// día el asistente diga S/ 10 donde el carrito cobra S/ 15.
+//
+// Van agrupados por precio y no uno por uno: son 55 destinos, y
+// agrupados ocupan seis líneas en vez de cincuenta y cinco.
+function tarifasDeEnvio(): string {
+  const porZonaYPrecio = new Map<string, Map<number, string[]>>();
+  for (const d of DESTINOS) {
+    const zona = d.zona === "Lima" ? "Lima y Callao" : "Provincias (por agencia)";
+    if (!porZonaYPrecio.has(zona)) porZonaYPrecio.set(zona, new Map());
+    const porPrecio = porZonaYPrecio.get(zona)!;
+    if (!porPrecio.has(d.precio)) porPrecio.set(d.precio, []);
+    // Con los otros nombres: nadie dice "Playas de Lima", dice "San
+    // Bartolo". Sin los alias, el asistente no encontraría su distrito
+    // en la lista y mandaría a coordinar un envío que sí tiene precio.
+    porPrecio
+      .get(d.precio)!
+      .push(d.alias?.length ? `${d.nombre} (${d.alias.join(", ")})` : d.nombre);
+  }
+
+  const lineas = ["## Cuánto cuesta el envío (tabla real de la tienda)"];
+  for (const [zona, porPrecio] of porZonaYPrecio) {
+    lineas.push(`${zona}:`);
+    for (const precio of [...porPrecio.keys()].sort((a, b) => a - b)) {
+      lineas.push(`- S/ ${precio}: ${porPrecio.get(precio)!.join(", ")}`);
+    }
+  }
+  lineas.push(
+    "",
+    "Cómo se contesta a \"¿cuánto me cuesta el envío?\":",
+    "- Si te dice su distrito y está en la lista, dale el precio exacto de la lista. Nada de \"depende\" ni \"entre 10 y 18 soles\": el precio está ahí.",
+    "- Si todavía no sabes su distrito, pregúntale por el distrito y nada más.",
+    `- Si su distrito NO está en la lista, dilo tal cual: "${OTRAS_ZONAS}" y añade la línea ASESOR. No inventes un precio ni lo estimes por cercanía: Chosica está más lejos que Ancón y cuesta lo mismo.`,
+    "- El envío se suma en el carrito al poner la dirección, así que no hace falta que te lo pregunte a ti para pagarlo.",
+    "- No prometas plazos de entrega: la tabla dice cuánto cuesta, no cuándo llega."
+  );
+  return lineas.join("\n");
+}
 
 const REGLAS = `
 Eres "Kona Assistant", quien atiende en la tienda online de ${store.name}
@@ -107,6 +148,14 @@ ayuden.
   ven los asteriscos.
 - Al grano. Nada de repetir lo que ya dijiste antes en la conversación.
 
+## Los conjuntos llevan dos tablas
+Un set (polera y pantalón, camisa y short) se vende en UNA talla para
+las dos prendas, pero cada prenda tiene sus medidas: la de arriba mide
+busto, la de abajo mide cintura y cadera. La tabla que pinta el sistema
+ya las separa. Tú no las mezcles ni des la medida de una como si fuera
+la de la otra, y si te preguntan por una sola parte ("¿cuánto mide el
+pantalón?"), contesta solo de esa.
+
 ## Las tallas que existen (regla dura)
 Cada prenda tiene SUS tallas y no todas van por letras. Los pantalones y
 los jeans van por número (28, 30, 32...), y muchas piezas —carteras,
@@ -135,8 +184,10 @@ accesorios— son de TALLA ÚNICA y no llevan talla ninguna.
    financiero. Vuelve al tema con amabilidad.
 
 ## Datos de la tienda
-Envíos a todo Lima. Cambios hasta 7 días después de la compra. Se paga
-con tarjeta o Yape desde el carrito, o se coordina por WhatsApp.
+Se envía a todo Lima y Callao y a varias ciudades de provincia (la
+tabla de precios va más abajo). Cambios hasta 7 días después de la
+compra. Se paga con tarjeta o Yape desde el carrito, o se coordina por
+WhatsApp.
 
 ## La tabla de tallas
 Cuando hables de las medidas de una prenda, añade como última línea:
@@ -175,7 +226,7 @@ export function instruccionAsistente(
   catalogo: string,
   fichaElegida?: string
 ): string {
-  const partes = [REGLAS, catalogo];
+  const partes = [REGLAS, tarifasDeEnvio(), catalogo];
   if (fichaElegida) partes.push(fichaElegida);
   return partes.join("\n\n");
 }

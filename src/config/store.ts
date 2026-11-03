@@ -31,10 +31,16 @@ export const store = {
 
   // ¿Mostrar medidas ESTIMADAS cuando una prenda no tiene las suyas
   // cargadas? En true salen unas de referencia calculadas por categoría,
-  // siempre marcadas como tales. Ponlo en false si prefieres que, hasta
-  // tener las reales, solo se remita a la tabla que va en las fotos de
-  // la prenda: así nunca puede haber dos tablas distintas a la vez.
-  medidasEstimadas: true,
+  // siempre marcadas como tales.
+  //
+  // Está en FALSE desde que se transcribieron las guías de tallas de
+  // las fotos (src/data/guias-tallas.ts): de las 84 prendas, las que
+  // tienen guía publicada ya enseñan sus medidas de verdad, y a las
+  // otras quince es mejor decirles "las medidas están en las fotos, o
+  // te las medimos por WhatsApp" que enseñarles unos centímetros
+  // calculados. Una medida inventada en la pantalla donde se decide la
+  // compra termina en una devolución.
+  medidasEstimadas: false,
 
   // ¿Decir qué talla lleva la modelo aunque esa prenda no traiga el dato
   // cargado? En true se usa la talla de referencia de arriba traducida a
