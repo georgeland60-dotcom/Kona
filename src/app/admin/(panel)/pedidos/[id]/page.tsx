@@ -105,7 +105,16 @@ export default async function PedidoDetallePage({
                 <td className="px-4 py-3 text-right">
                   {order.envio.costo > 0
                     ? formatPrice(order.envio.costo)
-                    : "a coordinar"}
+                    : order.envio.promo
+                      ? "gratis"
+                      : "a coordinar"}
+                  {/* Un envío en cero sin explicación parece un error de
+                      cobro; con el nombre de la promoción, no lo es. */}
+                  {order.envio.promo && (
+                    <span className="block text-xs text-muted">
+                      {order.envio.promo}
+                    </span>
+                  )}
                 </td>
               </tr>
             )}

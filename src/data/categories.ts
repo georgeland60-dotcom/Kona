@@ -1,4 +1,4 @@
-import { Category } from "@/lib/types";
+import type { Category } from "@/lib/types";
 
 // Las categorias de productos de tu tienda (replican el menu "PRODUCTOS"
 // de konamoda.pe). El "slug" se usa en la URL y debe coincidir con el

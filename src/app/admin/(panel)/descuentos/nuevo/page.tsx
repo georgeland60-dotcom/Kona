@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
 import { getCategorias } from "@/lib/categorias-data";
+import { DESTINOS } from "@/data/envios";
 import RuleForm from "@/components/admin/RuleForm";
 
 export default async function NuevoDescuentoPage() {
@@ -8,7 +9,12 @@ export default async function NuevoDescuentoPage() {
     getProducts({ includeInactive: true, raw: true }),
     getCategorias(),
   ]);
-  const options = products.map((p) => ({ id: p.id, name: p.name }));
+  const options = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+  }));
+  const destinos = DESTINOS.map((d) => d.nombre);
 
   return (
     <div>
@@ -19,7 +25,7 @@ export default async function NuevoDescuentoPage() {
         ← Descuentos
       </Link>
       <h1 className="text-2xl font-semibold mt-2 mb-6">Nuevo descuento</h1>
-      <RuleForm categories={categorias} products={options} />
+      <RuleForm categories={categorias} products={options} destinos={destinos} />
     </div>
   );
 }

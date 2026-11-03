@@ -12,6 +12,7 @@ import {
   nextProductId,
   skuFor,
 } from "@/lib/store-data";
+import { buscarCategoria } from "@/lib/categorias-data";
 import { leerGuiaDeTexto, leerMedidas } from "@/lib/medidas";
 import type { Product, Variant } from "@/lib/types";
 
@@ -167,4 +168,47 @@ export async function deleteProductAction(formData: FormData) {
     revalidateAll(p?.slug);
   }
   redirect("/admin/productos");
+}
+
+// ---- CAMBIOS RÁPIDOS DESDE LA LISTA ---------------------------------
+//
+//  Mover un producto de categoría o ponerlo en favoritos es lo que más
+//  se hace y lo que más costaba: había que abrir la ficha entera,
+//  bajar, cambiar un campo y guardar. Desde la lista es un toque.
+//
+//  Estas acciones NO redirigen: se vuelve a pintar la misma lista con
+//  el cambio hecho, que es lo que se espera al tocar algo ahí mismo.
+
+export async function cambiarCategoriaAction(formData: FormData) {
+  if (!(await isLoggedIn())) redirect("/admin/login");
+
+  const id = String(formData.get("id") || "").trim();
+  const categoria = String(formData.get("category") || "").trim();
+  if (!id || !categoria) return;
+
+  // Que la categoría exista de verdad: el desplegable las trae, pero
+  // esto se puede llamar desde cualquier sitio.
+  const existe = await buscarCategoria(categoria);
+  if (!existe) return;
+
+  const producto = await getProductById(id, { raw: true });
+  if (!producto) return;
+
+  await upsertProduct({ ...producto, category: existe.slug });
+  revalidateAll(producto.slug);
+  revalidatePath(`/tienda`);
+}
+
+export async function destacarAction(formData: FormData) {
+  if (!(await isLoggedIn())) redirect("/admin/login");
+
+  const id = String(formData.get("id") || "").trim();
+  if (!id) return;
+
+  const producto = await getProductById(id, { raw: true });
+  if (!producto) return;
+
+  // Se invierte lo que haya: el botón es un interruptor.
+  await upsertProduct({ ...producto, featured: !producto.featured });
+  revalidateAll(producto.slug);
 }

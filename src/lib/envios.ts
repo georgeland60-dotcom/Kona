@@ -178,3 +178,28 @@ export function destinosAgrupados(): { grupo: string; destinos: Destino[] }[] {
     { grupo: "Provincias", destinos: porZona("Provincia") },
   ];
 }
+
+// ---- Envío gratis por promoción -------------------------------------
+// La promoción puede valer solo para ciertos destinos ("gratis en Lima
+// desde S/ 150"). Quien sabe a dónde va el pedido es esta capa, no el
+// motor de promociones, así que la comprobación vive aquí.
+//
+// Sin lista de destinos, vale para donde sea. Y si el destino todavía
+// no se sabe, no se regala nada: se regala cuando se sabe.
+export function envioGratisAplica(
+  destinos: string[] | undefined,
+  destino?: string | null
+): boolean {
+  if (!destinos || destinos.length === 0) return true;
+  if (!destino) return false;
+
+  const elDelPedido = buscarDestino(destino);
+  if (!elDelPedido) return false;
+
+  return destinos.some((d) => {
+    const permitido = buscarDestino(d);
+    return permitido
+      ? permitido.nombre === elDelPedido.nombre
+      : normalizar(d) === normalizar(destino);
+  });
+}

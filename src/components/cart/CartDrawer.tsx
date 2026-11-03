@@ -9,6 +9,7 @@ import {
   LIMA_Y_CALLAO,
   destinoDelFormulario,
   distritosDeLima,
+  envioGratisAplica,
   provincias,
 } from "@/lib/envios";
 import { OTRAS_ZONAS } from "@/data/envios";
@@ -88,7 +89,21 @@ export default function CartDrawer() {
   // El costo que se MUESTRA. El que se cobra lo vuelve a calcular el
   // servidor con esta misma tabla, así que no pueden discrepar.
   const envio = destinoDelFormulario({ provincia, distrito });
-  const totalConEnvio = total + envio.costo;
+
+  // ¿Alguna promoción regala el envío? Quien lo decide es el servidor
+  // (viene en el precio del carrito); aquí solo se comprueba que el
+  // destino elegido esté entre los que cubre.
+  const promoEnvio =
+    precio?.envioGratis &&
+    envioGratisAplica(
+      precio.envioGratis.destinos,
+      provincia === LIMA_Y_CALLAO ? distrito : provincia
+    )
+      ? precio.envioGratis
+      : null;
+
+  const costoEnvio = promoEnvio ? 0 : envio.costo;
+  const totalConEnvio = total + costoEnvio;
 
   // Sin los tres datos no se puede despachar, así que no se deja pagar.
   const faltanDatos =
@@ -232,7 +247,8 @@ export default function CartDrawer() {
       `¡Hola ${store.name}! Quiero hacer este pedido:\n\n` +
       lineas.join("\n") +
       (envio.conocido
-        ? `\n\nEnvío a ${envio.destino}: ${formatPrice(envio.costo)}`
+        ? `\n\nEnvío a ${envio.destino}: ` +
+          (promoEnvio ? `gratis (${promoEnvio.nombre})` : formatPrice(envio.costo))
         : "") +
       `\n\nTotal: ${formatPrice(totalConEnvio)}` +
       `\n\nDirección de entrega: ${direccion.trim()}` +
@@ -511,8 +527,20 @@ export default function CartDrawer() {
               {envio.conocido && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted">Envío a {envio.destino}</span>
-                  <span>{formatPrice(envio.costo)}</span>
+                  {promoEnvio ? (
+                    <span className="text-green-700 font-medium">
+                      <span className="text-muted line-through font-normal mr-2">
+                        {formatPrice(envio.costo)}
+                      </span>
+                      Gratis
+                    </span>
+                  ) : (
+                    <span>{formatPrice(envio.costo)}</span>
+                  )}
                 </div>
+              )}
+              {promoEnvio && envio.conocido && (
+                <p className="text-xs text-green-700">🚚 {promoEnvio.nombre}</p>
               )}
               {!!distrito && !!provincia && !envio.conocido && (
                 <p className="text-xs text-muted">{OTRAS_ZONAS}</p>

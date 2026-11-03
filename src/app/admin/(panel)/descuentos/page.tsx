@@ -10,6 +10,19 @@ function describeScope(
   catName: (slug: string) => string,
   prodName: (id: string) => string
 ): string {
+  // El envío gratis tampoco apunta a productos: apunta a la entrega.
+  if (rule.tipo === "envio") {
+    const c = rule.envio?.condicion;
+    const partes: string[] = [];
+    if (c?.categorias?.length) partes.push(c.categorias.map(catName).join(" o "));
+    if (c?.cantidadMinima) partes.push(`${c.cantidadMinima} unidades o más`);
+    if (c?.subtotalMinimo) partes.push(`compra desde S/ ${c.subtotalMinimo}`);
+    const donde = rule.envio?.destinos?.length
+      ? `Solo a ${rule.envio.destinos.join(", ")}`
+      : "A cualquier destino";
+    return partes.length > 0 ? `${donde}, si: ${partes.join(" + ")}` : donde;
+  }
+
   // Un descuento del total no apunta a productos: apunta a la compra.
   if (rule.tipo === "carrito") {
     const c = rule.carrito?.condicion;
@@ -50,6 +63,9 @@ function describeScope(
 }
 
 function describeValue(rule: DiscountRule): string {
+  // El envío gratis no rebaja ningún precio: quita el costo del envío.
+  if (rule.tipo === "envio") return "Envío gratis";
+
   // Un escalonado no tiene un valor único: son varios escalones. Mostrar su
   // campo "value" diría "0% off", que es falso.
   if (rule.tipo === "escalonado" && rule.tramos?.length) {

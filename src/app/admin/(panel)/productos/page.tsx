@@ -3,16 +3,30 @@ import { getProducts } from "@/lib/store-data";
 import { totalStock } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import { deleteProductAction } from "@/app/admin/productos-actions";
+import { getCategorias } from "@/lib/categorias-data";
+import {
+  BotonFavorito,
+  SelectorCategoria,
+} from "@/components/admin/AccionesRapidas";
 
 export default async function ProductosPage() {
-  const products = await getProducts({ includeInactive: true, raw: true });
+  const [products, categorias] = await Promise.all([
+    getProducts({ includeInactive: true, raw: true }),
+    getCategorias(),
+  ]);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold">Productos</h1>
-          <p className="text-muted text-sm">{products.length} en total</p>
+          <p className="text-muted text-sm">
+            {products.length} en total ·{" "}
+            {products.filter((p) => p.featured).length} en favoritos
+          </p>
+          <p className="text-muted text-xs mt-1">
+            La estrella y la categoría se guardan solas al tocarlas.
+          </p>
         </div>
         <Link
           href="/admin/productos/nuevo"
@@ -26,7 +40,11 @@ export default async function ProductosPage() {
         <table className="w-full text-sm">
           <thead className="bg-soft text-muted text-left">
             <tr>
+              <th className="px-4 py-3 font-medium w-10" title="Favoritos del inicio">
+                ★
+              </th>
               <th className="px-4 py-3 font-medium">Producto</th>
+              <th className="px-4 py-3 font-medium">Categoría</th>
               <th className="px-4 py-3 font-medium hidden sm:table-cell">Precio</th>
               <th className="px-4 py-3 font-medium hidden sm:table-cell">Stock</th>
               <th className="px-4 py-3 font-medium">Estado</th>
@@ -38,6 +56,9 @@ export default async function ProductosPage() {
               const stock = totalStock(p);
               return (
                 <tr key={p.id} className="hover:bg-soft/50">
+                  <td className="px-4 py-3">
+                    <BotonFavorito id={p.id} destacado={!!p.featured} />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-12 placeholder-box rounded overflow-hidden flex-shrink-0">
@@ -52,6 +73,13 @@ export default async function ProductosPage() {
                       </div>
                       <span className="font-medium">{p.name}</span>
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <SelectorCategoria
+                      id={p.id}
+                      categoria={p.category}
+                      categorias={categorias}
+                    />
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
                     {formatPrice(p.price)}

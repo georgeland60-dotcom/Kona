@@ -82,6 +82,17 @@ export type CarritoPreciado = {
   ahorro: number;
   promos: string[];
   descuentoCarrito?: DescuentoCarrito;
+  // El envío sale gratis con esta compra. No es un descuento sobre el
+  // total: el costo del envío se calcula en otro sitio (la tabla de la
+  // tienda) y lo único que hace falta saber aquí es si se cobra o no.
+  envioGratis?: EnvioGratis;
+};
+
+export type EnvioGratis = {
+  nombre: string; // la promoción que lo regala, para mostrarla
+  // Si la promoción es solo para ciertos destinos, aquí van. Quien sabe
+  // a dónde va el pedido es el carrito, no el motor.
+  destinos?: string[];
 };
 
 // Cuántas unidades hay de verdad de lo que se está pidiendo. Si la línea
@@ -190,6 +201,7 @@ export function precioVitrina(
   for (const regla of reglas) {
     if (!vigente(regla, ahora)) continue;
     if (regla.tipo === "bogo" || regla.tipo === "carrito") continue;
+    if (regla.tipo === "envio") continue; // no toca el precio de nada
     if (!aplicaAlProducto(regla, producto)) continue;
 
     if (regla.tipo === "escalonado") {
@@ -328,6 +340,7 @@ export function preciarCarrito(
     for (const regla of vigentes) {
       if (regla.tipo === "bogo") continue; // van en el paso 2
       if (regla.tipo === "carrito") continue; // van en el paso 4
+      if (regla.tipo === "envio") continue; // no tocan el precio: solo el envío
       if (!aplicaAlProducto(regla, producto!)) continue;
 
       let candidato: number | undefined;
@@ -479,6 +492,28 @@ export function preciarCarrito(
     };
   }
 
+  // ---- Paso 3 bis: el envío --------------------------------------
+  // "Envío gratis desde S/ 150". No baja ningún precio: hace que no se
+  // cobre el envío. Se mira contra el subtotal YA descontado, que es lo
+  // que la clienta va a pagar de verdad; mirarlo contra el precio de
+  // lista regalaría envíos que no se ganaron.
+  //
+  // Se calcula aquí y no en el carrito porque la condición depende de
+  // todo lo que lleva, igual que las demás: el carrito solo pregunta.
+  const subtotalFinal = subtotal - (elegida?.monto ?? 0);
+  let envioGratis: EnvioGratis | undefined;
+  for (const regla of vigentes) {
+    if (regla.tipo !== "envio") continue;
+    if (!cumpleCondicion(regla.envio?.condicion, enCarrito, subtotalFinal)) continue;
+    // Si hay varias, gana la primera que se cumpla: el envío ya es
+    // gratis, no puede serlo dos veces.
+    envioGratis = {
+      nombre: regla.name,
+      ...(regla.envio?.destinos?.length ? { destinos: regla.envio.destinos } : {}),
+    };
+    break;
+  }
+
   // ---- Paso 4: volver a juntar las unidades en líneas ---------------
   const preciadas: LineaPreciada[] = validas.map(({ l, producto, pedida, disponible }, idx) => {
     const mias: number[] = [];
@@ -533,5 +568,6 @@ export function preciarCarrito(
     ahorro: totalLista - total,
     promos,
     ...(descuentoCarrito ? { descuentoCarrito } : {}),
+    ...(envioGratis ? { envioGratis } : {}),
   };
 }

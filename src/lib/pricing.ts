@@ -70,6 +70,25 @@ export async function priceForItems(
   incoming: IncomingItem[]
 ): Promise<OrderItem[]> {
   const { lineas } = await preciarPedido(incoming);
+  return aItems(lineas);
+}
+
+// Los items del pedido Y si el envío sale gratis, en UNA sola pasada.
+// Lo usan el pedido y el cobro: preciar dos veces costaría dos lecturas
+// de la base y, peor, abriría la puerta a que cada uno viera cosas
+// distintas.
+export async function preciarParaPedido(incoming: IncomingItem[]): Promise<{
+  items: OrderItem[];
+  envioGratis?: { nombre: string; destinos?: string[] };
+}> {
+  const carrito = await preciarPedido(incoming);
+  return {
+    items: aItems(carrito.lineas),
+    ...(carrito.envioGratis ? { envioGratis: carrito.envioGratis } : {}),
+  };
+}
+
+function aItems(lineas: CarritoPreciado["lineas"]): OrderItem[] {
   const items: OrderItem[] = [];
 
   for (const l of lineas) {

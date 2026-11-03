@@ -56,6 +56,9 @@ export type PrecioCarrito = {
   ahorro: number;
   promos: string[];
   descuentoCarrito?: DescuentoCarrito;
+  // El envío sale gratis por una promoción. Puede valer solo para
+  // ciertos destinos; el carrito comprueba el suyo contra esa lista.
+  envioGratis?: { nombre: string; destinos?: string[] };
 };
 
 type CartContextType = {

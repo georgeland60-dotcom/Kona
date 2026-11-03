@@ -29,6 +29,11 @@ export type PromoItem = {
 // ---- El gancho: lo que se lee en grande ------------------------------
 
 function gancho(rule: DiscountRule): string {
+  // El envío gratis no es un porcentaje: sin esto se anunciaba como
+  // "0% OFF", que es lo que pasa cuando una promoción nueva no se
+  // enseña a los sitios donde se muestra.
+  if (rule.tipo === "envio") return "Envío gratis";
+
   // Un 2x1 no tiene porcentaje: su "value" es 0 y diria "0% OFF".
   if (rule.tipo === "bogo" && rule.bogo) {
     const { porCada, regala, descuentoRegalo } = rule.bogo;
@@ -55,6 +60,15 @@ function gancho(rule: DiscountRule): string {
 // ---- La condicion: la letra chica que evita malentendidos ------------
 
 function detalle(rule: DiscountRule): string {
+  if (rule.tipo === "envio") {
+    const c = rule.envio?.condicion;
+    const partes: string[] = [];
+    if (c?.subtotalMinimo) partes.push(`En compras desde ${formatPrice(c.subtotalMinimo)}`);
+    if (c?.cantidadMinima) partes.push(`Llevando ${c.cantidadMinima} prendas o más`);
+    if (partes.length === 0) partes.push("En toda compra");
+    return partes.join(" · ");
+  }
+
   if (rule.tipo === "bogo" && rule.bogo) {
     const { porCada, regala, descuentoRegalo } = rule.bogo;
     const que = regala === 1 ? "la siguiente" : `las siguientes ${regala}`;
@@ -110,6 +124,19 @@ function alcance(
   categorias: Category[],
   products: Product[]
 ): string {
+  // En el envío gratis lo que importa no es qué prendas, sino a dónde.
+  if (rule.tipo === "envio") {
+    const destinos = rule.envio?.destinos;
+    if (destinos?.length) {
+      return destinos.length <= 3
+        ? `Solo a ${destinos.join(", ")}`
+        : `Solo a ${destinos.length} distritos`;
+    }
+    const cats = rule.envio?.condicion?.categorias;
+    if (cats?.length) return `Llevando algo de ${nombresCategorias(cats, categorias)}`;
+    return "A donde te lo enviemos";
+  }
+
   const f = rule.filtro;
   if (f) {
     if (f.todos) return "En toda la tienda";

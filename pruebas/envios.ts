@@ -11,6 +11,7 @@ import {
   destinoDeCandidatos,
   destinoEnTexto,
   destinosAgrupados,
+  envioGratisAplica,
 } from "@/lib/envios";
 import { DESTINOS } from "@/data/envios";
 import { soloLaCalle, sinTipoDeVia, puntoValido } from "@/lib/geocodificador";
@@ -192,6 +193,21 @@ igual("el Pacífico tampoco", puntoValido(-12.0, -90.0), null);
 igual("ni texto", puntoValido("-12" as unknown as number, -77), null);
 igual("ni NaN", puntoValido(Number.NaN, -77), null);
 igual("ni nada", puntoValido(undefined, undefined), null);
+
+// --- El envío gratis y sus destinos ----------------------------------
+// La promoción puede valer solo para algunas zonas. Quien sabe a dónde
+// va el pedido es esta capa, no el motor de promociones.
+igual("sin lista de destinos vale para donde sea", envioGratisAplica(undefined, "Comas"), true);
+igual("una lista vacía también", envioGratisAplica([], "Comas"), true);
+igual("el destino de la lista entra", envioGratisAplica(["Miraflores", "Surco"], "Miraflores"), true);
+igual("uno que no está, no", envioGratisAplica(["Miraflores"], "Comas"), false);
+// Los alias cuentan: la promo dice "Surco" y el pedido dice "Santiago
+// de Surco", que es el mismo sitio.
+igual("los alias cuentan", envioGratisAplica(["Surco"], "Santiago de Surco"), true);
+// Mientras no se sepa a dónde va, no se regala nada: se regala cuando
+// se sabe, para no enseñar "gratis" y luego cobrarlo.
+igual("sin destino todavía, no se regala", envioGratisAplica(["Surco"], undefined), false);
+igual("un destino que no está en la tabla tampoco", envioGratisAplica(["Surco"], "Cusco"), false);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);
 process.exit(fallos === 0 ? 0 : 1);

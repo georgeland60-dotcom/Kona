@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { createOrder } from "@/lib/orders-data";
-import { priceForItems } from "@/lib/pricing";
-import { costoDeEnvio } from "@/lib/envios";
+import { preciarParaPedido } from "@/lib/pricing";
+import { costoDeEnvio, envioGratisAplica } from "@/lib/envios";
 import { puntoValido } from "@/lib/geocodificador";
 
 // Esta funcion corre en el SERVIDOR (seguro). Aqui se usa el token secreto
@@ -46,17 +46,21 @@ export async function POST(req: Request) {
   const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   // Recalculamos precios en el servidor (con descuentos vigentes).
-  const items = await priceForItems(rawItems);
+  const { items, envioGratis } = await preciarParaPedido(rawItems);
   if (items.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
   }
   // El envío, igual que los precios, sale de la tabla de la tienda y no
   // de lo que mande el navegador.
   const envio = costoDeEnvio(destino);
+  // El envío gratis se decide aquí, con el carrito real.
+  const envioRegalado =
+    !!envioGratis && envioGratisAplica(envioGratis.destinos, destino);
+  const costoEnvio = envioRegalado ? 0 : envio.costo;
   // Igual que los precios: el punto que manda el navegador se revisa.
   const punto = puntoValido(lat, lon);
   const total =
-    items.reduce((s, i) => s + i.price * i.qty, 0) + envio.costo;
+    items.reduce((s, i) => s + i.price * i.qty, 0) + costoEnvio;
 
   // Registramos el pedido como "pendiente" antes de mandar a pagar. Eso
   // le RESERVA el stock: mientras esté pagando, nadie más se lleva esas
@@ -70,7 +74,8 @@ export async function POST(req: Request) {
       ? {
           envio: {
             destino: envio.destino ?? "",
-            costo: envio.costo,
+            costo: costoEnvio,
+            ...(envioRegalado ? { promo: envioGratis!.nombre } : {}),
             ...(direccion ? { direccion: direccion.slice(0, 200) } : {}),
             ...(punto ?? {}),
           },
@@ -109,13 +114,13 @@ export async function POST(req: Request) {
           })),
           // El envío va como una línea más: Mercado Pago cobra la suma
           // de lo que se le manda, así que si no va aquí, no se cobra.
-          ...(envio.costo > 0
+          ...(costoEnvio > 0
             ? [
                 {
                   id: "envio",
                   title: `Envío a ${envio.destino}`,
                   quantity: 1,
-                  unit_price: envio.costo,
+                  unit_price: costoEnvio,
                   currency_id: "PEN",
                 },
               ]

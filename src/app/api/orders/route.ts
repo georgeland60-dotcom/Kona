@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/orders-data";
-import { priceForItems } from "@/lib/pricing";
-import { costoDeEnvio } from "@/lib/envios";
+import { preciarParaPedido } from "@/lib/pricing";
+import { costoDeEnvio, envioGratisAplica } from "@/lib/envios";
 import { puntoValido } from "@/lib/geocodificador";
 import type { OrderItem, OrderMethod } from "@/lib/types";
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Pedido vacío" }, { status: 400 });
   }
 
-  const items = await priceForItems(incoming);
+  const { items, envioGratis } = await preciarParaPedido(incoming);
   if (items.length === 0) {
     return NextResponse.json(
       { error: "Los productos del carrito ya no están disponibles" },
@@ -35,11 +35,16 @@ export async function POST(req: Request) {
   // El envío se busca por nombre en la tabla de la tienda: lo que diga
   // el navegador sobre el precio da igual.
   const envio = costoDeEnvio(body.destino);
+  // ¿Hay una promoción que regala el envío? Se decide AQUÍ, con lo que
+  // de verdad lleva el carrito; lo que diga el navegador no cuenta.
+  const envioRegalado =
+    !!envioGratis && envioGratisAplica(envioGratis.destinos, body.destino);
+  const costoEnvio = envioRegalado ? 0 : envio.costo;
   // El punto del mapa viene del navegador, así que se comprueba que sea
   // un punto de Perú antes de guardarlo.
   const punto = puntoValido(body.lat, body.lon);
   const total =
-    items.reduce((s, i) => s + i.price * i.qty, 0) + envio.costo;
+    items.reduce((s, i) => s + i.price * i.qty, 0) + costoEnvio;
 
   const resultado = await createOrder({
     items,
@@ -51,7 +56,8 @@ export async function POST(req: Request) {
       ? {
           envio: {
             destino: envio.destino ?? "",
-            costo: envio.costo,
+            costo: costoEnvio,
+            ...(envioRegalado ? { promo: envioGratis!.nombre } : {}),
             ...(body.direccion ? { direccion: body.direccion.slice(0, 200) } : {}),
             ...(punto ?? {}),
           },
@@ -78,6 +84,11 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     id: resultado.order.id,
-    envio: { destino: envio.destino, costo: envio.costo, conocido: envio.conocido },
+    envio: {
+      destino: envio.destino,
+      costo: costoEnvio,
+      conocido: envio.conocido,
+      ...(envioRegalado ? { gratisPor: envioGratis!.nombre } : {}),
+    },
   });
 }

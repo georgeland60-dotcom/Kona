@@ -37,6 +37,7 @@ import {
   crearCategoria,
   getCategorias,
 } from "@/lib/categorias-data";
+import { buscarDestino } from "@/lib/envios";
 import { leerMedidas } from "@/lib/medidas";
 import type { TipoCambio } from "@/lib/historial-data";
 import type {
@@ -564,6 +565,168 @@ const crearCategoriaTool: Tool = {
     return {
       ok: true,
       mensaje: `Categoría "${resultado.categoria.name}" creada (slug ${resultado.categoria.slug}). Ya aparece en el menú de la tienda.`,
+    };
+  },
+};
+
+// Mover un producto de categoría. Hasta ahora la categoría solo se
+// elegía al crear el producto, y corregirla obligaba a borrarlo y
+// volverlo a subir con sus fotos. Es de los cambios que más se piden
+// ("el chaleco está en chompas").
+const moverDeCategoria: Tool = {
+  nombre: "cambiar_categoria",
+  leer: false,
+  descripcion:
+    "Mueve un producto que YA existe a otra categoría del menú. Úsala cuando digan que algo está mal clasificado ('el chaleco Yess está en chompas, pásalo a chalecos'). La categoría destino tiene que existir; si no, créala antes con crear_categoria.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      producto: { type: "STRING", description: "Id o nombre del producto." },
+      categoria: {
+        type: "STRING",
+        description: "Nombre o slug de la categoría destino, ej 'Chalecos'.",
+      },
+    },
+    required: ["producto", "categoria"],
+  },
+  resumen: async (args) => {
+    const nombre = await nombreProducto(texto(args, "producto"));
+    const cat = await buscarCategoria(texto(args, "categoria"));
+    return `Mover "${nombre}" a la categoría ${cat?.name ?? texto(args, "categoria")}`;
+  },
+  ejecutar: async (args) => {
+    const r = await resolverProducto(texto(args, "producto"));
+    if (!r.ok) return { ok: false, mensaje: r.mensaje };
+
+    const cat = await buscarCategoria(texto(args, "categoria"));
+    if (!cat) {
+      const todas = await getCategorias();
+      return {
+        ok: false,
+        mensaje: `No tengo la categoría "${texto(args, "categoria")}". Las que hay son: ${todas
+          .map((c) => c.name)
+          .join(", ")}. Si quieres una nueva, dímelo y la creo.`,
+      };
+    }
+
+    if (r.producto.category === cat.slug) {
+      return {
+        ok: true,
+        mensaje: `"${r.producto.name}" ya estaba en ${cat.name}: no cambié nada.`,
+      };
+    }
+
+    const antes = r.producto.category;
+    await upsertProduct({ ...r.producto, category: cat.slug });
+    return {
+      ok: true,
+      mensaje: `"${r.producto.name}" pasó de ${antes} a ${cat.name}.`,
+    };
+  },
+};
+
+// ---- ENVÍO GRATIS ----------------------------------------------------
+//  No baja ningún precio: hace que no se cobre el envío. Es la promoción
+//  más usada de una tienda online.
+const crearEnvioGratis: Tool = {
+  nombre: "crear_envio_gratis",
+  leer: false,
+  descripcion:
+    "Crea una promoción de ENVÍO GRATIS. Sirve para 'envío gratis desde S/ 150', 'envío gratis en Lima este fin de semana' o 'si llevan algo de ropa de baño, el envío va gratis'. No cambia el precio de ningún producto: quita el costo del envío cuando se cumple la condición.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      nombre: {
+        type: "STRING",
+        description: "Nombre corto, ej 'Envío gratis desde S/ 150'.",
+      },
+      compra_minima: {
+        type: "NUMBER",
+        description:
+          "Soles mínimos de compra para que el envío salga gratis. Se mira sobre lo que de verdad paga (ya con descuentos). Omitir si no hay mínimo.",
+      },
+      cantidad_minima: {
+        type: "NUMBER",
+        description: "Unidades mínimas en el carrito. Opcional.",
+      },
+      si_llevan_categoria: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+        description:
+          "Solo si llevan algo de estas categorías. Nombres o slugs. Opcional.",
+      },
+      si_llevan_producto: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+        description: "Solo si llevan alguno de estos productos. Opcional.",
+      },
+      destinos: {
+        type: "ARRAY",
+        items: { type: "STRING" },
+        description:
+          "Solo a estos destinos de la tabla de envíos (ej 'Miraflores', 'Los Olivos'). Omitir para que valga a donde sea.",
+      },
+      desde_fecha: { type: "STRING", description: "Inicio AAAA-MM-DD. Opcional." },
+      hasta_fecha: { type: "STRING", description: "Fin AAAA-MM-DD. Opcional." },
+    },
+    required: ["nombre"],
+  },
+  resumen: async (args) => {
+    const minimo = numero(args, "compra_minima");
+    const c = await armarCondicion(args);
+    const destinos = lista(args, "destinos");
+    const cuando = minimo
+      ? ` en compras desde ${soles(minimo)}`
+      : c.ok && c.descripcion
+        ? ` cuando ${c.descripcion}`
+        : "";
+    const donde = destinos.length > 0 ? ` (solo a ${destinos.join(", ")})` : "";
+    return `Crear promoción de envío gratis${cuando}${donde}`;
+  },
+  ejecutar: async (args) => {
+    const c = await armarCondicion(args);
+    if (!c.ok) return { ok: false, mensaje: c.mensaje };
+
+    // Los destinos tienen que existir en la tabla de envíos: un nombre
+    // que no esté ahí dejaría la promoción sin aplicar nunca, sin que
+    // nadie se entere.
+    const pedidos = lista(args, "destinos");
+    const destinos: string[] = [];
+    for (const d of pedidos) {
+      const encontrado = buscarDestino(d);
+      if (!encontrado) {
+        return {
+          ok: false,
+          mensaje: `"${d}" no está en la tabla de envíos, así que esa promoción no se aplicaría nunca. Los destinos son los del carrito (Miraflores, Los Olivos, Comas…).`,
+        };
+      }
+      destinos.push(encontrado.nombre);
+    }
+
+    const regla: DiscountRule = {
+      id: await nextRuleId(),
+      name: texto(args, "nombre", "Envío gratis"),
+      scope: "all",
+      kind: "percent",
+      value: 0, // no rebaja precios
+      active: true,
+      tipo: "envio",
+      envio: {
+        ...(c.condicion ? { condicion: c.condicion } : {}),
+        ...(destinos.length > 0 ? { destinos } : {}),
+      },
+      startsAt: fechaISO(texto(args, "desde_fecha")),
+      endsAt: fechaISO(texto(args, "hasta_fecha"), true),
+    };
+
+    await upsertRule(regla);
+
+    const cuando = c.descripcion ? ` cuando ${c.descripcion}` : " en toda compra";
+    const donde =
+      destinos.length > 0 ? `, solo a ${destinos.join(", ")}` : ", a cualquier destino";
+    return {
+      ok: true,
+      mensaje: `Promoción "${regla.name}" activa: el envío no se cobra${cuando}${donde}.`,
     };
   },
 };
@@ -2105,6 +2268,8 @@ export const HERRAMIENTAS: Tool[] = [
   listarTemporadas,
   // escritura
   crearCategoriaTool,
+  moverDeCategoria,
+  crearEnvioGratis,
   crearDescuento,
   crearDescuentoEscalonado,
   crearBogo,
@@ -2129,6 +2294,8 @@ export const HERRAMIENTAS: Tool[] = [
 // historial en el panel.
 const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
   crear_categoria: "productos",
+  cambiar_categoria: "productos",
+  crear_envio_gratis: "descuentos",
   cargar_medidas: "productos",
   crear_descuento: "descuentos",
   crear_descuento_escalonado: "descuentos",

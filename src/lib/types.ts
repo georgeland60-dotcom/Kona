@@ -97,6 +97,9 @@ export type Order = {
     direccion?: string;
     lat?: number;
     lon?: number;
+    // Si el envío salió gratis por una promoción, cuál fue. Sin esto,
+    // en el panel un envío en cero parece un error de cobro.
+    promo?: string;
   };
   // true = este pedido tiene stock reservado (se reserva al crearlo).
   stockApplied?: boolean;
@@ -146,7 +149,12 @@ export type Filtro = {
 // "carrito" es la única que NO baja el precio de un producto: descuenta
 // sobre el total de la compra, y suele venir con una condición ("si llevan
 // tal cosa") y un tope en soles.
-export type DiscountType = "simple" | "escalonado" | "bogo" | "carrito";
+export type DiscountType =
+  | "simple"
+  | "escalonado"
+  | "bogo"
+  | "carrito"
+  | "envio";
 
 // Un 2x1 y sus parientes. "Lleva 2 paga 1" es porCada:2, regala:1 y
 // descuentoRegalo:100. "La 2da prenda al 50%" es lo mismo con 50.
@@ -178,6 +186,17 @@ export type CarritoConfig = {
   maximoDescuento?: number;
 };
 
+// Envío gratis. No toca ningún precio: pone el costo del envío en cero
+// cuando se cumple la condición ("desde S/ 150", "si llevan algo de
+// ropa de baño"). Es la promoción más usada de una tienda online y la
+// única que no se podía armar aquí.
+export type EnvioConfig = {
+  condicion?: CondicionCarrito;
+  // Solo para ciertos destinos (nombres de la tabla de envíos). Vacío =
+  // a donde sea que se entregue.
+  destinos?: string[];
+};
+
 // Un tramo de un descuento por cantidad: "de 3 a 5 unidades, 10%".
 export type Tramo = {
   desde: number; // cantidad mínima para entrar en este tramo
@@ -200,6 +219,7 @@ export type DiscountRule = {
   tramos?: Tramo[]; // solo en las de tipo "escalonado"
   bogo?: BogoConfig; // solo en las de tipo "bogo"
   carrito?: CarritoConfig; // solo en las de tipo "carrito"
+  envio?: EnvioConfig; // solo en las de tipo "envio"
   filtro?: Filtro; // si viene, manda sobre scope/target
 };
 

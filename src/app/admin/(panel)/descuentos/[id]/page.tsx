@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getRuleById } from "@/lib/promos-data";
 import { getProducts } from "@/lib/store-data";
 import { getCategorias } from "@/lib/categorias-data";
+import { DESTINOS } from "@/data/envios";
 import RuleForm from "@/components/admin/RuleForm";
 
 export default async function EditarDescuentoPage({
@@ -17,7 +18,12 @@ export default async function EditarDescuentoPage({
     getCategorias(),
   ]);
   if (!rule) notFound();
-  const options = products.map((p) => ({ id: p.id, name: p.name }));
+  const options = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+  }));
+  const destinos = DESTINOS.map((d) => d.nombre);
 
   return (
     <div>
@@ -28,7 +34,7 @@ export default async function EditarDescuentoPage({
         ← Descuentos
       </Link>
       <h1 className="text-2xl font-semibold mt-2 mb-6">Editar descuento</h1>
-      <RuleForm rule={rule} categories={categorias} products={options} />
+      <RuleForm rule={rule} categories={categorias} products={options} destinos={destinos} />
     </div>
   );
 }

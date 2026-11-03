@@ -200,4 +200,72 @@ ok("sin talla se mira el stock total", r9.lineas[0].qty === 3, r9.lineas[0]);
 r9 = preciarCarrito([{ productId: "p11", size: "S", qty: 5 }], [variasTallas], []);
 ok("con talla se mira esa talla", r9.lineas[0].qty === 1, r9.lineas[0]);
 
+// ---- ENVÍO GRATIS ---------------------------------------------------
+// Es la promoción más usada de una tienda y la que no se podía armar.
+// No toca ningún precio: dice que el envío no se cobra.
+const envioDesde150: DiscountRule = {
+  id: "re1", name: "Envío gratis desde S/ 150", scope: "all",
+  kind: "percent", value: 0, active: true,
+  tipo: "envio", envio: { condicion: { subtotalMinimo: 150 } },
+};
+
+let re = preciarCarrito([{ productId: "p3", qty: 1 }], productos, [envioDesde150]);
+ok("por debajo del mínimo no hay envío gratis", !re.envioGratis, re.envioGratis);
+ok("y no toca el precio", re.total === 79, re.total);
+
+re = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [envioDesde150]);
+ok("desde el mínimo, envío gratis", re.envioGratis?.nombre === "Envío gratis desde S/ 150", re.envioGratis);
+ok("el envío gratis no cambia el total de los productos", re.total === 189, re.total);
+
+// Se mira el subtotal DESPUÉS de los descuentos: es lo que de verdad
+// paga. Si se mirara el precio de lista se regalarían envíos que no se
+// ganaron. 189 con 50% = 95 (por debajo de 150).
+const mitad: DiscountRule = {
+  id: "re2", name: "50% jeans", scope: "category", target: "jeans",
+  kind: "percent", value: 50, active: true,
+};
+re = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [envioDesde150, mitad]);
+ok("el mínimo se mira sobre lo que se paga, no sobre el precio de lista", !re.envioGratis, { total: re.total, envio: re.envioGratis });
+
+// Y con el descuento de carrito también: 304 - 30 = 274, sigue pasando.
+re = preciarCarrito(
+  [{ productId: "p1", qty: 1 }, { productId: "p2", qty: 1 }],
+  productos,
+  [envioDesde150, reglaCarrito()]
+);
+ok("convive con un descuento del total", !!re.envioGratis && re.total === 274, { total: re.total, envio: re.envioGratis });
+
+// Por categoría: envío gratis si lleva algo de carteras.
+const envioCarteras: DiscountRule = {
+  id: "re3", name: "Envío gratis con cartera", scope: "all",
+  kind: "percent", value: 0, active: true,
+  tipo: "envio", envio: { condicion: { categorias: ["carteras"] } },
+};
+re = preciarCarrito([{ productId: "p3", qty: 1 }], productos, [envioCarteras]);
+ok("sin la categoría, no", !re.envioGratis, re.envioGratis);
+re = preciarCarrito([{ productId: "p1", qty: 1 }], productos, [envioCarteras]);
+ok("con la categoría, sí", !!re.envioGratis, re.envioGratis);
+
+// Apagada no cuenta, y caducada tampoco.
+re = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [{ ...envioDesde150, active: false }]);
+ok("apagada no regala envío", !re.envioGratis, re.envioGratis);
+re = preciarCarrito(
+  [{ productId: "p2", qty: 1 }],
+  productos,
+  [{ ...envioDesde150, endsAt: "2020-01-01T00:00:00.000Z" }]
+);
+ok("caducada tampoco", !re.envioGratis, re.envioGratis);
+
+// En la vitrina no se ve como precio rebajado: no baja ningún precio.
+ok("no cambia el precio de vitrina", precioVitrina(jean, [envioDesde150]) === 189, precioVitrina(jean, [envioDesde150]));
+
+// Solo para ciertos destinos: el motor los pasa, quien sabe a dónde va
+// el pedido es el carrito.
+const envioLima: DiscountRule = {
+  ...envioDesde150, id: "re4", name: "Envío gratis en Lima",
+  envio: { condicion: { subtotalMinimo: 150 }, destinos: ["Miraflores", "Surco"] },
+};
+re = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [envioLima]);
+ok("los destinos viajan con la promo", re.envioGratis?.destinos?.join(",") === "Miraflores,Surco", re.envioGratis);
+
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);
