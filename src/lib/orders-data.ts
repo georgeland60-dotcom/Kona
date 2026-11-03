@@ -8,7 +8,7 @@
 //  paga se suelta solo pasado un tiempo.
 // =============================================================
 
-import type { Order, OrderItem, OrderStatus } from "@/lib/types";
+import type { Order, OrderItem, OrderStatus, PagoManual } from "@/lib/types";
 import {
   descontarStock,
   devolverStock,
@@ -39,6 +39,9 @@ function makeId(seq: number): string {
 // WhatsApp se está coordinando por chat y merece más margen.
 const CADUCA_MS: Record<Order["method"], number> = {
   mercadopago: 45 * 60 * 1000,
+  // Quien va a hacer una transferencia o un Yape está buscando la app,
+  // el número o el dinero: necesita margen, igual que el de WhatsApp.
+  transferencia: 24 * 60 * 60 * 1000,
   whatsapp: 24 * 60 * 60 * 1000,
 };
 
@@ -180,6 +183,29 @@ export async function setOrderStatus(
     order.status = status;
     if (extra?.mpPaymentId) order.mpPaymentId = extra.mpPaymentId;
 
+    await writeOrders(data);
+    return order;
+  });
+}
+
+// ---- Pagos por fuera de la pasarela ---------------------------------
+//
+//  Yape, Plin y las transferencias las confirma una persona mirando la
+//  captura, no un webhook. Esto es lo que deja constancia de quién lo
+//  dio por pagado, con qué y con qué comprobante: sin eso, "pagado" es
+//  una palabra sin respaldo y nadie puede auditar la caja.
+export async function registrarPago(
+  id: string,
+  pago: Omit<PagoManual, "registradoEn"> & { registradoEn?: string }
+): Promise<Order | undefined> {
+  const orden = await setOrderStatus(id, "pagado");
+  if (!orden) return undefined;
+
+  return conCandado("stock", async () => {
+    const data = await readOrders();
+    const order = data.orders.find((o) => o.id === id);
+    if (!order) return undefined;
+    order.pago = { ...pago, registradoEn: pago.registradoEn ?? new Date().toISOString() };
     await writeOrders(data);
     return order;
   });

@@ -129,8 +129,12 @@ async function engancharFotos(
   sesion: Sesion,
   acciones: AccionPlan[]
 ): Promise<void> {
-  const altas = acciones.filter((a) =>
-    a.herramienta.includes("agregar_producto")
+  // Las fotos sirven para dos cosas: las de un producto nuevo, y la
+  // captura del pago cuando se da por pagado un pedido.
+  const altas = acciones.filter(
+    (a) =>
+      a.herramienta.includes("agregar_producto") ||
+      a.herramienta.includes("registrar_pago")
   );
   if (altas.length === 0) return;
 
@@ -142,7 +146,11 @@ async function engancharFotos(
   if (altas.length > 1) return;
 
   const alta = altas[0];
-  alta.args = { ...alta.args, fotos };
+  // Un comprobante es uno: la primera foto. Un producto lleva todas.
+  alta.args = {
+    ...alta.args,
+    fotos: alta.herramienta.includes("registrar_pago") ? [fotos[0]] : fotos,
+  };
 
   const herramienta = buscarHerramienta(alta.herramienta);
   if (herramienta) {

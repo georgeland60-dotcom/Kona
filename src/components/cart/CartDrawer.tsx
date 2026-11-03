@@ -24,6 +24,21 @@ const MapaEntrega = dynamic(() => import("@/components/cart/MapaEntrega"), {
   loading: () => <div className="h-44 rounded-xl bg-line/40 animate-pulse" />,
 });
 
+// A dónde paga quien elige Yape, Plin o transferencia. Lo carga la
+// dueña desde el panel; aquí solo se enseña lo que haya.
+type DatosDePago = {
+  yape?: { numero: string; titular: string };
+  plin?: { numero: string; titular: string };
+  banco?: {
+    banco: string;
+    tipo: string;
+    numero: string;
+    cci?: string;
+    titular: string;
+  };
+  nota?: string;
+};
+
 // Dónde cayó la dirección en el mapa, para enseñárselo y que confirme.
 type Mapa = {
   direccion: string;
@@ -45,6 +60,13 @@ export default function CartDrawer() {
     useCart();
   const [loading, setLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+
+  // El carrito tiene dos pantallas: lo que lleva, y cómo lo paga.
+  // Mezclarlas obligaba a elegir forma de pago antes de ver el total,
+  // y dejaba fuera a quien paga por Yape directo, que en Perú es casi
+  // todo el mundo.
+  const [paso, setPaso] = useState<"carrito" | "pago">("carrito");
+  const [datosPago, setDatosPago] = useState<DatosDePago | null>(null);
 
   // A dónde va el pedido: los tres datos, obligatorios. Antes bastaba
   // con escribir algo y buscarlo; con eso llegaban pedidos a "Mz E Lt
@@ -183,24 +205,45 @@ export default function CartDrawer() {
     }
   };
 
-  // Arma el mensaje del pedido y lo abre en WhatsApp
-  const checkout = async () => {
-    if (items.length === 0) return;
-    setPayError(null);
+  // Las líneas del pedido, tal como se las lee la dueña en WhatsApp.
+  const mensajeDelPedido = (encabezado: string, pie: string): string => {
+    const lineas = items.map((i) => {
+      const talla = i.size ? ` (Talla ${i.size})` : "";
+      return `• ${i.qty} x ${i.product.name}${talla} — ${formatPrice(
+        i.product.price * i.qty
+      )}`;
+    });
 
-    // La pestaña se abre ANTES de esperar al servidor: si se abriera
-    // después, el navegador lo tomaría por una ventana emergente y la
-    // bloquearía. Si el pedido falla, se cierra.
-    const pestana = window.open("", "_blank");
+    return (
+      encabezado +
+      lineas.join("\n") +
+      (envio.conocido
+        ? `\n\nEnvío a ${envio.destino}: ` +
+          (promoEnvio ? `gratis (${promoEnvio.nombre})` : formatPrice(envio.costo))
+        : "") +
+      `\n\nTotal: ${formatPrice(totalConEnvio)}` +
+      `\n\nDirección de entrega: ${direccion.trim()}` +
+      `\nDistrito: ${distrito} · ${provincia}` +
+      (punto
+        ? `\nUbicación${pin ? " (marcada por mí)" : ""}: ` +
+          `https://www.google.com/maps/search/?api=1&query=${punto.lat},${punto.lon}`
+        : "") +
+      pie
+    );
+  };
 
-    // Registramos el pedido (pendiente): es lo que le reserva el stock y
-    // lo que hace que la dueña lo vea en el panel.
+  // Registra el pedido en la tienda (pendiente). Es lo que reserva el
+  // stock y lo que hace que la dueña lo vea en el panel. Devuelve el
+  // número de pedido, que es lo que luego permite seguirle el rastro.
+  const registrarPedido = async (
+    metodo: "whatsapp" | "transferencia"
+  ): Promise<{ ok: boolean; id?: string; error?: string }> => {
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          method: "whatsapp",
+          method: metodo,
           items: items.map((i) => ({
             productId: i.product.id,
             sku: skuOf(i.product, i.size),
@@ -223,48 +266,109 @@ export default function CartDrawer() {
               `${f.producto}: quedan ${f.quedan}`
           )
           .join(", ");
-        pestana?.close();
-        setPayError(
-          faltan
+        return {
+          ok: false,
+          error: faltan
             ? `Se agotó algo mientras terminabas (${faltan}). Ajusta el carrito.`
-            : (data.error ?? "No se pudo registrar el pedido.")
-        );
-        return;
+            : (data.error ?? "No se pudo registrar el pedido."),
+        };
       }
+
+      const data = await res.json().catch(() => ({}));
+      return { ok: true, id: data.id };
     } catch {
       // Sin conexión con nuestro servidor no vamos a dejar a la clienta
       // sin poder escribir: el pedido se coordina igual por WhatsApp.
+      return { ok: true };
     }
+  };
 
-    const lineas = items.map((i) => {
-      const talla = i.size ? ` (Talla ${i.size})` : "";
-      return `• ${i.qty} x ${i.product.name}${talla} — ${formatPrice(
-        i.product.price * i.qty
-      )}`;
-    });
-
-    const mensaje =
-      `¡Hola ${store.name}! Quiero hacer este pedido:\n\n` +
-      lineas.join("\n") +
-      (envio.conocido
-        ? `\n\nEnvío a ${envio.destino}: ` +
-          (promoEnvio ? `gratis (${promoEnvio.nombre})` : formatPrice(envio.costo))
-        : "") +
-      `\n\nTotal: ${formatPrice(totalConEnvio)}` +
-      `\n\nDirección de entrega: ${direccion.trim()}` +
-      `\nDistrito: ${distrito} · ${provincia}` +
-      (punto
-        ? `\nUbicación${pin ? " (marcada por mí)" : ""}: ` +
-          `https://www.google.com/maps/search/?api=1&query=${punto.lat},${punto.lon}`
-        : "") +
-      "\n\nMi nombre es: ";
-
-    const url = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(
-      mensaje
-    )}`;
+  const abrir = (pestana: Window | null, url: string) => {
     if (pestana) pestana.location.href = url;
     else window.open(url, "_blank");
   };
+
+  const wa = (mensaje: string) =>
+    `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(mensaje)}`;
+
+  // "Ya pagué por Yape / Plin / transferencia": se registra el pedido y
+  // se la lleva al chat con TODO escrito, para que lo único que tenga
+  // que hacer sea adjuntar la captura.
+  const yaPague = async () => {
+    if (items.length === 0 || loading) return;
+    setPayError(null);
+    setLoading(true);
+
+    // La pestaña se abre ANTES de esperar al servidor: abierta después,
+    // el navegador la toma por emergente y la bloquea.
+    const pestana = window.open("", "_blank");
+
+    const pedido = await registrarPedido("transferencia");
+    setLoading(false);
+
+    if (!pedido.ok) {
+      pestana?.close();
+      setPayError(pedido.error ?? "No se pudo registrar el pedido.");
+      return;
+    }
+
+    abrir(
+      pestana,
+      wa(
+        mensajeDelPedido(
+          `¡Hola ${store.name}! Acabo de pagar mi pedido 💛` +
+            (pedido.id ? `\nPedido ${pedido.id}` : "") +
+            "\n\n",
+          "\n\nTe adjunto la captura del pago 📎\nMi nombre es: "
+        )
+      )
+    );
+  };
+
+  // Coordinar por WhatsApp sin pagar todavía.
+  const checkout = async () => {
+    if (items.length === 0) return;
+    setPayError(null);
+
+    const pestana = window.open("", "_blank");
+    const pedido = await registrarPedido("whatsapp");
+    if (!pedido.ok) {
+      pestana?.close();
+      setPayError(pedido.error ?? "No se pudo registrar el pedido.");
+      return;
+    }
+
+    abrir(
+      pestana,
+      wa(
+        mensajeDelPedido(
+          `¡Hola ${store.name}! Quiero hacer este pedido:\n\n`,
+          "\n\nMi nombre es: "
+        )
+      )
+    );
+  };
+
+  // Al abrir la pantalla de pago se piden los datos de Yape/Plin/banco.
+  // No antes: quien paga con tarjeta no los necesita.
+  const irAPagar = async () => {
+    if (faltanDatos) return;
+    setPaso("pago");
+    setPayError(null);
+    if (datosPago) return;
+    try {
+      const res = await fetch("/api/pago/datos");
+      setDatosPago(await res.json());
+    } catch {
+      setDatosPago({});
+    }
+  };
+
+  // Si el carrito cambia o se cierra, se vuelve a la primera pantalla:
+  // quedarse en "cómo pagas" con otro carrito detrás despista.
+  useEffect(() => {
+    if (!isOpen || items.length === 0) setPaso("carrito");
+  }, [isOpen, items.length]);
 
   return (
     <>
@@ -293,7 +397,7 @@ export default function CartDrawer() {
           <div className="flex-1 flex items-center justify-center text-muted text-sm">
             Tu carrito esta vacio
           </div>
-        ) : (
+        ) : paso === "pago" ? null : (
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
             {items.map((i) => (
               <div key={i.product.id + (i.size ?? "")} className="flex gap-4">
@@ -406,10 +510,14 @@ export default function CartDrawer() {
         )}
 
         {items.length > 0 && (
-          <div className="border-t border-line p-5 space-y-4">
+          <div
+            className={`border-t border-line p-5 space-y-4 min-h-0 ${
+              paso === "pago" ? "flex-1 overflow-y-auto" : "overflow-y-auto"
+            }`}
+          >
             {/* Un descuento sobre el total va aparte, como una rebaja al
                 final: es lo que hace visible el tope ("máximo S/ 85"). */}
-            {precio?.descuentoCarrito && (
+            {paso === "carrito" && precio?.descuentoCarrito && (
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-muted">
                   <span>Subtotal</span>
@@ -430,6 +538,8 @@ export default function CartDrawer() {
                 </div>
               </div>
             )}
+            {paso === "carrito" && (
+              <>
             {/* El envío, antes del total: enterarse del costo recién al
                 pagar es la razón número uno de carritos abandonados.
                 Y los tres datos son obligatorios porque sin ellos no
@@ -546,6 +656,15 @@ export default function CartDrawer() {
                 <p className="text-xs text-muted">{OTRAS_ZONAS}</p>
               )}
             </div>
+              </>
+            )}
+
+            {/* En la pantalla de pago basta con recordar a dónde va. */}
+            {paso === "pago" && envio.conocido && (
+              <p className="text-xs text-muted">
+                Entrega en {envio.destino} · {direccion.trim()}
+              </p>
+            )}
 
             <div className="flex justify-between text-base items-baseline">
               <span>
@@ -574,35 +693,163 @@ export default function CartDrawer() {
                 Ahorras {formatPrice(precio.ahorro)}
               </p>
             )}
-            <button
-              onClick={payOnline}
-              disabled={loading || faltanDatos}
-              className="w-full bg-accent text-white py-3 rounded-full font-medium hover:bg-accent-dark transition disabled:opacity-60"
-            >
-              {loading ? "Redirigiendo..." : "Pagar ahora (tarjeta o Yape)"}
-            </button>
+            {/* Primera pantalla: el botón lleva a elegir cómo paga. */}
+            {paso === "carrito" ? (
+              <>
+                <button
+                  onClick={irAPagar}
+                  disabled={faltanDatos}
+                  className="w-full bg-accent text-white py-3 rounded-full font-medium hover:bg-accent-dark transition disabled:opacity-60"
+                >
+                  Pagar ahora
+                </button>
 
-            {payError && (
-              <p className="text-xs text-red-600 text-center">{payError}</p>
+                {payError && (
+                  <p className="text-xs text-red-600 text-center">{payError}</p>
+                )}
+
+                <div className="flex items-center gap-3 text-xs text-muted">
+                  <span className="flex-1 h-px bg-line" />o
+                  <span className="flex-1 h-px bg-line" />
+                </div>
+
+                <button
+                  onClick={checkout}
+                  disabled={faltanDatos}
+                  className="w-full bg-[#25D366] text-white py-3 rounded-full font-medium flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-40"
+                >
+                  Tengo dudas, prefiero WhatsApp
+                </button>
+                <button
+                  onClick={clear}
+                  className="w-full text-xs text-muted underline"
+                >
+                  Vaciar carrito
+                </button>
+              </>
+            ) : (
+              /* Segunda pantalla: cómo paga. */
+              <div className="space-y-3">
+                <button
+                  onClick={() => setPaso("carrito")}
+                  className="text-xs text-muted hover:text-foreground"
+                >
+                  ← Volver al carrito
+                </button>
+                <p className="text-sm font-medium">¿Cómo quieres pagar?</p>
+
+                {/* 1. La pasarela: se confirma sola. */}
+                <div className="border border-line rounded-xl p-4 space-y-2">
+                  <p className="text-sm font-medium">Tarjeta, Yape o Plin</p>
+                  <p className="text-xs text-muted">
+                    Pagas en la página segura de Mercado Pago y tu pedido
+                    queda confirmado al instante.
+                  </p>
+                  <button
+                    onClick={payOnline}
+                    disabled={loading}
+                    className="w-full bg-accent text-white py-2.5 rounded-full text-sm font-medium hover:bg-accent-dark transition disabled:opacity-60"
+                  >
+                    {loading
+                      ? "Un momento…"
+                      : `Pagar ${formatPrice(totalConEnvio)} con Mercado Pago`}
+                  </button>
+                </div>
+
+                {/* 2. Yape/Plin/transferencia directa: la confirma una
+                    persona mirando la captura, así que lo que importa
+                    es que la clienta sepa exactamente qué hacer. */}
+                <div className="border border-line rounded-xl p-4 space-y-2">
+                  <p className="text-sm font-medium">
+                    Yape, Plin o transferencia directa
+                  </p>
+
+                  {datosPago === null ? (
+                    <p className="text-xs text-muted">Cargando los datos…</p>
+                  ) : datosPago.yape?.numero ||
+                    datosPago.plin?.numero ||
+                    datosPago.banco?.numero ? (
+                    <>
+                      <p className="text-xs text-muted">
+                        1. Transfiere {formatPrice(totalConEnvio)} a:
+                      </p>
+                      <div className="bg-soft rounded-lg p-3 space-y-1.5 text-sm">
+                        {datosPago.yape?.numero && (
+                          <p>
+                            <span className="text-muted text-xs block">Yape</span>
+                            {datosPago.yape.numero}
+                            {datosPago.yape.titular && (
+                              <span className="text-muted">
+                                {" "}
+                                · {datosPago.yape.titular}
+                              </span>
+                            )}
+                          </p>
+                        )}
+                        {datosPago.plin?.numero && (
+                          <p>
+                            <span className="text-muted text-xs block">Plin</span>
+                            {datosPago.plin.numero}
+                            {datosPago.plin.titular && (
+                              <span className="text-muted">
+                                {" "}
+                                · {datosPago.plin.titular}
+                              </span>
+                            )}
+                          </p>
+                        )}
+                        {datosPago.banco?.numero && (
+                          <p>
+                            <span className="text-muted text-xs block">
+                              {datosPago.banco.banco || "Transferencia"}
+                              {datosPago.banco.tipo
+                                ? ` · ${datosPago.banco.tipo}`
+                                : ""}
+                            </span>
+                            {datosPago.banco.numero}
+                            {datosPago.banco.cci && (
+                              <span className="block text-xs text-muted">
+                                CCI {datosPago.banco.cci}
+                              </span>
+                            )}
+                            {datosPago.banco.titular && (
+                              <span className="block text-xs text-muted">
+                                {datosPago.banco.titular}
+                              </span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                      {datosPago.nota && (
+                        <p className="text-xs text-muted">{datosPago.nota}</p>
+                      )}
+                      <p className="text-xs text-muted">
+                        2. Toca el botón: se abre WhatsApp con tu pedido ya
+                        escrito. Adjunta ahí la captura del pago y te
+                        confirmamos.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted">
+                      Toca el botón y te pasamos por WhatsApp el número de
+                      Yape o la cuenta para la transferencia.
+                    </p>
+                  )}
+
+                  <button
+                    onClick={yaPague}
+                    disabled={loading}
+                    className="w-full bg-[#25D366] text-white py-2.5 rounded-full text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+                  >
+                    {loading ? "Un momento…" : "Ya pagué, enviar comprobante"}
+                  </button>
+                </div>
+
+                {payError && (
+                  <p className="text-xs text-red-600 text-center">{payError}</p>
+                )}
+              </div>
             )}
-
-            <div className="flex items-center gap-3 text-xs text-muted">
-              <span className="flex-1 h-px bg-line" />o<span className="flex-1 h-px bg-line" />
-            </div>
-
-            <button
-              onClick={checkout}
-              disabled={faltanDatos}
-              className="w-full bg-[#25D366] text-white py-3 rounded-full font-medium flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-40"
-            >
-              Coordinar por WhatsApp
-            </button>
-            <button
-              onClick={clear}
-              className="w-full text-xs text-muted underline"
-            >
-              Vaciar carrito
-            </button>
           </div>
         )}
       </aside>

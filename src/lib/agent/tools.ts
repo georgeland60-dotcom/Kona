@@ -38,6 +38,7 @@ import {
   getCategorias,
 } from "@/lib/categorias-data";
 import { buscarDestino } from "@/lib/envios";
+import { getOrders, getOrderById, registrarPago } from "@/lib/orders-data";
 import { leerMedidas } from "@/lib/medidas";
 import type { TipoCambio } from "@/lib/historial-data";
 import type {
@@ -2018,6 +2019,205 @@ const cargarMedidas: Tool = {
   },
 };
 
+// ---- PEDIDOS: dar por pagado lo que se pagó por fuera --------------
+//
+//  Mercado Pago se confirma solo. Yape, Plin y las transferencias no:
+//  la clienta manda la captura por WhatsApp y alguien tiene que decir
+//  "este pedido ya está pagado". Sin eso, el panel muestra pendientes
+//  pedidos que ya se cobraron, y a los 24 horas suelta su stock.
+//
+//  El agente NO puede cambiar precios de un pedido, ni borrarlo, ni ver
+//  datos que no sean los suyos: solo marcar el pago y dejar constancia.
+
+function fechaCorta(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString("es-PE", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+}
+
+function resumenPedido(o: Awaited<ReturnType<typeof getOrders>>[number]): string {
+  const que = o.items
+    .map((i) => `${i.qty}x ${i.name}${i.size ? ` (${i.size})` : ""}`)
+    .join(", ");
+  return (
+    `${o.id} · ${fechaCorta(o.createdAt)} · ${soles(o.total)} · ${o.status}` +
+    `${o.envio?.destino ? ` · ${o.envio.destino}` : ""}\n   ${que}`
+  );
+}
+
+// Encuentra el pedido del que habla la dueña: por número ("PED-0012",
+// "el 12") o "el último". Si no está claro, se enseñan los últimos para
+// que ella elija: marcar como pagado el pedido equivocado es peor que
+// preguntar.
+async function resolverPedido(
+  ref: string
+): Promise<
+  | { ok: true; pedido: NonNullable<Awaited<ReturnType<typeof getOrderById>>> }
+  | { ok: false; mensaje: string }
+> {
+  const limpio = ref.trim().toLowerCase();
+  const pedidos = await getOrders();
+
+  if (pedidos.length === 0) {
+    return { ok: false, mensaje: "Todavía no hay ningún pedido." };
+  }
+
+  if (!limpio || limpio.includes("ultim") || limpio.includes("últim")) {
+    return { ok: true, pedido: pedidos[0] }; // vienen del más nuevo
+  }
+
+  const numero = limpio.match(/(\d+)/)?.[1];
+  if (numero) {
+    const id = `PED-${numero.padStart(4, "0")}`;
+    const encontrado = pedidos.find((o) => o.id.toLowerCase() === id.toLowerCase());
+    if (encontrado) return { ok: true, pedido: encontrado };
+  }
+
+  const ultimos = pedidos.slice(0, 5).map(resumenPedido).join("\n");
+  return {
+    ok: false,
+    mensaje: `No encontré el pedido "${ref}". Los últimos son:\n${ultimos}`,
+  };
+}
+
+const listarPedidos: Tool = {
+  nombre: "listar_pedidos",
+  leer: true,
+  descripcion:
+    "Lista los últimos pedidos con su número, fecha, total, estado y a dónde van. Úsala para responder '¿qué pedidos tengo pendientes?' o para encontrar el pedido del que te hablan antes de registrar un pago.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      estado: {
+        type: "STRING",
+        enum: ["pendiente", "pagado", "cancelado"],
+        description: "Para ver solo los de ese estado. Opcional.",
+      },
+      cuantos: {
+        type: "NUMBER",
+        description: "Cuántos mostrar. Por defecto 10, máximo 30.",
+      },
+    },
+  },
+  resumen: async () => "Ver los últimos pedidos",
+  ejecutar: async (args) => {
+    const estado = texto(args, "estado");
+    const cuantos = Math.min(30, Math.max(1, numero(args, "cuantos") ?? 10));
+    const todos = await getOrders(
+      estado === "pendiente" || estado === "pagado" || estado === "cancelado"
+        ? { status: estado }
+        : undefined
+    );
+    if (todos.length === 0) {
+      return { ok: true, mensaje: "No hay pedidos que mostrar." };
+    }
+    return {
+      ok: true,
+      mensaje: todos.slice(0, cuantos).map(resumenPedido).join("\n"),
+    };
+  },
+};
+
+const registrarPagoTool: Tool = {
+  nombre: "registrar_pago",
+  leer: false,
+  descripcion:
+    "Marca un pedido como PAGADO cuando el pago se hizo por fuera de la tienda (Yape, Plin, transferencia o efectivo). Úsala cuando la dueña diga 'ya me pagaron el pedido tal', normalmente mandando la captura del comprobante. Si manda una foto junto al mensaje, esa foto se guarda como comprobante del pedido.",
+  parametros: {
+    type: "OBJECT",
+    properties: {
+      pedido: {
+        type: "STRING",
+        description:
+          "Número del pedido ('PED-0012', 'el 12') o 'el último' si habla del más reciente.",
+      },
+      metodo: {
+        type: "STRING",
+        enum: ["yape", "plin", "transferencia", "efectivo", "otro"],
+        description: "Con qué pagó. Si no lo dice, usa 'transferencia'.",
+      },
+      monto: {
+        type: "NUMBER",
+        description:
+          "Cuánto pagó, si lo menciona. Sirve para ver si cuadra con el total del pedido.",
+      },
+      nota: {
+        type: "STRING",
+        description:
+          "Lo que quiera dejar anotado: número de operación, quién pagó, si pagó de menos…",
+      },
+    },
+    required: ["pedido"],
+  },
+  resumen: async (args) => {
+    const r = await resolverPedido(texto(args, "pedido"));
+    const metodo = texto(args, "metodo", "transferencia");
+    if (!r.ok) return `Registrar el pago de "${texto(args, "pedido")}"`;
+    const foto = lista(args, "fotos").length > 0 ? " (con el comprobante)" : "";
+    return `Dar por pagado ${r.pedido.id} (${soles(r.pedido.total)}) por ${metodo}${foto}`;
+  },
+  ejecutar: async (args) => {
+    const r = await resolverPedido(texto(args, "pedido"));
+    if (!r.ok) return { ok: false, mensaje: r.mensaje };
+
+    if (r.pedido.status === "pagado") {
+      return {
+        ok: true,
+        mensaje: `${r.pedido.id} ya estaba marcado como pagado. No cambié nada.`,
+      };
+    }
+    if (r.pedido.status === "cancelado") {
+      return {
+        ok: false,
+        mensaje: `${r.pedido.id} está cancelado: su stock ya volvió al inventario. Si de verdad se pagó, dime y lo revisamos desde el panel.`,
+      };
+    }
+
+    const permitidos = ["yape", "plin", "transferencia", "efectivo", "otro"];
+    const pedido_metodo = texto(args, "metodo", "transferencia");
+    const metodo = (
+      permitidos.includes(pedido_metodo) ? pedido_metodo : "otro"
+    ) as "yape" | "plin" | "transferencia" | "efectivo" | "otro";
+
+    const monto = numero(args, "monto");
+    // La foto la engancha la conversación cuando la dueña manda la
+    // captura junto al mensaje.
+    const comprobante = lista(args, "fotos")[0];
+
+    const actualizado = await registrarPago(r.pedido.id, {
+      metodo,
+      ...(monto !== undefined ? { monto } : {}),
+      ...(texto(args, "nota") ? { nota: texto(args, "nota") } : {}),
+      ...(comprobante ? { comprobante } : {}),
+      registradoPor: "telegram",
+    });
+
+    if (!actualizado) {
+      return { ok: false, mensaje: "No pude guardar el pago. Inténtalo de nuevo." };
+    }
+
+    // Si el monto no cuadra con el total, se dice: es justo el error que
+    // nadie quiere descubrir al cerrar la caja del mes.
+    const descuadre =
+      monto !== undefined && Math.abs(monto - r.pedido.total) >= 1
+        ? ` OJO: pagó ${soles(monto)} y el pedido es de ${soles(r.pedido.total)}.`
+        : "";
+
+    return {
+      ok: true,
+      mensaje:
+        `${r.pedido.id} queda pagado por ${metodo} (${soles(r.pedido.total)})` +
+        `${comprobante ? ", con el comprobante guardado" : ""}.${descuadre}`,
+    };
+  },
+};
+
 const cambiarStock: Tool = {
   nombre: "cambiar_stock",
   leer: false,
@@ -2266,7 +2466,9 @@ export const HERRAMIENTAS: Tool[] = [
   listarCategorias,
   listarDescuentos,
   listarTemporadas,
+  listarPedidos,
   // escritura
+  registrarPagoTool,
   crearCategoriaTool,
   moverDeCategoria,
   crearEnvioGratis,
@@ -2293,6 +2495,8 @@ export const HERRAMIENTAS: Tool[] = [
 // De qué trata cada herramienta. Es una de las dos formas de filtrar el
 // historial en el panel.
 const TIPO_POR_HERRAMIENTA: Record<string, TipoCambio> = {
+  listar_pedidos: "otro",
+  registrar_pago: "otro",
   crear_categoria: "productos",
   cambiar_categoria: "productos",
   crear_envio_gratis: "descuentos",

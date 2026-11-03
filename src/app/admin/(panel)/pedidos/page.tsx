@@ -25,6 +25,13 @@ const FILTERS: { key: string; label: string }[] = [
   { key: "cancelado", label: "Cancelados" },
 ];
 
+// Cómo se llama cada forma de pago en cristiano.
+const METODO: Record<string, string> = {
+  mercadopago: "Mercado Pago",
+  transferencia: "Yape / Plin / transferencia",
+  whatsapp: "WhatsApp",
+};
+
 export default async function PedidosPage({
   searchParams,
 }: {
@@ -94,7 +101,7 @@ export default async function PedidosPage({
                   {fecha(o.createdAt)}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  {o.method === "mercadopago" ? "Mercado Pago" : "WhatsApp"}
+                  {METODO[o.method] ?? o.method}
                 </td>
                 <td className="px-4 py-3 font-medium">{formatPrice(o.total)}</td>
                 <td className="px-4 py-3">

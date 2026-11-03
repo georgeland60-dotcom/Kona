@@ -365,6 +365,14 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
     if (fotos.length > 0) altas[0].args = { ...altas[0].args, fotos };
   }
 
+  // Lo mismo con el comprobante de un pago: la captura que mandó vale
+  // aunque haya llegado después de ver el plan. De un pago, una sola.
+  const pagos = acciones.filter((a) => a.herramienta.includes("registrar_pago"));
+  if (pagos.length === 1) {
+    const fotos = await verFotos(chatId);
+    if (fotos.length > 0) pagos[0].args = { ...pagos[0].args, fotos: [fotos[0]] };
+  }
+
   const { hechos, fallos, detalle } = await aplicarPlan(acciones);
 
   if (hechos.length > 0) refrescarTienda();
@@ -372,7 +380,11 @@ async function atenderBoton(update: TelegramUpdate): Promise<void> {
   // Si se dio de alta un producto, las fotos que esperaban ya quedaron
   // puestas: se vacían para que no se le cuelguen al siguiente.
   if (
-    acciones.some((a) => a.herramienta.includes("agregar_producto")) &&
+    acciones.some(
+      (a) =>
+        a.herramienta.includes("agregar_producto") ||
+        a.herramienta.includes("registrar_pago")
+    ) &&
     hechos.length > 0
   ) {
     await vaciarFotos(chatId);

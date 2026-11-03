@@ -49,7 +49,14 @@ export async function POST(req: Request) {
   const resultado = await createOrder({
     items,
     total,
-    method: body.method === "mercadopago" ? "mercadopago" : "whatsapp",
+    // Solo las formas que existen: lo que mande el navegador se
+    // comprueba contra la lista, no se guarda tal cual.
+    method:
+      body.method === "mercadopago"
+        ? "mercadopago"
+        : body.method === "transferencia"
+          ? "transferencia"
+          : "whatsapp",
     status: "pendiente",
     customer: body.customer,
     ...(envio.destino || body.direccion || punto

@@ -75,7 +75,27 @@ export type OrderItem = {
 };
 
 export type OrderStatus = "pendiente" | "pagado" | "cancelado";
-export type OrderMethod = "mercadopago" | "whatsapp";
+
+// Cómo se paga el pedido:
+//  - mercadopago: tarjeta o Yape por la pasarela, se confirma solo.
+//  - transferencia: Yape, Plin o transferencia directa a la cuenta de
+//    la tienda. La clienta manda la captura por WhatsApp y la dueña lo
+//    da por pagado. Es el que más usan en Perú y el que no teníamos.
+//  - whatsapp: ni siquiera se eligió forma de pago, se coordina todo
+//    por chat.
+export type OrderMethod = "mercadopago" | "transferencia" | "whatsapp";
+
+// Cómo se pagó un pedido que NO pasó por la pasarela. Es lo que da
+// trazabilidad: sin esto, "pagado" es una palabra sin respaldo.
+export type PagoManual = {
+  metodo: "yape" | "plin" | "transferencia" | "efectivo" | "otro";
+  // La foto del comprobante que mandó la clienta, si la hay.
+  comprobante?: string;
+  monto?: number;
+  nota?: string;
+  registradoEn: string; // ISO
+  registradoPor?: string; // "telegram" o "panel"
+};
 
 export type Order = {
   id: string; // ej "PED-0001"
@@ -106,6 +126,9 @@ export type Order = {
   // Cuándo se soltó lo reservado por llevar demasiado tiempo sin pagar.
   stockLiberado?: string;
   mpPaymentId?: string; // id del pago en Mercado Pago (si aplica)
+  // El pago hecho por fuera de la pasarela (Yape, Plin, transferencia),
+  // tal como lo registró la dueña.
+  pago?: PagoManual;
 };
 
 // ---- PROMOCIONES (banners + descuentos) -----------------------------
