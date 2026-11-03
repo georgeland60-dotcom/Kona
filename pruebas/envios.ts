@@ -13,7 +13,7 @@ import {
   destinosAgrupados,
 } from "@/lib/envios";
 import { DESTINOS } from "@/data/envios";
-import { soloLaCalle, sinTipoDeVia } from "@/lib/geocodificador";
+import { soloLaCalle, sinTipoDeVia, puntoValido } from "@/lib/geocodificador";
 
 let fallos = 0;
 
@@ -176,6 +176,22 @@ igual("quita la Av. de delante", sinTipoDeVia("Av. José Larco"), "José Larco")
 igual("una calle sin tipo no se toca", sinTipoDeVia("Universitaria"), "Universitaria");
 // "Calle 3" se quedaría en "3", que no es una calle: se deja entera.
 igual("no deja un nombre vacío", sinTipoDeVia("Calle"), "Calle");
+
+// --- El pin que mueve la clienta -------------------------------------
+// Viene del navegador, así que se revisa como cualquier otra cosa que
+// venga de fuera. Un punto en medio del mar rompería el enlace del
+// reparto sin que nadie se diera cuenta hasta el día de la entrega.
+igual(
+  "un punto de Lima vale",
+  JSON.stringify(puntoValido(-11.9725668, -77.0714426)),
+  JSON.stringify({ lat: -11.972567, lon: -77.071443 })
+);
+igual("uno de Arequipa también", puntoValido(-16.409, -71.537)?.lat, -16.409);
+igual("un punto fuera de Perú no", puntoValido(40.4, -3.7), null);
+igual("el Pacífico tampoco", puntoValido(-12.0, -90.0), null);
+igual("ni texto", puntoValido("-12" as unknown as number, -77), null);
+igual("ni NaN", puntoValido(Number.NaN, -77), null);
+igual("ni nada", puntoValido(undefined, undefined), null);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);
 process.exit(fallos === 0 ? 0 : 1);

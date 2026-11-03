@@ -282,3 +282,21 @@ export async function buscarDireccion(
     return [];
   }
 }
+
+// ---- Un punto que de verdad puede ser de aquí ------------------------
+// El navegador manda el pin que movió la clienta, y lo que viene del
+// navegador se revisa siempre. Sin esto, un pedido podría llegar con
+// "NaN" o con un punto en medio del Pacífico y romper el enlace que
+// abre quien reparte. Se acepta solo lo que cae dentro de Perú.
+const PERU = { minLat: -18.6, maxLat: 0.1, minLon: -81.6, maxLon: -68.5 };
+
+export function puntoValido(
+  lat: unknown,
+  lon: unknown
+): { lat: number; lon: number } | null {
+  if (typeof lat !== "number" || typeof lon !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < PERU.minLat || lat > PERU.maxLat) return null;
+  if (lon < PERU.minLon || lon > PERU.maxLon) return null;
+  return { lat: Number(lat.toFixed(6)), lon: Number(lon.toFixed(6)) };
+}

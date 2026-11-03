@@ -87,6 +87,20 @@ export default async function PedidoDetallePage({
                       {order.envio.direccion}
                     </span>
                   )}
+                  {/* El punto del mapa, listo para abrir en el móvil de
+                      quien reparte: es lo único que no se puede leer de
+                      dos maneras distintas. */}
+                  {order.envio.lat !== undefined &&
+                    order.envio.lon !== undefined && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${order.envio.lat},${order.envio.lon}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-xs underline"
+                      >
+                        Ver el punto en el mapa
+                      </a>
+                    )}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {order.envio.costo > 0

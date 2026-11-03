@@ -85,7 +85,16 @@ export type Order = {
   // A dónde va y cuánto se cobró por llevarlo. Va aparte de los items
   // porque no es un producto: no tiene stock ni descuentos, y mezclarlo
   // con la mercadería descuadraba el inventario.
-  envio?: { destino: string; costo: number; direccion?: string };
+  // El envío del pedido. lat/lon es el punto del mapa —el que la
+  // clienta confirmó o corrigió moviendo el pin—: es lo que de verdad
+  // usa quien reparte, porque la dirección escrita se lee de mil formas.
+  envio?: {
+    destino: string;
+    costo: number;
+    direccion?: string;
+    lat?: number;
+    lon?: number;
+  };
   // true = este pedido tiene stock reservado (se reserva al crearlo).
   stockApplied?: boolean;
   // Cuándo se soltó lo reservado por llevar demasiado tiempo sin pagar.

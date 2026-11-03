@@ -3,6 +3,7 @@ import { MercadoPagoConfig, Preference } from "mercadopago";
 import { createOrder } from "@/lib/orders-data";
 import { priceForItems } from "@/lib/pricing";
 import { costoDeEnvio } from "@/lib/envios";
+import { puntoValido } from "@/lib/geocodificador";
 
 // Esta funcion corre en el SERVIDOR (seguro). Aqui se usa el token secreto
 // para crear el cobro. El navegador del cliente nunca ve el token.
@@ -30,11 +31,14 @@ export async function POST(req: Request) {
     );
   }
 
-  const { items: rawItems, destino, direccion } = (await req.json()) as {
-    items: IncomingItem[];
-    destino?: string;
-    direccion?: string;
-  };
+  const { items: rawItems, destino, direccion, lat, lon } =
+    (await req.json()) as {
+      items: IncomingItem[];
+      destino?: string;
+      direccion?: string;
+      lat?: number;
+      lon?: number;
+    };
   if (!rawItems || rawItems.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
   }
@@ -49,6 +53,8 @@ export async function POST(req: Request) {
   // El envío, igual que los precios, sale de la tabla de la tienda y no
   // de lo que mande el navegador.
   const envio = costoDeEnvio(destino);
+  // Igual que los precios: el punto que manda el navegador se revisa.
+  const punto = puntoValido(lat, lon);
   const total =
     items.reduce((s, i) => s + i.price * i.qty, 0) + envio.costo;
 
@@ -60,12 +66,13 @@ export async function POST(req: Request) {
     total,
     method: "mercadopago",
     status: "pendiente",
-    ...(envio.destino || direccion
+    ...(envio.destino || direccion || punto
       ? {
           envio: {
             destino: envio.destino ?? "",
             costo: envio.costo,
             ...(direccion ? { direccion: direccion.slice(0, 200) } : {}),
+            ...(punto ?? {}),
           },
         }
       : {}),

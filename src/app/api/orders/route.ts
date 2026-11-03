@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/orders-data";
 import { priceForItems } from "@/lib/pricing";
 import { costoDeEnvio } from "@/lib/envios";
+import { puntoValido } from "@/lib/geocodificador";
 import type { OrderItem, OrderMethod } from "@/lib/types";
 
 // Crea un pedido (usado por el checkout de WhatsApp). El precio de cada
@@ -13,6 +14,8 @@ export async function POST(req: Request) {
     items?: OrderItem[];
     destino?: string;
     direccion?: string;
+    lat?: number;
+    lon?: number;
     customer?: { name?: string; phone?: string; email?: string };
   };
 
@@ -32,6 +35,9 @@ export async function POST(req: Request) {
   // El envío se busca por nombre en la tabla de la tienda: lo que diga
   // el navegador sobre el precio da igual.
   const envio = costoDeEnvio(body.destino);
+  // El punto del mapa viene del navegador, así que se comprueba que sea
+  // un punto de Perú antes de guardarlo.
+  const punto = puntoValido(body.lat, body.lon);
   const total =
     items.reduce((s, i) => s + i.price * i.qty, 0) + envio.costo;
 
@@ -41,12 +47,13 @@ export async function POST(req: Request) {
     method: body.method === "mercadopago" ? "mercadopago" : "whatsapp",
     status: "pendiente",
     customer: body.customer,
-    ...(envio.destino || body.direccion
+    ...(envio.destino || body.direccion || punto
       ? {
           envio: {
             destino: envio.destino ?? "",
             costo: envio.costo,
             ...(body.direccion ? { direccion: body.direccion.slice(0, 200) } : {}),
+            ...(punto ?? {}),
           },
         }
       : {}),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useCart } from "@/components/cart/CartContext";
 import { store } from "@/config/store";
 import { formatPrice } from "@/lib/format";
@@ -11,7 +12,16 @@ import {
   provincias,
 } from "@/lib/envios";
 import { OTRAS_ZONAS } from "@/data/envios";
+import type { Punto } from "@/components/cart/MapaEntrega";
 import type { Product } from "@/lib/types";
+
+// El mapa trae Leaflet consigo (~150 KB). Se carga solo cuando hay una
+// dirección que enseñar, no al abrir la tienda. Y sin pintarlo en el
+// servidor: Leaflet necesita un navegador de verdad.
+const MapaEntrega = dynamic(() => import("@/components/cart/MapaEntrega"), {
+  ssr: false,
+  loading: () => <div className="h-44 rounded-xl bg-line/40 animate-pulse" />,
+});
 
 // Dónde cayó la dirección en el mapa, para enseñárselo y que confirme.
 type Mapa = {
@@ -44,6 +54,9 @@ export default function CartDrawer() {
   const [provincia, setProvincia] = useState("");
 
   const [mapa, setMapa] = useState<Mapa | null>(null);
+  // Dónde dejó ELLA el pin, si lo movió. Manda sobre lo que encontró el
+  // buscador: nadie conoce su puerta mejor que ella.
+  const [pin, setPin] = useState<Punto | null>(null);
   const [avisoMapa, setAvisoMapa] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
 
@@ -107,12 +120,17 @@ export default function CartDrawer() {
   useEffect(() => {
     if (faltanDatos) {
       setMapa(null);
+      setPin(null);
       return;
     }
     const t = setTimeout(verEnElMapa, 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [direccion, distrito, provincia]);
+
+  // El punto que se manda con el pedido: el que ella marcó, o el que
+  // encontró el buscador.
+  const punto = pin ?? (mapa ? { lat: mapa.lat, lon: mapa.lon } : null);
 
   // Pago online con Mercado Pago (tarjeta / Yape)
   const payOnline = async () => {
@@ -134,6 +152,7 @@ export default function CartDrawer() {
           })),
           destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
           direccion: `${direccion}, ${distrito}, ${provincia}`,
+          ...(punto ? { lat: punto.lat, lon: punto.lon } : {}),
         }),
       });
       const data = await res.json();
@@ -177,6 +196,7 @@ export default function CartDrawer() {
           })),
           destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
           direccion: `${direccion}, ${distrito}, ${provincia}`,
+          ...(punto ? { lat: punto.lat, lon: punto.lon } : {}),
         }),
       });
 
@@ -217,7 +237,10 @@ export default function CartDrawer() {
       `\n\nTotal: ${formatPrice(totalConEnvio)}` +
       `\n\nDirección de entrega: ${direccion.trim()}` +
       `\nDistrito: ${distrito} · ${provincia}` +
-      (mapa ? `\nUbicación: https://www.openstreetmap.org/?mlat=${mapa.lat}&mlon=${mapa.lon}` : "") +
+      (punto
+        ? `\nUbicación${pin ? " (marcada por mí)" : ""}: ` +
+          `https://www.google.com/maps/search/?api=1&query=${punto.lat},${punto.lon}`
+        : "") +
       "\n\nMi nombre es: ";
 
     const url = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(
@@ -474,35 +497,13 @@ export default function CartDrawer() {
               )}
 
               {mapa && (
-                <div className="border border-line rounded-xl overflow-hidden">
-                  <iframe
-                    title="Dónde queda tu dirección"
-                    className="w-full h-44 border-0"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${
-                      mapa.lon - 0.004
-                    }%2C${mapa.lat - 0.003}%2C${mapa.lon + 0.004}%2C${
-                      mapa.lat + 0.003
-                    }&layer=mapnik&marker=${mapa.lat}%2C${mapa.lon}`}
-                  />
-                  <p className="text-[11px] text-muted px-3 py-2">
-                    {mapa.precision === "zona"
-                      ? "Zona aproximada: "
-                      : mapa.precision === "calle"
-                        ? "Cuadra de "
-                        : ""}
-                    {mapa.direccion}
-                    <a
-                      href={`https://www.openstreetmap.org/?mlat=${mapa.lat}&mlon=${mapa.lon}#map=17/${mapa.lat}/${mapa.lon}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline ml-1"
-                    >
-                      ver más grande
-                    </a>
-                  </p>
-                </div>
+                <MapaEntrega
+                  lat={mapa.lat}
+                  lon={mapa.lon}
+                  direccion={mapa.direccion}
+                  precision={mapa.precision}
+                  onMover={setPin}
+                />
               )}
 
               {avisoMapa && <p className="text-xs text-muted">{avisoMapa}</p>}
