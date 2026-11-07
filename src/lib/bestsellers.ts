@@ -7,21 +7,34 @@
 // =============================================================
 
 import { getTopProducts } from "@/lib/orders-data";
+import { VENTAS_HISTORICAS } from "@/data/ventas-historicas";
 import { homeCollections, type HomeCollection } from "@/data/collections";
 import type { Product } from "@/lib/types";
 
 export type BestSellers = {
   items: Product[];
-  // true = el orden sale de ventas reales; false = todavia no hay
-  // ventas y se estan mostrando los destacados.
+  // true = el orden sale de ventas reales (las de esta tienda o las de
+  // konamoda.pe); false = no hay ninguna y se muestran los destacados.
   basedOnSales: boolean;
 };
 
 // Unidades vendidas por producto (id -> unidades).
+//
+// Se suman las ventas de ESTA tienda y las que ese mismo producto hizo
+// en konamoda.pe hasta que cerró. La tienda nueva arranca sin ventas, y
+// sin esto "Los favoritos" enseñaba lo que alguien marcó a mano en vez
+// de lo que la gente compra. Las de aquí pesan igual que las de allá y
+// se acumulan encima, así que a medida que venda, el orden se vuelve
+// suyo solo.
 async function soldUnits(): Promise<Map<string, number>> {
   // Pedimos un tope alto para rankear todo el catalogo, no solo el top 5.
   const top = await getTopProducts(1000);
-  return new Map(top.map((t) => [t.productId, t.unidades]));
+
+  const unidades = new Map<string, number>(Object.entries(VENTAS_HISTORICAS));
+  for (const t of top) {
+    unidades.set(t.productId, (unidades.get(t.productId) ?? 0) + t.unidades);
+  }
+  return unidades;
 }
 
 export async function getBestSellers(

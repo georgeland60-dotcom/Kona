@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProducts, getProductBySlug } from "@/lib/store-data";
@@ -18,6 +19,38 @@ function toBullets(desc: string): string[] {
     .split(/(?:^|\s)[-–•]\s*/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+// Lo que se ve al compartir una prenda por WhatsApp o Instagram, y lo
+// que lee Google. Sin esto, los 84 enlaces que ya estaban indexados de
+// la tienda anterior aterrizaban en una página con el título genérico
+// de la tienda y sin foto, que es tirar a la basura lo que ya tenía
+// ganado konamoda.pe.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
+  if (!product) return {};
+
+  const descripcion =
+    product.description?.replace(/\s*-\s*/g, " · ").trim().slice(0, 160) ||
+    `${product.name} · ${formatPrice(product.price)}. Envíos a todo Lima y provincias.`;
+
+  return {
+    title: product.name,
+    description: descripcion,
+    alternates: { canonical: `/producto/${product.slug}` },
+    openGraph: {
+      type: "website",
+      title: product.name,
+      description: descripcion,
+      url: `/producto/${product.slug}`,
+      ...(product.image ? { images: [{ url: product.image }] } : {}),
+    },
+  };
 }
 
 // Genera las paginas de cada producto de antemano (mas rapido)

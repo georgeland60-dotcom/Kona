@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Jost, Sacramento } from "next/font/google";
 import "./globals.css";
 import { store } from "@/config/store";
+import { urlDelSitio } from "@/lib/sitio";
 
 // =============================================================
 //  LAS DOS LETRAS DE LA MARCA
@@ -36,9 +37,30 @@ const sacramento = Sacramento({
   weight: "400",
 });
 
+// Las etiquetas que leen Google, WhatsApp e Instagram.
+//
+// metadataBase es la que hace que todo lo demás (la foto que sale al
+// compartir un enlace, la dirección canónica de cada ficha) apunte al
+// dominio de verdad. Sin ella, Next arma esas direcciones contra
+// localhost y al compartir un producto no se ve la foto.
+const descripcion = `${store.name} - ${store.tagline}. Envíos a todo Lima y provincias.`;
+
 export const metadata: Metadata = {
-  title: `${store.name} · ${store.tagline}`,
-  description: `${store.name} - ${store.tagline}. Envios a todo Lima.`,
+  metadataBase: new URL(urlDelSitio()),
+  title: {
+    default: `${store.name} · ${store.tagline}`,
+    // Cada página pone lo suyo delante: "Vestido Dreams · Kona Moda".
+    template: `%s · ${store.name}`,
+  },
+  description: descripcion,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: store.name,
+    locale: "es_PE",
+    title: `${store.name} · ${store.tagline}`,
+    description: descripcion,
+  },
 };
 
 export default function RootLayout({
