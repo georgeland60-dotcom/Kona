@@ -3,16 +3,18 @@ import { getInventory } from "@/lib/store-data";
 import {
   setStockAction,
   adjustStockAction,
+  importarInventarioRealAction,
 } from "@/app/admin/inventario-actions";
+import { CORTE_INVENTARIO, INVENTARIO_REAL } from "@/data/inventario-real";
 
 const LOW_STOCK = 3;
 
 export default async function InventarioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ low?: string }>;
+  searchParams: Promise<{ low?: string; importado?: string; unidades?: string }>;
 }) {
-  const { low } = await searchParams;
+  const { low, importado, unidades } = await searchParams;
   const onlyLow = low === "1";
 
   let rows = await getInventory();
@@ -22,6 +24,34 @@ export default async function InventarioPage({
 
   return (
     <div>
+      {importado && (
+        <p className="mb-5 text-sm bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-2.5">
+          Inventario actualizado: {importado} productos, {unidades} unidades.
+        </p>
+      )}
+
+      {/* Traer el stock de la tienda anterior. Mientras no se use, la
+          tienda sigue con las 10 unidades inventadas de cada talla, que
+          es vender lo que no hay. */}
+      <div className="mb-6 bg-background border border-line rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">
+            Inventario de konamoda.pe ({CORTE_INVENTARIO})
+          </p>
+          <p className="text-xs text-muted mt-1 max-w-xl">
+            Pone en los {Object.keys(INVENTARIO_REAL).length} productos las
+            unidades que había de verdad en la tienda anterior, talla por
+            talla, y quita las tallas que nunca existieron. Pisa los ajustes
+            de stock que hayas hecho a mano.
+          </p>
+        </div>
+        <form action={importarInventarioRealAction}>
+          <button className="bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-dark transition whitespace-nowrap">
+            Traer ese inventario
+          </button>
+        </form>
+      </div>
+
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Inventario / Stock</h1>

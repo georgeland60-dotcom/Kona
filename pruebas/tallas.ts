@@ -8,6 +8,7 @@
 
 import { GUIAS_DE_TALLAS, guiaDelModelo } from "@/data/guias-tallas";
 import { products as semilla } from "@/data/products";
+import { INVENTARIO_REAL } from "@/data/inventario-real";
 import { guiaDeProducto, guiaEnTexto, compararTallas } from "@/lib/tallas";
 import { store } from "@/config/store";
 import type { Product, SeedProduct } from "@/lib/types";
@@ -21,13 +22,23 @@ function igual(que: string, a: unknown, b: unknown) {
   ok(`${que} (${JSON.stringify(a)} = ${JSON.stringify(b)})`, a === b);
 }
 
-// Igual que hace la tienda al arrancar sin nada guardado.
+// Igual que hace la tienda al arrancar sin nada guardado: las tallas
+// que de verdad se venden salen del inventario real, no de la semilla.
+// Si esto no se hiciera igual, las pruebas dirían que una guía se ve
+// cuando en la tienda no se ve (o al revés).
 function aProducto(seed: SeedProduct): Product {
-  const sizes = seed.sizes && seed.sizes.length > 0 ? seed.sizes : ["Única"];
+  const real = INVENTARIO_REAL[seed.id];
+  const sizes = real
+    ? real.map(([talla]) => talla)
+    : seed.sizes && seed.sizes.length > 0
+      ? seed.sizes
+      : ["Única"];
+  const stock = (talla: string) =>
+    real ? (real.find(([t]) => t === talla)?.[1] ?? 0) : 10;
   const { sizes: _s, stock: _st, ...resto } = seed;
   return {
     ...resto,
-    variants: sizes.map((size) => ({ size, sku: `X-${size}`, stock: 10 })),
+    variants: sizes.map((size) => ({ size, sku: `X-${size}`, stock: stock(size) })),
     active: resto.active ?? true,
   };
 }

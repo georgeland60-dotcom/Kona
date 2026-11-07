@@ -10,6 +10,7 @@
 
 import { products as seedProducts } from "@/data/products";
 import type { Product, SeedProduct, Variant } from "@/lib/types";
+import { INVENTARIO_REAL } from "@/data/inventario-real";
 import { applyDiscounts, getLiveRules, withDiscount } from "@/lib/promos-data";
 import { readDoc, writeDoc } from "@/lib/kv";
 
@@ -36,14 +37,25 @@ export function skuFor(slug: string, size: string): string {
 }
 
 // Convierte un producto "semilla" (con sizes) a Product (con variants).
+//
+// Las tallas y las unidades salen del INVENTARIO REAL (lo que había en
+// la tienda anterior el 1 de noviembre) cuando ese producto está ahí.
+// Antes todos nacían con 10 unidades de cada talla: 3.210 unidades
+// inventadas, y tallas que ese producto nunca tuvo. Un stock inventado
+// en una tienda es vender lo que no hay.
 function seedToProduct(seed: SeedProduct): Product {
-  const sizes = seed.sizes && seed.sizes.length > 0 ? seed.sizes : ["Única"];
-  const stock = seed.stock ?? 10;
-  const variants: Variant[] = sizes.map((size) => ({
-    size,
-    sku: skuFor(seed.slug, size),
-    stock,
-  }));
+  const real = INVENTARIO_REAL[seed.id];
+
+  const variants: Variant[] = real
+    ? real.map(([size, stock]) => ({
+        size,
+        sku: skuFor(seed.slug, size),
+        stock,
+      }))
+    : (seed.sizes && seed.sizes.length > 0 ? seed.sizes : ["Única"]).map(
+        (size) => ({ size, sku: skuFor(seed.slug, size), stock: seed.stock ?? 10 })
+      );
+
   const { sizes: _omit, stock: _omit2, ...rest } = seed;
   return { ...rest, variants, active: rest.active ?? true };
 }
