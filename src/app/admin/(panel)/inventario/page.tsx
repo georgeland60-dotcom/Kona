@@ -12,9 +12,14 @@ const LOW_STOCK = 3;
 export default async function InventarioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ low?: string; importado?: string; unidades?: string }>;
+  searchParams: Promise<{
+    low?: string;
+    importado?: string;
+    unidades?: string;
+    error?: string;
+  }>;
 }) {
-  const { low, importado, unidades } = await searchParams;
+  const { low, importado, unidades, error } = await searchParams;
   const onlyLow = low === "1";
 
   let rows = await getInventory();
@@ -30,24 +35,32 @@ export default async function InventarioPage({
         </p>
       )}
 
-      {/* Traer el stock de la tienda anterior. Mientras no se use, la
-          tienda sigue con las 10 unidades inventadas de cada talla, que
-          es vender lo que no hay. */}
+      {error && (
+        <p className="mb-5 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-2.5">
+          No se pudo guardar el inventario. La base de datos no contestó;
+          vuelve a intentarlo en un momento.
+        </p>
+      )}
+
+      {/* El stock de la tienda anterior ya se aplica solo (ver
+          lib/store-data.ts). Este botón lo vuelve a aplicar a mano: es
+          el botón de pánico si alguien se lía ajustando tallas. */}
       <div className="mb-6 bg-background border border-line rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium">
-            Inventario de konamoda.pe ({CORTE_INVENTARIO})
+            Volver al inventario de konamoda.pe ({CORTE_INVENTARIO})
           </p>
           <p className="text-xs text-muted mt-1 max-w-xl">
-            Pone en los {Object.keys(INVENTARIO_REAL).length} productos las
-            unidades que había de verdad en la tienda anterior, talla por
-            talla, y quita las tallas que nunca existieron. Pisa los ajustes
-            de stock que hayas hecho a mano.
+            Ya está puesto: los {Object.keys(INVENTARIO_REAL).length} productos
+            tienen las unidades que había de verdad en la tienda anterior,
+            talla por talla. Esto lo vuelve a dejar igual, por si te lías
+            ajustando tallas a mano. Pisa los ajustes que hayas hecho
+            después.
           </p>
         </div>
         <form action={importarInventarioRealAction}>
           <button className="bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-dark transition whitespace-nowrap">
-            Traer ese inventario
+            Volver a traerlo
           </button>
         </form>
       </div>
