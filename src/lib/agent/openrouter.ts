@@ -39,7 +39,11 @@ const BASE = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
 // mira una pantalla quieta.
 const LIMITE_POR_INTENTO_MS = Number(process.env.OPENROUTER_TIMEOUT_MS) || 15_000;
 
-const MAXIMO_MODELOS = 3;
+// Cuántos modelos se prueban antes de rendirse (y pasar a Gemini). Los
+// gratis se saturan a ratos y en la lista hay pocos con herramientas:
+// con tres intentos un mal rato de los dos primeros deja la respuesta en
+// manos del último de la fila, que suele ser el más flojo.
+const MAXIMO_MODELOS = 5;
 
 export function hayOpenRouter(): boolean {
   return !!process.env.OPENROUTER_API_KEY;
@@ -59,6 +63,24 @@ type ModeloOpenRouter = {
 // los nombres cambian cada pocas semanas y escribirlos aquí es firmar
 // que un día dejará de funcionar sin que nadie toque nada.
 const PREFERIDAS = ["gemini", "gemma", "llama", "qwen", "mistral", "deepseek"];
+
+// Los modelos muy pequeños saben contestar "hola", pero no saben usar
+// herramientas: contestan vacío o se inventan la llamada. Van al final
+// de la fila, nunca fuera: si un día son lo único gratis que queda, es
+// mejor eso que no contestar.
+const MINIMO_MIL_MILLONES = 7;
+
+export function esChico(id: string): boolean {
+  // Del propio nombre: "liquid/lfm-3-1.7b:free" -> 1.7. Se toma el
+  // número MÁS GRANDE con "b" pegada, porque los mixtos llevan dos
+  // ("gemma-4-26b-a4b" son 26 mil millones en total y 4 despiertos a la
+  // vez) y el que manda para saber cuánto sabe es el total.
+  const encontrados = [...id.toLowerCase().matchAll(/(\d+(?:\.\d+)?)b(?![a-z0-9])/g)]
+    .map((m) => Number(m[1]))
+    .filter((n) => Number.isFinite(n));
+  if (encontrados.length === 0) return false;
+  return Math.max(...encontrados) < MINIMO_MIL_MILLONES;
+}
 
 type ListaGuardada = { cuando: number; modelos: ModeloOpenRouter[] };
 
@@ -128,6 +150,7 @@ export async function modelosCandidatos(opciones: {
   return sirven
     .sort(
       (a, b) =>
+        Number(esChico(a.id)) - Number(esChico(b.id)) ||
         puntos(a) - puntos(b) ||
         (b.context_length ?? 0) - (a.context_length ?? 0)
     )
