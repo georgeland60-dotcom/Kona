@@ -21,9 +21,13 @@ respaldo.
 | Pruebas | rama `pruebas` → `kona-git-pruebas-ai-agenda-s-projects.vercel.app` | Copia para probar. Ver MIGRACION.md §8 antes de usarla. |
 
 **Estado de la migración (actualizar al cerrarla):** dominios añadidos en
-Vercel el 8 nov 2026. **Pendiente: el DNS en BGMax Perú** (A
-`konamoda.pe` → `76.76.21.21`, CNAME `www` → `cname.vercel-dns.com`) y,
-después, `NEXT_PUBLIC_SITE_URL=https://konamoda.pe` en Production. Hasta
+Vercel el 8 nov 2026. **Pendiente: el DNS.** Está en BGMax Perú, cuya
+cuenta de hosting está suspendida; lo recomendado es pasar los
+servidores de nombres a Vercel (`ns1.vercel-dns.com`,
+`ns2.vercel-dns.com`). La alternativa es que BGMax cambie el A
+`konamoda.pe` → `76.76.21.21` y cree el CNAME `www` →
+`cname.vercel-dns.com`. Después, `NEXT_PUBLIC_SITE_URL=https://konamoda.pe`
+en Production. Hasta
 que eso pase, konamoda.pe sigue apuntando al hosting viejo y la tienda
 de verdad está en kona-henna.vercel.app.
 

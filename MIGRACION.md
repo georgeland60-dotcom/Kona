@@ -109,8 +109,25 @@ Lo que se encontró al mirar:
   Found", 771 bytes). No hay nada vivo que se pueda caer con el cambio.
 - `www.konamoda.pe` **no existe** todavía (no tiene ningún registro).
 - No hay registros MX: no se vio correo en el dominio.
+- **La cuenta de hosting de BGMax está SUSPENDIDA** (`/cpanel` lleva a
+  la página "Account Suspended" de cPanel). Con la cuenta suspendida lo
+  normal es que no se pueda entrar al editor de zona DNS del cPanel. Y
+  hay un riesgo peor: si BGMax borra la cuenta suspendida, la zona DNS
+  se va con ella y konamoda.pe deja de existir en internet.
 
-Los dos registros, en el panel de BGMax:
+**Por eso la recomendación es sacar el DNS de BGMax**: cambiar los
+servidores de nombres del dominio a los de Vercel (`ns1.vercel-dns.com`,
+`ns2.vercel-dns.com`). Como el dominio ya está en el proyecto, Vercel
+pone solo los registros correctos, y a partir de ahí el DNS se maneja
+desde Vercel sin depender de un hosting que ya no se paga. Eso se cambia
+donde esté **registrado** el dominio (si BGMax lo registró, en su área de
+clientes → el dominio → "Servidores de nombres"; si no, en el
+registrador que figure en el whois de punto.pe). Revisar de paso **la
+fecha de vencimiento del dominio**: si está ligado a la cuenta
+suspendida, puede no renovarse.
+
+Si se prefiere dejar el DNS en BGMax (o pedírselo a su soporte), estos
+son los dos registros:
 
 | Tipo | Nombre | Valor | Qué hacer |
 |---|---|---|---|
