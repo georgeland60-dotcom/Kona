@@ -14,6 +14,8 @@ import { resumirConsumo, getConsumo } from "@/lib/consumo-data";
 import { resumenModelos } from "@/lib/agent/modelos";
 import { reinicioEnHoraDeLima } from "@/lib/fechas";
 import { modeloPreferido } from "@/lib/agent/gemini";
+import { proveedorDeIa } from "@/lib/agent/ia";
+import { cuotaDeOpenRouter } from "@/lib/agent/openrouter";
 
 // Siempre datos frescos: es una pantalla de consulta, no vale cachearla.
 export const dynamic = "force-dynamic";
@@ -55,6 +57,7 @@ export default async function DatosPage({
     consumo,
     dias,
     modelos,
+    cuotaOpenRouter,
     categorias,
   ] = await Promise.all([
       getProducts({ includeInactive: true, raw: true }),
@@ -65,6 +68,7 @@ export default async function DatosPage({
       resumirConsumo(),
       getConsumo(),
       resumenModelos(),
+      cuotaDeOpenRouter(),
       getCategorias(),
     ]);
 
@@ -112,6 +116,7 @@ export default async function DatosPage({
   // Cuántos cambios más caben hoy: solo se puede decir si el tope del
   // modelo en uso ya se midió alguna vez. Si no, se dice "sin medir" en
   // lugar de inventar un número.
+  const proveedor = proveedorDeIa();
   const enUso = modelos.enUso;
   const limiteEnUso = enUso ? modelos.limites[enUso] : undefined;
   const usoEnUso = enUso
@@ -217,14 +222,32 @@ export default async function DatosPage({
       <div className="mb-10">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Consumo de la IA</h2>
-          <p className="text-muted text-sm">
-            No son créditos que se gastan para siempre: es un límite de
-            consultas por día, POR MODELO, que se reinicia solo. Google lo
-            cuenta en su horario, así que el tope vuelve a cero a las{" "}
-            <strong>{horaDeReinicio}</strong> hora de Perú, no a medianoche.
-            Si un modelo llega a su tope, el bot pasa solo al siguiente y
-            sigue trabajando.
-          </p>
+          {proveedor === "openrouter" ? (
+            <p className="text-muted text-sm">
+              La IA entra por <strong>OpenRouter</strong>, que con una sola
+              clave alcanza modelos de varios fabricantes: si uno está
+              saturado, la misma pregunta sale por otro. No son créditos que
+              se gastan para siempre, sino un número de consultas por día
+              que se reinicia a medianoche UTC (
+              <strong>7 de la tarde en Perú</strong>).
+              {cuotaOpenRouter?.limite !== undefined && (
+                <>
+                  {" "}
+                  Hoy van <strong>{cuotaOpenRouter.usados ?? 0}</strong> de{" "}
+                  <strong>{cuotaOpenRouter.limite}</strong>.
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="text-muted text-sm">
+              No son créditos que se gastan para siempre: es un límite de
+              consultas por día, POR MODELO, que se reinicia solo. Google lo
+              cuenta en su horario, así que el tope vuelve a cero a las{" "}
+              <strong>{horaDeReinicio}</strong> hora de Perú, no a medianoche.
+              Si un modelo llega a su tope, el bot pasa solo al siguiente y
+              sigue trabajando.
+            </p>
+          )}
         </div>
 
         <div className="bg-background border border-line rounded-xl p-5">

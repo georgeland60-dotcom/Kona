@@ -24,7 +24,7 @@ import {
   ErrorAgente,
   type Mensaje,
   type Parte,
-} from "@/lib/agent/gemini";
+} from "@/lib/agent/ia";
 import { construirInstruccion } from "@/lib/agent/prompt";
 import {
   buscarHerramienta,

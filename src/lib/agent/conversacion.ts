@@ -23,7 +23,7 @@ import { guardarSesion, type Sesion } from "@/lib/agent/sesion";
 import { guardarPlan } from "@/lib/agent/pending";
 import { verFotos } from "@/lib/agent/fotos";
 import { buscarHerramienta } from "@/lib/agent/tools";
-import { ErrorAgente } from "@/lib/agent/gemini";
+import { ErrorAgente } from "@/lib/agent/ia";
 import {
   anotarConsumo,
   anotarFreno,

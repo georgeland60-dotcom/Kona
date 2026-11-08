@@ -13,7 +13,7 @@
 //     historia y cuántas consultas por persona y por día.
 // =============================================================
 
-import { preguntarAlModelo, ErrorAgente } from "@/lib/agent/gemini";
+import { preguntarAlModelo, ErrorAgente } from "@/lib/agent/ia";
 import { catalogoParaAsistente } from "@/lib/asistente/catalogo";
 import { fichaDeProducto, instruccionAsistente } from "@/lib/asistente/prompt";
 import {

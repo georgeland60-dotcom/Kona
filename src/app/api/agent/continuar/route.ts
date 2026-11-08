@@ -12,7 +12,7 @@
 import { after } from "next/server";
 import { atenderSesion } from "@/lib/agent/conversacion";
 import { tomarSesion } from "@/lib/agent/sesion";
-import { ErrorAgente } from "@/lib/agent/gemini";
+import { ErrorAgente } from "@/lib/agent/ia";
 import { enviarMensaje, escapar } from "@/lib/agent/telegram";
 
 export const maxDuration = 300;

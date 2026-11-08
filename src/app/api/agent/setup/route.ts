@@ -17,6 +17,8 @@ import {
   ordenarModelos,
 } from "@/lib/agent/gemini";
 import { isPersistent } from "@/lib/kv";
+import { preguntarAlModelo, proveedorDeIa } from "@/lib/agent/ia";
+import { cuotaDeOpenRouter, modelosCandidatos } from "@/lib/agent/openrouter";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -32,7 +34,13 @@ export async function GET(req: Request) {
   // el webhook tiene que estar conectado antes. Pedirla aquí sería un
   // círculo vicioso: no podrías conectar sin el número, ni obtener el
   // número sin conectar.
-  const faltantes = ["TELEGRAM_BOT_TOKEN", "GEMINI_API_KEY"].filter(
+  // La clave que hace falta depende de con quién hable la IA. Pedir la
+  // de Google cuando la tienda usa OpenRouter dejaba el bot sin conectar
+  // por una variable que ya no se usa.
+  const proveedor = proveedorDeIa();
+  const claveDeIa =
+    proveedor === "openrouter" ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY";
+  const faltantes = ["TELEGRAM_BOT_TOKEN", claveDeIa].filter(
     (v) => !process.env[v]
   );
 
@@ -52,6 +60,20 @@ export async function GET(req: Request) {
   // Sirve cuando la IA responde 404 (Google renombra y retira modelos), para
   // saber cuál poner en GEMINI_MODEL sin adivinar.
   if (url.searchParams.get("modelos")) {
+    if (proveedor === "openrouter") {
+      const [conHerramientas, soloTexto, cuota] = await Promise.all([
+        modelosCandidatos({ herramientas: true, imagenes: false }),
+        modelosCandidatos({ herramientas: false, imagenes: false }),
+        cuotaDeOpenRouter(),
+      ]);
+      return Response.json({
+        proveedor,
+        cuotaDelDia: cuota,
+        paraElBot: conHerramientas.slice(0, 6),
+        paraElAsistente: soloTexto.slice(0, 6),
+        nota: "Son los modelos gratis que OpenRouter ofrece hoy, ya ordenados. El bot necesita los que aceptan herramientas. Para fijar uno a mano, ponlo en OPENROUTER_MODELOS.",
+      });
+    }
     const modelos = await listarModelos(process.env.GEMINI_API_KEY as string);
     return Response.json({
       modelos,
@@ -66,6 +88,39 @@ export async function GET(req: Request) {
   // devuelve lo que respondió Google, sin interpretarlo. Es la forma de
   // ver el motivo real de un fallo en vez de deducirlo del código HTTP.
   if (url.searchParams.get("probar")) {
+    // Con OpenRouter la prueba es la de verdad: una pregunta corta por
+    // la misma puerta que usa la tienda. Es lo que de verdad dice si
+    // está bien conectado.
+    if (proveedor === "openrouter") {
+      try {
+        const respuesta = await preguntarAlModelo({
+          instruccion: "Responde en una sola palabra.",
+          mensajes: [{ role: "user", parts: [{ text: "¿Estás ahí?" }] }],
+          herramientas: [],
+          limiteMs: 25_000,
+          maximoSalida: 32,
+        });
+        return Response.json({
+          proveedor,
+          ok: true,
+          modelo: respuesta.modelo,
+          dijo: respuesta.texto,
+          consumo: respuesta.consumo,
+          cuotaDelDia: await cuotaDeOpenRouter(),
+        });
+      } catch (error) {
+        return Response.json(
+          {
+            proveedor,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+            cuotaDelDia: await cuotaDeOpenRouter(),
+          },
+          { status: 502 }
+        );
+      }
+    }
+
     const apiKey = process.env.GEMINI_API_KEY as string;
     const disponibles = await listarModelos(apiKey);
     const preferido = modeloPreferido();

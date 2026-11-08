@@ -17,7 +17,7 @@ import { atenderSesion } from "@/lib/agent/conversacion";
 import { tomarPlan, descartarPlan } from "@/lib/agent/pending";
 import { registrarCambios } from "@/lib/historial-data";
 import { tipoDeCambio, categoriaAfectada } from "@/lib/agent/tools";
-import { ErrorAgente, type Parte } from "@/lib/agent/gemini";
+import { ErrorAgente, type Parte } from "@/lib/agent/ia";
 import {
   enviarMensaje,
   editarMensaje,

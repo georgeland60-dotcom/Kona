@@ -73,7 +73,8 @@ que desplegar después de ponerla.
 | `UPSTASH_REDIS_REST_URL` / `..._TOKEN` | la base de datos | los cambios no se guardan |
 | `MERCADOPAGO_ACCESS_TOKEN` | cobrar con tarjeta/Yape | el botón de pagar falla |
 | `MERCADOPAGO_WEBHOOK_SECRET` | confirmar pagos solos | los pagos no se marcan |
-| `GEMINI_API_KEY` | Kona Assistant y el bot | no responden |
+| `OPENROUTER_API_KEY` | Kona Assistant y el bot | no responden |
+| `GEMINI_API_KEY` | respaldo de la IA (opcional) | si OpenRouter falla, no hay plan B |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_ALLOWED_CHAT_IDS` | el bot de la dueña | no escucha |
 | `NEXT_PUBLIC_INSTAGRAM`, `NEXT_PUBLIC_FACEBOOK` | enlaces del pie | enlaces genéricos |
 
@@ -138,11 +139,48 @@ que desplegar después de ponerla.
 
 ---
 
-## 6. Lo que queda decidido a medias
+## 6. La IA
 
-- **Plan de Vercel.** El gratuito prohíbe el uso comercial en sus
-  condiciones, y es una tienda que cobra: toca Pro (20 USD al mes) antes
-  de anunciar el cambio.
+Desde noviembre de 2026 la tienda habla con los modelos a través de
+**OpenRouter**, no con Google directo. Con una sola clave llega a
+modelos de varios fabricantes, así que cuando uno está saturado la misma
+pregunta sale por otro; hablando con Google directo, una tarde mala
+dejaba al asistente mudo delante de las clientas.
+
+Qué hay que hacer una vez:
+
+1. Crear la cuenta en <https://openrouter.ai> (con Google es lo más
+   rápido) y la clave en **Settings → Keys → Create Key**. Se muestra
+   una sola vez y empieza con `sk-or-v1-`.
+2. Ponerla en Vercel como `OPENROUTER_API_KEY` (Production). Nunca en el
+   código: con esa clave cualquiera gasta la cuota.
+3. Opcional: ponerle un **Credit limit** en OpenRouter para que no pueda
+   gastar más de cierto valor aunque algo se desmadre.
+
+Lo que conviene saber:
+
+- Los modelos que terminan en `:free` no cuestan nada. La cuenta gratis
+  da **50 consultas al día**; comprando 10 dólares de créditos una vez
+  sube a **1000 al día**. El contador se reinicia a medianoche UTC, que
+  son las **7 de la tarde en Perú**.
+- La tienda **no tiene ningún modelo escrito a mano**: pregunta cada día
+  qué modelos gratis hay, se queda con los que aceptan herramientas (el
+  bot las necesita) y prueba hasta tres antes de rendirse. Si hiciera
+  falta fijar uno, va en `OPENROUTER_MODELOS`.
+- Si además queda puesta `GEMINI_API_KEY`, se usa de respaldo cuando
+  OpenRouter falla por algo que no sea la clave.
+- Para ver si está bien conectado:
+  `…/api/agent/setup?clave=EL_SECRETO&probar=1` responde con el modelo
+  que contestó y cuánta cuota queda. Y `&modelos=1` lista los
+  candidatos de hoy.
+
+## 7. Lo que queda decidido a medias
+
+- **Plan de Vercel.** Se arranca en el gratuito, decidido el 8 de
+  noviembre. Queda dicho para que no sorprenda: sus condiciones reservan
+  el plan Hobby al uso personal o no comercial y piden Pro para lo
+  comercial, así que el riesgo que se asume es que suspendan el proyecto
+  sin aviso. Revisar cuando haya ventas que justifiquen los 20 USD.
 - **Colores.** Los 4 pantalones dril y los 3 de maquillaje se vendían por
   color en WooCommerce; aquí son un producto con el stock sumado. Quien
   pide "Sami talla 30" no elige color.
