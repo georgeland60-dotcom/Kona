@@ -31,6 +31,28 @@ Production. Hasta que eso pase, konamoda.pe muestra la página de cuenta
 suspendida y la tienda de verdad está en kona-henna.vercel.app.
 Detalle en MIGRACION.md §3.
 
+## Pendientes (al 8 nov 2026)
+
+Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
+
+1. **DNS de konamoda.pe** → servidores de nombres a Vercel, en NIC.PE.
+   Luego `NEXT_PUBLIC_SITE_URL` y desplegar (MIGRACION.md §3 y §2.2).
+2. **Correo `pedidos@konamoda.pe`** — para después. Deja de llegar con el
+   cambio de DNS; revisar que ninguna cuenta lo use para recuperar
+   contraseña.
+3. **Crédito de OpenRouter** — 10 USD una vez (no mensual): de 50 a 1000
+   consultas de IA al día. Por decidir.
+4. **`/admin/pagos` vacío** — Yape, Plin y la cuenta del banco.
+5. **Contraseña del panel** — `ADMIN_PASSWORD` es temporal; cambiarla
+   por una larga y crearla como Sensitive (la pone la persona).
+6. **Sitio de pruebas** — quitar `KV_*` y `TELEGRAM_*` de Preview antes
+   de usar una rama para probar (MIGRACION.md §8).
+7. **Mercado Pago** — webhook y `MERCADOPAGO_WEBHOOK_SECRET` (la clave la
+   pone la persona).
+8. **Fecha de vencimiento del dominio** — se ve en el panel de NIC.PE.
+9. Más adelante: GA4 y Pixel de Meta (la tienda vieja tenía Pixel;
+   su Analytics era Universal, ya apagado).
+
 ## Reglas que no se negocian
 
 - **El repositorio es PÚBLICO.** Ninguna clave, token ni contraseña en

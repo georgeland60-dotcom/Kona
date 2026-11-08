@@ -39,20 +39,17 @@ Lo que sí cambió de sitio ya está redirigido en `next.config.ts`:
 
 ## 2. Antes de tocar el dominio
 
-### 2.1 ⚠️ El número de WhatsApp
+### 2.1 ✅ El número de WhatsApp
 
-Ahora mismo la tienda en producción responde con **51987654321**, que es
-el número de ejemplo y no existe. Cada botón de WhatsApp, cada
-"coordinar por WhatsApp" y cada comprobante de pago va ahí.
+**Resuelto el 8 nov 2026:** `51942187981` (+51 942 187 981), el que usaba
+el botón de la tienda vieja, confirmado. Está como valor por defecto en
+`src/config/store.ts`, así que sirve en producción, en pruebas y en
+local sin poner ninguna variable.
 
-En Vercel → Settings → Environment Variables (Production):
-
-```
-NEXT_PUBLIC_WHATSAPP = 51 + número, sin + ni espacios   (ej. 51987654321)
-```
-
-Es una variable `NEXT_PUBLIC_`, así que **hay que volver a desplegar**
-para que tome efecto: se hornea al construir, no se lee en caliente.
+Si algún día cambia: o se edita ahí, o se pone en Vercel
+`NEXT_PUBLIC_WHATSAPP` (51 + número, sin + ni espacios), que manda sobre
+el del código. En los dos casos **hay que volver a desplegar**: se
+incrusta al construir, no se lee en caliente.
 
 ### 2.2 ⚠️ La dirección del sitio
 
@@ -241,14 +238,13 @@ Lo que conviene saber:
 
 ## 7. Lo que queda decidido a medias
 
-- **Número de WhatsApp — CONFIRMAR.** Sigue el de ejemplo
-  (`51987654321`). Es lo que más ventas pierde de esta lista: quien elige
-  Yape o transferencia termina escribiendo a un número que no existe.
-  El botón de la tienda vieja usaba el **+51 942 187 981**
-  (`NEXT_PUBLIC_WHATSAPP=51942187981`). Confirmar con la dueña que sigue
-  siendo el del negocio antes de ponerlo. Ver §2.1.
-- **Correo `pedidos@konamoda.pe` — DECIDIR antes de mover el DNS.**
-  Dejarlo morir, reenviarlo a un Gmail o un buzón de verdad. Ver §3.
+- **Correo `pedidos@konamoda.pe` — PARA DESPUÉS** (decidido el 8 nov:
+  se migra el dominio sin tocarlo). Al pasar los servidores de nombres a
+  Vercel deja de llegar; con el hosting suspendido desde el 24 oct lo más
+  probable es que ya no llegara. Opciones cuando se retome: dejarlo
+  morir, reenviarlo a un Gmail o un buzón de verdad (§3). El buzón viejo
+  (101 MB) está en el backup. **Revisar** que ninguna cuenta importante
+  (Mercado Pago, Meta, Google) lo use para recuperar la contraseña.
 - **Crédito de OpenRouter — PENDIENTE DE DECIDIR.** Con la cuenta gratis
   la IA tiene 50 consultas al día entre el bot de la dueña y la asistente
   de la tienda; un día bueno de ventas se las come y se queda muda hasta

@@ -9,15 +9,15 @@ export const store = {
   name: "Kona Moda",
   tagline: "Moda femenina",
 
-  // ⚠️ IMPORTANTE: tu numero de WhatsApp para recibir pedidos.
+  // El WhatsApp del negocio: aqui llegan los pedidos por transferencia,
+  // Yape y Plin, y los comprobantes de pago.
   // Formato: codigo de pais + numero, SIN el signo "+", SIN espacios.
-  // Peru = 51. Ejemplo: 51987654321
   //
-  // El 51987654321 de abajo es un numero DE EJEMPLO, no existe: si esta
-  // puesto, el boton "Coordinar por WhatsApp" lleva a un numero
-  // inexistente y se pierde la venta. Se cambia aqui, o sin tocar codigo
-  // con la variable NEXT_PUBLIC_WHATSAPP.
-  whatsapp: process.env.NEXT_PUBLIC_WHATSAPP || "51987654321",
+  // +51 942 187 981 es el que usaba el boton de la tienda anterior,
+  // confirmado el 8 nov 2026. La variable NEXT_PUBLIC_WHATSAPP lo
+  // reemplaza sin tocar codigo, si algun dia cambia (y hay que volver a
+  // desplegar: se incrusta al construir).
+  whatsapp: process.env.NEXT_PUBLIC_WHATSAPP || "51942187981",
 
   // Referencia de las modelos de las fotos, para ayudar con la talla.
   //
