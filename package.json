@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postbuild": "node scripts/probar-ia.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
