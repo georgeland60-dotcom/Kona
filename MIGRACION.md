@@ -165,8 +165,14 @@ Lo que conviene saber:
   son las **7 de la tarde en Perú**.
 - La tienda **no tiene ningún modelo escrito a mano**: pregunta cada día
   qué modelos gratis hay, se queda con los que aceptan herramientas (el
-  bot las necesita) y prueba hasta tres antes de rendirse. Si hiciera
-  falta fijar uno, va en `OPENROUTER_MODELOS`.
+  bot las necesita), deja los muy pequeños para el final de la fila y
+  prueba hasta cinco antes de rendirse. Si hiciera falta fijar uno, va
+  en `OPENROUTER_MODELOS`.
+- **Comprobado el 8 de noviembre de 2026** desde el propio servidor: la
+  clave contesta, la lista trae 464 modelos (12 gratis con
+  herramientas) y una consulta real llegó a destino. Ese día los dos
+  primeros de la fila devolvieron 429 ("saturado arriba"), que es
+  justo lo normal en los gratis y la razón de que haya cadena.
 - Si además queda puesta `GEMINI_API_KEY`, se usa de respaldo cuando
   OpenRouter falla por algo que no sea la clave.
 - Para ver si está bien conectado:
