@@ -56,13 +56,18 @@ para que tome efecto: se hornea al construir, no se lee en caliente.
 ### 2.2 ⚠️ La dirección del sitio
 
 ```
-NEXT_PUBLIC_SITE_URL = https://konamoda.pe
+NEXT_PUBLIC_SITE_URL = https://konamoda.pe        (solo Production)
 ```
 
 De ahí salen tres cosas que no se pueden quedar apuntando a Vercel:
 a dónde vuelve la clienta después de pagar, a dónde avisa Mercado Pago
 que el pago entró, y la dirección canónica que lee Google. También hay
 que desplegar después de ponerla.
+
+**La variable ya existe** (Production y Preview) y hoy anuncia
+`kona-henna.vercel.app`. **Se cambia DESPUÉS de que el DNS apunte a
+Vercel, no antes**: si se cambia antes, Google y Mercado Pago reciben una
+dirección que todavía lleva a la página muerta del hosting viejo.
 
 ### 2.3 El resto de variables
 
@@ -91,21 +96,36 @@ que desplegar después de ponerla.
 
 ## 3. El cambio de dominio
 
-1. Vercel → proyecto `kona` → Settings → Domains → **Add** `konamoda.pe`
-   y también `www.konamoda.pe`.
-2. Vercel muestra ahí mismo **los registros DNS exactos** (un `A` para el
-   dominio raíz y un `CNAME` para `www`). Cópialos de esa pantalla: los
-   valores los asigna Vercel y no son siempre los mismos.
-3. Esos registros se ponen donde esté administrado el DNS de konamoda.pe
-   (el registrador, o el panel del hosting anterior si el DNS sigue ahí).
-   **Hay que quitar los registros viejos que apuntan al hosting
-   suspendido**, o el dominio seguirá llegando a una página muerta.
-4. El certificado HTTPS lo emite Vercel solo cuando el DNS ya apunta
-   bien. Suele tardar minutos; puede tardar horas si el TTL anterior era
-   largo.
-5. Dejar `www` redirigiendo al dominio raíz (Vercel lo ofrece al añadirlo).
+**Estado al 8 de noviembre de 2026:** los dos dominios ya están añadidos
+en Vercel (proyecto `kona`); `www.konamoda.pe` redirige a `konamoda.pe`
+con un 308. Falta **solo el DNS**, que no se puede tocar desde aquí.
 
-> **Si hay correo en ese dominio** (@konamoda.pe), **no toques los
+Lo que se encontró al mirar:
+
+- El DNS de konamoda.pe lo administra **BGMax Perú**
+  (`ns1.bgmaxperu.com`, `ns2.bgmaxperu.com`). Ahí es donde se cambia.
+- Hoy `konamoda.pe` apunta a `108.160.156.250`, el hosting viejo, que ya
+  **no sirve la tienda**: responde una página de aparcamiento ("302
+  Found", 771 bytes). No hay nada vivo que se pueda caer con el cambio.
+- `www.konamoda.pe` **no existe** todavía (no tiene ningún registro).
+- No hay registros MX: no se vio correo en el dominio.
+
+Los dos registros, en el panel de BGMax:
+
+| Tipo | Nombre | Valor | Qué hacer |
+|---|---|---|---|
+| `A` | `konamoda.pe` (o `@`) | `76.76.21.21` | **cambiar** el `108.160.156.250` por este |
+| `CNAME` | `www` | `cname.vercel-dns.com` | **crear**, no existe |
+
+1. Si hay **más de un `A`** para el dominio raíz, se dejan solo el de
+   Vercel. Con dos, la mitad de las visitas sigue llegando al hosting
+   muerto.
+2. El certificado HTTPS lo emite Vercel solo cuando ve el DNS bien.
+   Suele tardar minutos; puede tardar horas si el TTL viejo era largo.
+3. Cuando Vercel marque los dos dominios en verde: §2.2 (la variable)
+   y desplegar.
+
+> **Si resulta que sí hay correo** (@konamoda.pe), **no toques los
 > registros MX**. Cambiar el A y el CNAME no afecta al correo; borrar los
 > MX sí lo apaga.
 
@@ -182,6 +202,17 @@ Lo que conviene saber:
 
 ## 7. Lo que queda decidido a medias
 
+- **Número de WhatsApp — PREGUNTAR.** Sigue el de ejemplo
+  (`51987654321`). Es lo que más ventas pierde de esta lista: quien elige
+  Yape o transferencia termina escribiendo a un número que no existe.
+  Ver §2.1.
+- **Crédito de OpenRouter — PENDIENTE DE DECIDIR.** Con la cuenta gratis
+  la IA tiene 50 consultas al día entre el bot de la dueña y la asistente
+  de la tienda; un día bueno de ventas se las come y se queda muda hasta
+  las 7 de la tarde. **Son 10 USD, una sola vez, no mensuales** (se habló
+  de "100 USD": la cifra que hace falta es 10). Con eso sube a 1000 al
+  día y se abren modelos mejores a céntimos por consulta. Ver §6.
+
 - **Plan de Vercel.** Se arranca en el gratuito, decidido el 8 de
   noviembre. Queda dicho para que no sorprenda: sus condiciones reservan
   el plan Hobby al uso personal o no comercial y piden Pro para lo
@@ -194,3 +225,54 @@ Lo que conviene saber:
   aplican solos, no hay código que la clienta escriba.
 - **Los 7 productos sin una sola unidad** se siguen mostrando, agotados.
   Si prefieres esconderlos, se ocultan desde `/admin/productos`.
+
+---
+
+## 8. El sitio de pruebas
+
+Lo que se quiere: **konamoda.pe es la tienda**, y queda otra copia para
+probar cosas sin tocar la de verdad.
+
+Lo que hay que saber, porque no es lo que parece:
+
+- **`kona-henna.vercel.app` NO va a ser un sitio de pruebas.** Vercel
+  sirve el MISMO despliegue de producción en todos los dominios del
+  proyecto. Cuando konamoda.pe esté activo, kona-henna será la misma
+  tienda con otra dirección: los mismos productos, los mismos pedidos,
+  el mismo stock. No hace daño (Google ve que la dirección buena es
+  konamoda.pe), pero probar algo ahí es probarlo en la tienda real.
+- **El sitio de pruebas de verdad es una rama.** Cada rama que se sube a
+  GitHub tiene su propia dirección en Vercel, que no se indexa en Google
+  (`robots.txt` la cierra sola). Una rama `pruebas` da una dirección
+  fija: `kona-git-pruebas-ai-agenda-s-projects.vercel.app`.
+
+### ⚠️ Antes de usar una rama para probar
+
+Hoy las variables de la base de datos (`KV_URL`, `KV_REST_API_URL`,
+`KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN`, `KV_REDIS_URL`)
+están puestas **también en Preview**. Eso quiere decir que **cualquier
+rama de pruebas escribe en la base de datos de la tienda real**: un
+producto que se borre probando se borra en konamoda.pe, un stock que se
+ajuste probando se vende mal mañana.
+
+Dos salidas, de más simple a más completa:
+
+1. **Quitar las variables `KV_*` de Preview** (Vercel → Settings →
+   Environment Variables, desmarcar Preview en cada una). La copia de
+   pruebas arranca con los datos de fábrica — que ya traen el inventario
+   real — y no guarda nada. Sirve para ver diseño, textos, el carrito,
+   el flujo de pago. No sirve para probar el panel guardando cosas.
+2. **Una base de datos aparte para pruebas** (otra base Upstash gratis,
+   conectada solo a Preview). Así la copia de pruebas sí guarda, en su
+   propio cajón.
+
+Lo mismo vale para `TELEGRAM_*`, que también están en Preview: una rama
+de pruebas puede contestar como el bot de la dueña.
+
+### Seguridad, al pasar a producción
+
+`ADMIN_PASSWORD` está marcada en Vercel como "clave temporal: cambiar por
+una larga antes de dar la web a clientas", y Vercel la señala como
+legible (`readable-secret`), igual que `ADMIN_SESSION_SECRET`. Con el
+dominio real es el momento: crearlas de nuevo como **Sensitive** y con
+una clave larga.
