@@ -119,10 +119,14 @@ Lo que se encontró al mirar:
 servidores de nombres del dominio a los de Vercel (`ns1.vercel-dns.com`,
 `ns2.vercel-dns.com`). Como el dominio ya está en el proyecto, Vercel
 pone solo los registros correctos, y a partir de ahí el DNS se maneja
-desde Vercel sin depender de un hosting que ya no se paga. Eso se cambia
-donde esté **registrado** el dominio (si BGMax lo registró, en su área de
-clientes → el dominio → "Servidores de nombres"; si no, en el
-registrador que figure en el whois de punto.pe). Revisar de paso **la
+desde Vercel sin depender de un hosting que ya no se paga. **BGMax es una
+agencia de marketing, no un hosting**: su web (bgmaxperu.com) no tiene
+área de clientes ni inicio de sesión. Hicieron la tienda vieja y
+revendían el hosting; la cuenta suspendida cuelga de la suya. No hay
+panel al que entrar: **el cambio se le pide a BGMax** (WhatsApp o
+"Contacto" en su web). Pedirles de paso quién figura como **titular**
+del dominio: si lo registraron a nombre de la agencia, el dominio de la
+tienda no es de la dueña, y eso hay que arreglarlo antes que nada. Revisar de paso **la
 fecha de vencimiento del dominio**: si está ligado a la cuenta
 suspendida, puede no renovarse.
 
