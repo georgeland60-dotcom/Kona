@@ -43,6 +43,14 @@ const nextConfig: NextConfig = {
         destination: "/tienda?cat=:slug",
         permanent: true,
       },
+      // Ficha de producto con la base en inglés. Los enlaces que guardó el
+      // backup usan /producto/ (WooCommerce traduce la base al español),
+      // pero si alguno quedó circulando con /product/ no debe dar 404.
+      {
+        source: "/product/:slug{/}?",
+        destination: "/producto/:slug",
+        permanent: true,
+      },
       // Las etiquetas de WooCommerce no tienen equivalente: a la tienda.
       {
         source: "/:base(etiqueta-producto|product-tag)/:slug{/}?",

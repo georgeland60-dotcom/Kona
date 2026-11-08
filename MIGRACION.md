@@ -31,7 +31,8 @@ Lo que sí cambió de sitio ya está redirigido en `next.config.ts`:
 | `/categoria-producto/<lo-que-sea>` | `/tienda?cat=<lo-que-sea>` |
 | `/categoria-producto/set-conjuntos` | `/tienda?cat=conjuntos` |
 | `/categoria-producto/ofertas` | `/tienda?cat=sale` |
-| `/etiqueta-producto/...` | `/tienda` |
+| `/etiqueta-producto/...`, `/product-tag/...` | `/tienda` |
+| `/product/<slug>` (base en inglés, por si quedó algún enlace) | `/producto/<slug>` |
 | `/carrito`, `/finalizar-compra`, `/mi-cuenta`, `/shop` | `/tienda` |
 
 ---
@@ -98,57 +99,74 @@ dirección que todavía lleva a la página muerta del hosting viejo.
 
 **Estado al 8 de noviembre de 2026:** los dos dominios ya están añadidos
 en Vercel (proyecto `kona`); `www.konamoda.pe` redirige a `konamoda.pe`
-con un 308. Falta **solo el DNS**, que no se puede tocar desde aquí.
+con un 308. Falta el DNS, y antes de eso, **decidir qué pasa con el
+correo** (abajo).
 
-Lo que se encontró al mirar:
+Datos completos (whois, zona DNS, hosting, correo) en
+`DOMINIO_Y_HOSTING.md`, que **no está en el repo** porque tiene datos
+personales de la titular. Lo que importa para decidir:
 
-- El DNS de konamoda.pe lo administra **BGMax Perú**
-  (`ns1.bgmaxperu.com`, `ns2.bgmaxperu.com`). Ahí es donde se cambia.
-- Hoy `konamoda.pe` apunta a `108.160.156.250`, el hosting viejo, que ya
-  **no sirve la tienda**: responde una página de aparcamiento ("302
-  Found", 771 bytes). No hay nada vivo que se pueda caer con el cambio.
-- `www.konamoda.pe` **no existe** todavía (no tiene ningún registro).
-- No hay registros MX: no se vio correo en el dominio.
-- **La cuenta de hosting de BGMax está SUSPENDIDA** (`/cpanel` lleva a
-  la página "Account Suspended" de cPanel). Con la cuenta suspendida lo
-  normal es que no se pueda entrar al editor de zona DNS del cPanel. Y
-  hay un riesgo peor: si BGMax borra la cuenta suspendida, la zona DNS
-  se va con ella y konamoda.pe deja de existir en internet.
+### Quién manda sobre qué
 
-**Por eso la recomendación es sacar el DNS de BGMax**: cambiar los
-servidores de nombres del dominio a los de Vercel (`ns1.vercel-dns.com`,
-`ns2.vercel-dns.com`). Como el dominio ya está en el proyecto, Vercel
-pone solo los registros correctos, y a partir de ahí el DNS se maneja
-desde Vercel sin depender de un hosting que ya no se paga. **BGMax es una
-agencia de marketing, no un hosting**: su web (bgmaxperu.com) no tiene
-área de clientes ni inicio de sesión. Hicieron la tienda vieja y
-revendían el hosting; la cuenta suspendida cuelga de la suya. No hay
-panel al que entrar: **el cambio se le pide a BGMax** (WhatsApp o
-"Contacto" en su web). Pedirles de paso quién figura como **titular**
-del dominio: si lo registraron a nombre de la agencia, el dominio de la
-tienda no es de la dueña, y eso hay que arreglarlo antes que nada. Revisar de paso **la
-fecha de vencimiento del dominio**: si está ligado a la cuenta
-suspendida, puede no renovarse.
+| | Quién | Qué se cambia ahí |
+|---|---|---|
+| **El dominio** | **NIC.PE directo** (punto.pe), sin intermediario. Titular: la dueña. Estado `ok`. | **Los servidores de nombres.** Se entra con el correo del contacto administrativo del dominio (en `DOMINIO_Y_HOSTING.md`). |
+| La zona DNS actual | Hosting **Private Systems**, revendido por **BGMax** (agencia de marketing), con servidores de marca `ns1/ns2.bgmaxperu.com` | Los registros sueltos. Está **suspendido desde el 24 oct 2026**: no se puede entrar al cPanel sin regularizarlo. |
 
-Si se prefiere dejar el DNS en BGMax (o pedírselo a su soporte), estos
-son los dos registros:
+**El dominio es de la dueña**, no de la agencia. No hace falta pedirle
+nada a BGMax para cambiar los servidores de nombres: se hace en NIC.PE.
+La fecha de vencimiento no sale en el whois; se ve en el panel de NIC.PE.
+
+### ⚠️ Hay correo: `pedidos@konamoda.pe`
+
+Un buzón real (101 MB, copia en el backup), con su `MX` apuntando al
+hosting suspendido. Lo más probable es que **ya no funcione desde el 24
+de octubre**, pero hay que confirmarlo, y hay que decidir antes de mover
+el DNS:
+
+- **Dejarlo morir.** La tienda nueva no manda ni recibe correo (todo va
+  por WhatsApp y Telegram). Revisar antes que ninguna cuenta importante
+  (Mercado Pago, Meta, Google) use `pedidos@` para recuperar la
+  contraseña: si lo usa, perderlo es perder esa cuenta.
+- **Reenviarlo a un Gmail** con un servicio de reenvío gratis: se crean
+  sus `MX` en Vercel y lo que llegue a `pedidos@` cae en el Gmail.
+- **Un buzón de verdad** (Zoho, Google Workspace…): más completo, y
+  Workspace es de pago.
+
+### Camino recomendado: servidores de nombres a Vercel
+
+En el panel de NIC.PE, cambiar los servidores de nombres de
+`ns1/ns2.bgmaxperu.com` a:
+
+```
+ns1.vercel-dns.com
+ns2.vercel-dns.com
+```
+
+Vercel pone solo los registros de la web (el dominio ya está en el
+proyecto). El correo **no**: si se decide mantenerlo, sus `MX` (y un SPF
+nuevo) se crean en Vercel **antes** de cambiar los servidores de nombres.
+Así el DNS deja de depender de un hosting suspendido que BGMax puede
+borrar en cualquier momento.
+
+### Alternativa: cambiar registros en la zona actual
+
+Solo si se reactiva el cPanel (o BGMax lo hace por ella):
 
 | Tipo | Nombre | Valor | Qué hacer |
 |---|---|---|---|
-| `A` | `konamoda.pe` (o `@`) | `76.76.21.21` | **cambiar** el `108.160.156.250` por este |
-| `CNAME` | `www` | `cname.vercel-dns.com` | **crear**, no existe |
+| `A` | `konamoda.pe` | `76.76.21.21` | **cambiar** el `108.160.156.250` |
+| `AAAA` | `konamoda.pe` | — | **borrar** (`2600:4c00:512:4cc5::235`): si queda, quien entre por IPv6 sigue llegando al hosting muerto |
+| `CNAME` | `www` | `cname.vercel-dns.com` | **cambiar** (hoy apunta a `konamoda.pe`) |
 
-1. Si hay **más de un `A`** para el dominio raíz, se dejan solo el de
-   Vercel. Con dos, la mitad de las visitas sigue llegando al hosting
-   muerto.
-2. El certificado HTTPS lo emite Vercel solo cuando ve el DNS bien.
-   Suele tardar minutos; puede tardar horas si el TTL viejo era largo.
-3. Cuando Vercel marque los dos dominios en verde: §2.2 (la variable)
-   y desplegar.
+Los `MX`, `mail`, SPF y DKIM se quedan como están en este camino.
 
-> **Si resulta que sí hay correo** (@konamoda.pe), **no toques los
-> registros MX**. Cambiar el A y el CNAME no afecta al correo; borrar los
-> MX sí lo apaga.
+### Después, en los dos casos
+
+1. El certificado HTTPS lo emite Vercel solo cuando ve el DNS bien.
+   Minutos, u horas si el TTL viejo (4 h) todavía no venció.
+2. Cuando Vercel marque los dos dominios en verde: §2.2 (la variable) y
+   desplegar.
 
 ---
 
@@ -223,10 +241,14 @@ Lo que conviene saber:
 
 ## 7. Lo que queda decidido a medias
 
-- **Número de WhatsApp — PREGUNTAR.** Sigue el de ejemplo
+- **Número de WhatsApp — CONFIRMAR.** Sigue el de ejemplo
   (`51987654321`). Es lo que más ventas pierde de esta lista: quien elige
   Yape o transferencia termina escribiendo a un número que no existe.
-  Ver §2.1.
+  El botón de la tienda vieja usaba el **+51 942 187 981**
+  (`NEXT_PUBLIC_WHATSAPP=51942187981`). Confirmar con la dueña que sigue
+  siendo el del negocio antes de ponerlo. Ver §2.1.
+- **Correo `pedidos@konamoda.pe` — DECIDIR antes de mover el DNS.**
+  Dejarlo morir, reenviarlo a un Gmail o un buzón de verdad. Ver §3.
 - **Crédito de OpenRouter — PENDIENTE DE DECIDIR.** Con la cuenta gratis
   la IA tiene 50 consultas al día entre el bot de la dueña y la asistente
   de la tienda; un día bueno de ventas se las come y se queda muda hasta
