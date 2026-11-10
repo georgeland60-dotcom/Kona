@@ -217,7 +217,12 @@ export default async function Home() {
 
       {/* ---- CATEGORIAS ---- */}
       <section className="bg-white">
-        <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+        {/* En PC esta banda va mas ancha que el resto (7xl en vez de
+            6xl): los cuadros pasan de 254 a 286 px de lado, que es un
+            28% mas de superficie. No se toca la proporcion 3/4 porque
+            las fotos de producto miden 480x615 (relacion 0.78) y
+            cualquier otro marco les recortaria mas. */}
+        <div className="max-w-6xl lg:max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
           <Revelar>
           <div className="flex items-end justify-between mb-8 md:mb-10">
             <div>
@@ -243,7 +248,7 @@ export default async function Home() {
                   <Foto
                     src={image}
                     alt={block.name}
-                    sizes="(min-width: 1024px) 270px, 45vw"
+                    sizes="(min-width: 1024px) 300px, 45vw"
                     className="group-hover:scale-[1.04] transition-transform duration-700 ease-out"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
@@ -283,15 +288,19 @@ export default async function Home() {
            La foto es la unica horizontal que hay, por eso va en marco
            3:2 y en una columna que no pasa de su tamano real. */}
       <section className="bg-k-lila">
-        <div className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-24">
+        <div className="max-w-6xl lg:max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
           <Revelar>
-          <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center">
-            <div className="relative aspect-[3/2] w-full max-w-[600px] overflow-hidden rounded-[2rem]">
+          {/* La foto se lleva mas ancho que el texto (1.15fr contra 1fr)
+              y el tope sube de 600 a 700 px. El tope existe porque la
+              foto mide 1015 px de ancho de verdad: pasado eso se
+              estiraria y se veria pixelada. */}
+          <div className="grid md:grid-cols-[1.15fr_1fr] gap-10 md:gap-14 items-center">
+            <div className="relative aspect-[3/2] w-full max-w-[700px] overflow-hidden rounded-[2rem]">
               <Foto
                 src={fotoIntermedia.src}
                 alt={fotoIntermedia.alt}
                 position={fotoIntermedia.position}
-                sizes="(min-width: 1024px) 560px, (min-width: 768px) 45vw, 92vw"
+                sizes="(min-width: 1024px) 700px, (min-width: 768px) 48vw, 92vw"
               />
             </div>
 
@@ -409,8 +418,14 @@ export default async function Home() {
         <PreguntasFrecuentes />
       </Revelar>
 
-      {/* ---- CIERRE ---- */}
-      <section className="bg-k-fucsia text-white">
+      {/* ---- CIERRE ----
+           El -mb-20 cancela el mt-20 del pie. Ese margen hace falta en
+           las demas paginas, que acaban en blanco y si no quedan
+           pegadas al pie; pero aqui el cierre y el pie son el MISMO
+           fucsia, asi que el margen se veia como una barra blanca de
+           80 px partiendo el final de la pagina en dos. Se quita solo
+           aqui, en vez de quitarselo al pie, para no desarmar el resto. */}
+      <section className="bg-k-fucsia text-white -mb-20">
         <Revelar>
         <div className="max-w-3xl mx-auto px-5 md:px-8 py-20 md:py-24 text-center">
           <Corazon className="w-9 h-9 mx-auto mb-5 text-white/70" />
