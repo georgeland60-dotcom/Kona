@@ -42,6 +42,22 @@ function peso(regla: DiscountRule): number {
   return 1;
 }
 
+// Una regla de TODA LA TIENDA no marca categorias.
+//
+// Medido en la tienda real: con un 15% sobre el total corriendo, la
+// campana salia en 17 de 18 categorias. Una senal que esta en todas no
+// senala nada, y el 2x1 de Vestidos -el que de verdad mueve- se perdia
+// entre el resto. Un descuento de toda la tienda se anuncia UNA vez
+// (el pop-up de bienvenida y el banner ya lo hacen); la campana queda
+// para la categoria que tiene algo propio.
+//
+// No se oculta nada: el precio y el carrito siguen aplicando la regla
+// igual. Lo que no se hace es repetirla categoria por categoria.
+function esDeTodaLaTienda(regla: DiscountRule): boolean {
+  if (regla.filtro) return regla.filtro.todos === true;
+  return regla.scope === "all";
+}
+
 export function descuentosPorCategoria(
   reglas: DiscountRule[],
   productos: Product[]
@@ -57,6 +73,7 @@ export function descuentosPorCategoria(
   };
 
   for (const regla of reglas) {
+    if (esDeTodaLaTienda(regla)) continue;
     for (const prod of productos) {
       // Sin stock no hay promesa que cumplir.
       if (stockDisponible(prod) <= 0) continue;
