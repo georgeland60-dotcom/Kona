@@ -150,10 +150,48 @@ body {
   animation: v3-pop-in 0.35s ease-out both;
 }
 
+/* ====== LA CAMPANA DE DESCUENTO ======
+   Tres movimientos, todos de adorno: el aviso se lee igual quieto.
+   · toca  -> la campana se balancea cada pocos segundos
+   · halo  -> el chip late despacio para que el ojo lo encuentre
+   · onda  -> el punto del menu suelta un circulo que se expande */
+@keyframes kona-toca {
+  0%, 62%, 100% { transform: rotate(0deg); }
+  66% { transform: rotate(14deg); }
+  70% { transform: rotate(-12deg); }
+  74% { transform: rotate(9deg); }
+  78% { transform: rotate(-7deg); }
+  82% { transform: rotate(4deg); }
+  86% { transform: rotate(-2deg); }
+}
+.kona-campana-toca {
+  transform-origin: 50% 10%;
+  animation: kona-toca 4.5s ease-in-out infinite;
+}
+
+@keyframes kona-halo {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 59, 166, 0.55); }
+  50% { box-shadow: 0 0 0 10px rgba(232, 59, 166, 0); }
+}
+.kona-campana-halo {
+  animation: kona-halo 2.4s ease-out infinite;
+}
+
+@keyframes kona-onda {
+  0% { transform: scale(1); opacity: 0.75; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.kona-campana-onda {
+  animation: kona-onda 1.8s ease-out infinite;
+}
+
 /* Si la persona prefiere menos movimiento, no animamos nada. */
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee,
-  .animate-v3-pop-in {
+  .animate-v3-pop-in,
+  .kona-campana-toca,
+  .kona-campana-halo,
+  .kona-campana-onda {
     animation: none;
   }
 }

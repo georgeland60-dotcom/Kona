@@ -28,7 +28,7 @@ export type PromoItem = {
 
 // ---- El gancho: lo que se lee en grande ------------------------------
 
-function gancho(rule: DiscountRule): string {
+export function gancho(rule: DiscountRule): string {
   // El envío gratis no es un porcentaje: sin esto se anunciaba como
   // "0% OFF", que es lo que pasa cuando una promoción nueva no se
   // enseña a los sitios donde se muestra.
