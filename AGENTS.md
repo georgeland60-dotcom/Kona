@@ -49,7 +49,9 @@ Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
    de usar una rama para probar (MIGRACION.md §8).
 7. **Mercado Pago** — webhook y `MERCADOPAGO_WEBHOOK_SECRET` (la clave la
    pone la persona).
-8. **Fecha de vencimiento del dominio** — se ve en el panel de NIC.PE.
+8. ✅ **Vencimiento del dominio: 23 de octubre de 2027** (visto en el
+   panel de NIC.PE el 18 nov 2026). Renovar antes desde ese panel.
+   Registrado el 24 oct 2020.
 9. Más adelante: GA4 y Pixel de Meta (la tienda vieja tenía Pixel;
    su Analytics era Universal, ya apagado).
 

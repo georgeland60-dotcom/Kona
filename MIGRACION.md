@@ -112,7 +112,7 @@ personales de la titular. Lo que importa para decidir:
 
 **El dominio es de la dueña**, no de la agencia. No hace falta pedirle
 nada a BGMax para cambiar los servidores de nombres: se hace en NIC.PE.
-La fecha de vencimiento no sale en el whois; se ve en el panel de NIC.PE.
+**Vence el 23 de octubre de 2027** (registrado el 24 oct 2020); se renueva desde el panel de NIC.PE, botón "Renovar".
 
 ### ⚠️ Hay correo: `pedidos@konamoda.pe`
 
