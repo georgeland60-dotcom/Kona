@@ -81,6 +81,31 @@ dirección que todavía lleva a la página muerta del hosting viejo.
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_ALLOWED_CHAT_IDS` | el bot de la dueña | no escucha |
 | `NEXT_PUBLIC_INSTAGRAM`, `NEXT_PUBLIC_FACEBOOK` | enlaces del pie | enlaces genéricos |
 
+### 2.3-bis Medición: GA4 y Pixel de Meta
+
+El código ya está puesto (`src/components/Medicion.tsx`,
+`src/lib/medicion.ts`). Se enciende solo cuando estas variables existen
+en **Production** (y después se despliega):
+
+```
+NEXT_PUBLIC_GA4_ID         = G-XXXXXXXXXX     (ID de medición de GA4)
+NEXT_PUBLIC_META_PIXEL_ID  = el número del Pixel
+```
+
+No son claves: salen en el código de cada página. Lo que mide, en los
+dos a la vez: visitas, **añadir al carrito**, **empezar a pagar** (con el
+método) y **compra** (solo pagos aprobados de Mercado Pago, una vez por
+pedido aunque se recargue la página de "¡Gracias!"). Las copias de
+pruebas no miden nada.
+
+- **GA4:** hay que crear una propiedad nueva. La tienda vieja usaba
+  Universal Analytics (`UA-…`), que Google apagó: no se puede reutilizar.
+- **Pixel:** la tienda vieja usaba uno (el número está en
+  `DOMINIO_Y_HOSTING.md`). Antes de reutilizarlo, **confirmar que está
+  en la cuenta de Meta de la dueña** y no en la de la agencia que hizo
+  la web vieja: el Pixel manda los datos de las visitas a quien sea su
+  dueño.
+
 ### 2.4 Los datos de la tienda
 
 - **Cómo te pagan** (`/admin/pagos`): número de Yape, de Plin y la cuenta
@@ -285,28 +310,28 @@ Lo que hay que saber, porque no es lo que parece:
   (`robots.txt` la cierra sola). Una rama `pruebas` da una dirección
   fija: `kona-git-pruebas-ai-agenda-s-projects.vercel.app`.
 
-### ⚠️ Antes de usar una rama para probar
+### ✅ Las ramas de pruebas ya no tocan la tienda real
 
-Hoy las variables de la base de datos (`KV_URL`, `KV_REST_API_URL`,
-`KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN`, `KV_REDIS_URL`)
-están puestas **también en Preview**. Eso quiere decir que **cualquier
-rama de pruebas escribe en la base de datos de la tienda real**: un
-producto que se borre probando se borra en konamoda.pe, un stock que se
-ajuste probando se vende mal mañana.
+**Hecho el 18 nov 2026:** las variables de la base de datos
+(`KV_URL`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`,
+`KV_REST_API_READ_ONLY_TOKEN`, `KV_REDIS_URL`) y las del bot
+(`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`,
+`TELEGRAM_ALLOWED_CHAT_IDS`) están **solo en Production**.
 
-Dos salidas, de más simple a más completa:
+Lo que eso significa para una copia de pruebas:
 
-1. **Quitar las variables `KV_*` de Preview** (Vercel → Settings →
-   Environment Variables, desmarcar Preview en cada una). La copia de
-   pruebas arranca con los datos de fábrica — que ya traen el inventario
-   real — y no guarda nada. Sirve para ver diseño, textos, el carrito,
-   el flujo de pago. No sirve para probar el panel guardando cosas.
-2. **Una base de datos aparte para pruebas** (otra base Upstash gratis,
-   conectada solo a Preview). Así la copia de pruebas sí guarda, en su
-   propio cajón.
+- Arranca con los datos de fábrica, que ya traen el inventario real.
+- **No guarda nada**: lo que se cambie en su panel se pierde al
+  recargar. Sirve para ver diseño, textos, carrito, flujo de pago. No
+  sirve para probar el panel guardando cosas.
+- No puede contestar como el bot de la dueña.
 
-Lo mismo vale para `TELEGRAM_*`, que también están en Preview: una rama
-de pruebas puede contestar como el bot de la dueña.
+Si algún día hace falta probar guardando, la salida es una base de datos
+aparte (otra Upstash gratis) conectada **solo** a Preview. Nunca volver
+a marcar Preview en las `KV_*` de producción.
+
+Ojo: esto vale para los despliegues de prueba **nuevos**. Uno creado
+antes del 18 nov conserva las variables con las que nació.
 
 ### Seguridad, al pasar a producción
 

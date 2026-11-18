@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useCart } from "@/components/cart/CartContext";
 import { store } from "@/config/store";
+import { medir } from "@/lib/medicion";
 import { formatPrice } from "@/lib/format";
 import {
   LIMA_Y_CALLAO,
@@ -60,6 +61,22 @@ export default function CartDrawer() {
     useCart();
   const [loading, setLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+
+  // "Empezó a pagar": lo que el carrito tiene en ese momento, para GA4 y
+  // el Pixel. No es una compra: el pago todavía no está confirmado.
+  const medirPago = (metodo: string) =>
+    medir({
+      tipo: "pagar",
+      metodo,
+      total,
+      lineas: items.map((i) => ({
+        id: i.product.id,
+        nombre: i.product.name,
+        precio: i.product.price,
+        cantidad: i.qty,
+        talla: i.size,
+      })),
+    });
 
   // El carrito tiene dos pantallas: lo que lleva, y cómo lo paga.
   // Mezclarlas obligaba a elegir forma de pago antes de ver el total,
@@ -172,6 +189,7 @@ export default function CartDrawer() {
   // Pago online con Mercado Pago (tarjeta / Yape)
   const payOnline = async () => {
     if (items.length === 0) return;
+    medirPago("mercadopago");
     setLoading(true);
     setPayError(null);
     try {
@@ -238,6 +256,7 @@ export default function CartDrawer() {
   const registrarPedido = async (
     metodo: "whatsapp" | "transferencia"
   ): Promise<{ ok: boolean; id?: string; error?: string }> => {
+    medirPago(metodo);
     try {
       const res = await fetch("/api/orders", {
         method: "POST",

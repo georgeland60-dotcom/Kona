@@ -45,24 +45,28 @@ Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
 4. **`/admin/pagos` vacío** — Yape, Plin y la cuenta del banco.
 5. **Contraseña del panel** — `ADMIN_PASSWORD` es temporal; cambiarla
    por una larga y crearla como Sensitive (la pone la persona).
-6. **Sitio de pruebas** — quitar `KV_*` y `TELEGRAM_*` de Preview antes
-   de usar una rama para probar (MIGRACION.md §8).
+6. ✅ **Sitio de pruebas separado** (18 nov 2026): `KV_*` y `TELEGRAM_*`
+   solo en Production. Una rama de pruebas no guarda nada ni habla como
+   el bot (MIGRACION.md §8).
 7. **Mercado Pago** — webhook y `MERCADOPAGO_WEBHOOK_SECRET` (la clave la
    pone la persona).
 8. ✅ **Vencimiento del dominio: 23 de octubre de 2027** (visto en el
    panel de NIC.PE el 18 nov 2026). Renovar antes desde ese panel.
    Registrado el 24 oct 2020.
-9. Más adelante: GA4 y Pixel de Meta (la tienda vieja tenía Pixel;
-   su Analytics era Universal, ya apagado).
+9. **GA4 y Pixel de Meta** — el código ya está; falta poner
+   `NEXT_PUBLIC_GA4_ID` (propiedad GA4 nueva) y
+   `NEXT_PUBLIC_META_PIXEL_ID` en Production y desplegar. Antes de usar
+   el Pixel viejo, confirmar que es de la cuenta de Meta de la dueña
+   (MIGRACION.md §2.3-bis).
 
 ## Reglas que no se negocian
 
 - **El repositorio es PÚBLICO.** Ninguna clave, token ni contraseña en
   el código, en los commits ni en los documentos. Van en las variables
   de entorno de Vercel, y las pone la persona, no el asistente.
-- **Las ramas de pruebas escriben en la base real** mientras las
-  variables `KV_*` sigan marcadas en Preview (MIGRACION.md §8). No
-  probar en una rama nada que borre o cambie datos hasta resolver eso.
+- **Las variables `KV_*` y `TELEGRAM_*` van SOLO en Production.**
+  Marcarlas también en Preview hace que cualquier rama de pruebas
+  escriba en la tienda real (MIGRACION.md §8).
 - El inventario real viene del backup de WooCommerce
   (`src/data/inventario-real.ts`, corte 1 nov 2026, 369 unidades). Se
   aplica solo una vez; no reintroducir stock inventado.
