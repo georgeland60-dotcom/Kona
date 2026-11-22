@@ -68,12 +68,6 @@ export default function Header({
             >
               Nuevos ingresos
             </Link>
-            <Link
-              href="/tienda?cat=carteras"
-              className="hover:text-white/70 transition"
-            >
-              Carteras
-            </Link>
 
             {/* Productos con submenu */}
             <div className="relative group">
@@ -144,9 +138,6 @@ export default function Header({
             </Link>
             <Link href="/tienda?cat=nuevos-ingresos" onClick={closeMenu} className="py-1.5">
               Nuevos ingresos
-            </Link>
-            <Link href="/tienda?cat=carteras" onClick={closeMenu} className="py-1.5">
-              Carteras
             </Link>
 
             <button

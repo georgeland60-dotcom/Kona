@@ -44,14 +44,6 @@ export const homeCollections: HomeCollection[] = [
     limit: 4,
   },
   {
-    slug: "carteras",
-    title: "Carteras",
-    subtitle: "El complemento que completa tu look",
-    by: "category",
-    value: "carteras",
-    limit: 4,
-  },
-  {
     slug: "sale",
     title: "Sale",
     subtitle: "Ofertas por tiempo limitado",
