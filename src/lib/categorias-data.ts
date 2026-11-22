@@ -14,7 +14,7 @@
 // =============================================================
 
 import { categories as semilla } from "@/data/categories";
-import { readDoc, writeDoc } from "@/lib/kv";
+import { leerDoc, writeDoc } from "@/lib/kv";
 import type { Category } from "@/lib/types";
 
 // Etiquetas que la tienda usa para otras cosas: no pueden ser categorías
@@ -23,10 +23,44 @@ const RESERVADOS = ["sale", "nuevos-ingresos", "todas", "varias"];
 
 const MAXIMO = 40;
 
-type Guardadas = { categorias: Category[] };
+type Guardadas = {
+  categorias: Category[];
+  // Fecha de la limpieza de categorías ya hecha (ver RETIRADAS).
+  limpieza?: string;
+};
 
 function vacio(): Guardadas {
   return { categorias: [] };
+}
+
+// "Calzado" se creó en septiembre para subir unas botas de prueba desde
+// el bot. Las botas ya no están (store-data.ts, PRUEBAS_RETIRADAS) y la
+// categoría quedaba en el menú, vacía. Se quita una sola vez: si algún
+// día se vuelve a crear porque entra calzado de verdad, se queda.
+const RETIRADAS = ["calzado"];
+const LIMPIEZA = "2026-11-22";
+
+// Lee las categorías guardadas, diciendo si la base contestó. Quien va a
+// ESCRIBIR necesita saberlo: con la base caída, escribir encima de una
+// lista vacía borraría todas las categorías creadas.
+async function leerGuardadas(): Promise<
+  { ok: true; guardadas: Guardadas } | { ok: false }
+> {
+  const leido = await leerDoc<Guardadas>("categorias");
+  if (!leido.ok) {
+    return leido.motivo === "vacio" ? { ok: true, guardadas: vacio() } : { ok: false };
+  }
+
+  const guardadas = leido.valor;
+  if (guardadas.limpieza === LIMPIEZA) return { ok: true, guardadas };
+
+  const limpias: Guardadas = {
+    ...guardadas,
+    categorias: guardadas.categorias.filter((c) => !RETIRADAS.includes(c.slug)),
+    limpieza: LIMPIEZA,
+  };
+  await writeDoc("categorias", limpias);
+  return { ok: true, guardadas: limpias };
 }
 
 function normalizar(s: string): string {
@@ -47,7 +81,10 @@ export function slugificar(s: string): string {
 // Todas las categorías: primero las de siempre (que son el orden del
 // menú) y detrás las nuevas, en el orden en que se crearon.
 export async function getCategorias(): Promise<Category[]> {
-  const { categorias } = await readDoc<Guardadas>("categorias", vacio);
+  // Si la base no contesta, el menú se queda con las de siempre: mejor
+  // un menú corto que una tienda caída.
+  const leido = await leerGuardadas();
+  const categorias = leido.ok ? leido.guardadas.categorias : [];
   const slugs = new Set(semilla.map((c) => c.slug));
   return [...semilla, ...categorias.filter((c) => !slugs.has(c.slug))];
 }
@@ -102,7 +139,14 @@ export async function crearCategoria(
     };
   }
 
-  const guardadas = await readDoc<Guardadas>("categorias", vacio);
+  const leido = await leerGuardadas();
+  if (!leido.ok) {
+    return {
+      ok: false,
+      mensaje: "No pude leer las categorías guardadas; prueba de nuevo en un momento.",
+    };
+  }
+  const guardadas = leido.guardadas;
   if (semilla.length + guardadas.categorias.length >= MAXIMO) {
     return {
       ok: false,

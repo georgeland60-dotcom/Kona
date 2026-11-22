@@ -21,6 +21,9 @@ type StoreData = {
   // Mientras no coincida con CORTE_INVENTARIO, los datos guardados
   // todavía llevan el stock inventado y hay que corregirlos.
   inventarioReal?: string;
+  // Fecha de la limpieza de productos de prueba ya hecha (ver
+  // PRUEBAS_RETIRADAS). Igual que la anterior: se hace una sola vez.
+  pruebasRetiradas?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -135,6 +138,30 @@ export async function rehacerInventarioReal(): Promise<{
   };
 }
 
+// ---- Productos de prueba, fuera ----------------------------------------
+//
+//  En septiembre, probando el bot de Telegram, se subieron dos prendas
+//  que nunca fueron de la tienda: unas botas y una blusa con foto de
+//  catálogo. La carga del inventario real no las quitó porque, a
+//  propósito, no toca lo que no estaba en la tienda anterior (así no se
+//  pierde lo que la dueña suba por su cuenta). Quedaron a la venta.
+//
+//  Se quitan una sola vez, la primera vez que alguien entra. Se buscan
+//  por id Y por slug: el id se reutiliza (el siguiente producto que se
+//  cree puede llevar el 12828) y no se puede borrar algo de verdad por
+//  parecerse a una prueba.
+const PRUEBAS_RETIRADAS = [
+  { id: "12828", slug: "botas-negras" },
+  { id: "12829", slug: "blusa-blanca-de-verano" },
+];
+export const LIMPIEZA_PRUEBAS = "2026-11-22";
+
+export function sinPruebas(productos: Product[]): Product[] {
+  return productos.filter(
+    (p) => !PRUEBAS_RETIRADAS.some((r) => r.id === p.id && r.slug === p.slug)
+  );
+}
+
 export async function readStore(): Promise<StoreData> {
   const leido = await leerDoc<StoreData>("store");
 
@@ -144,13 +171,25 @@ export async function readStore(): Promise<StoreData> {
   if (!leido.ok) return seedData();
 
   const datos = leido.valor;
-  if (datos.inventarioReal === CORTE_INVENTARIO) return datos;
+  const faltaInventario = datos.inventarioReal !== CORTE_INVENTARIO;
+  const faltaLimpieza = datos.pruebasRetiradas !== LIMPIEZA_PRUEBAS;
+  if (!faltaInventario && !faltaLimpieza) return datos;
 
-  const corregidos: StoreData = {
-    ...datos,
-    products: conInventarioReal(datos.products),
-    inventarioReal: CORTE_INVENTARIO,
-  };
+  let corregidos: StoreData = datos;
+  if (faltaInventario) {
+    corregidos = {
+      ...corregidos,
+      products: conInventarioReal(corregidos.products),
+      inventarioReal: CORTE_INVENTARIO,
+    };
+  }
+  if (faltaLimpieza) {
+    corregidos = {
+      ...corregidos,
+      products: sinPruebas(corregidos.products),
+      pruebasRetiradas: LIMPIEZA_PRUEBAS,
+    };
+  }
 
   // Si la escritura falla, se devuelven igual los datos corregidos: es
   // mejor enseñar el stock de verdad y volver a intentarlo en la
