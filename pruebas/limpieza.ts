@@ -18,7 +18,7 @@ const temporal = await fs.mkdtemp(path.join(os.tmpdir(), "kona-limpieza-"));
 await fs.mkdir(path.join(temporal, "data"));
 process.chdir(temporal);
 
-const { readStore, LIMPIEZA_PRUEBAS } = await import("@/lib/store-data");
+const { readStore, getProducts, LIMPIEZA_PRUEBAS } = await import("@/lib/store-data");
 const { getCategorias, crearCategoria } = await import("@/lib/categorias-data");
 const tienda = path.join(temporal, "data", "store.json");
 const categorias = path.join(temporal, "data", "categorias.json");
@@ -45,6 +45,7 @@ await fs.writeFile(
       real,
       prenda("12828", "botas-negras", "calzado"),
       prenda("12829", "blusa-blanca-de-verano", "blusas"),
+      prenda("200", "cinnamon-bag-beige", "carteras"),
     ],
   }),
   "utf8"
@@ -67,13 +68,30 @@ comprobar("quita las botas de prueba", !slugs.includes("botas-negras"));
 comprobar("quita la blusa de prueba", !slugs.includes("blusa-blanca-de-verano"));
 comprobar(
   "no toca los productos de verdad",
-  slugs.length === 1 && primera.products[0].variants[0].stock === 3,
+  slugs.length === 2 && primera.products[0].variants[0].stock === 3,
   slugs.join(", ")
+);
+const cartera = primera.products.find((p) => p.slug === "cinnamon-bag-beige");
+comprobar(
+  "la cartera se oculta, no se borra",
+  cartera?.active === false && cartera.variants[0].stock === 3
+);
+comprobar(
+  "y no sale en la tienda",
+  !(await getProducts()).some((p) => p.category === "carteras")
 );
 const enDisco = JSON.parse(await fs.readFile(tienda, "utf8"));
 comprobar(
   "lo guarda con la fecha anotada",
-  enDisco.products.length === 1 && enDisco.pruebasRetiradas === LIMPIEZA_PRUEBAS
+  enDisco.products.length === 2 && enDisco.pruebasRetiradas === LIMPIEZA_PRUEBAS
+);
+
+// Si la dueña vuelve a activar una cartera desde el panel, se queda.
+enDisco.products.find((p: { slug: string }) => p.slug === "cinnamon-bag-beige").active = true;
+await fs.writeFile(tienda, JSON.stringify(enDisco), "utf8");
+comprobar(
+  "una cartera reactivada a mano sigue activa",
+  (await readStore()).products.find((p) => p.slug === "cinnamon-bag-beige")?.active === true
 );
 
 // Un producto nuevo hereda el id 12828 (el siguiente libre): no se borra.

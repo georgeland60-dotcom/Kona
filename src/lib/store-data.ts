@@ -24,6 +24,8 @@ type StoreData = {
   // Fecha de la limpieza de productos de prueba ya hecha (ver
   // PRUEBAS_RETIRADAS). Igual que la anterior: se hace una sola vez.
   pruebasRetiradas?: string;
+  // Fecha en que se ocultaron las carteras (ver CARTERAS_RETIRADAS).
+  carterasRetiradas?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -162,6 +164,24 @@ export function sinPruebas(productos: Product[]): Product[] {
   );
 }
 
+// ---- Carteras, fuera de la vista ---------------------------------------
+//
+//  Kona dejó de vender carteras (22 nov 2026): la categoría salió del
+//  menú y de la semilla. Pero los productos de la tienda desplegada viven
+//  en la base, no en la semilla, así que las carteras seguían saliendo en
+//  "Todo" y en su enlace, colgando de una categoría que ya no existe.
+//
+//  No se borran: se ocultan (active: false), que es reversible desde el
+//  panel y conserva fotos e historial. Una sola vez: si un día la dueña
+//  vuelve a activar una, se queda activa.
+export const CARTERAS_RETIRADAS = "2026-11-22";
+
+export function sinCarteras(productos: Product[]): Product[] {
+  return productos.map((p) =>
+    p.category === "carteras" ? { ...p, active: false } : p
+  );
+}
+
 export async function readStore(): Promise<StoreData> {
   const leido = await leerDoc<StoreData>("store");
 
@@ -173,7 +193,8 @@ export async function readStore(): Promise<StoreData> {
   const datos = leido.valor;
   const faltaInventario = datos.inventarioReal !== CORTE_INVENTARIO;
   const faltaLimpieza = datos.pruebasRetiradas !== LIMPIEZA_PRUEBAS;
-  if (!faltaInventario && !faltaLimpieza) return datos;
+  const faltanCarteras = datos.carterasRetiradas !== CARTERAS_RETIRADAS;
+  if (!faltaInventario && !faltaLimpieza && !faltanCarteras) return datos;
 
   let corregidos: StoreData = datos;
   if (faltaInventario) {
@@ -188,6 +209,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: sinPruebas(corregidos.products),
       pruebasRetiradas: LIMPIEZA_PRUEBAS,
+    };
+  }
+  if (faltanCarteras) {
+    corregidos = {
+      ...corregidos,
+      products: sinCarteras(corregidos.products),
+      carterasRetiradas: CARTERAS_RETIRADAS,
     };
   }
 
