@@ -2,7 +2,9 @@ import Link from "next/link";
 import { getProducts } from "@/lib/store-data";
 import { getCategorias } from "@/lib/categorias-data";
 import { homeCollections } from "@/data/collections";
-import { getSeasonBySlug } from "@/lib/promos-data";
+import { getSeasonBySlug, getLiveRules } from "@/lib/promos-data";
+import { descuentosPorCategoria } from "@/lib/descuentos-por-categoria";
+import { CintaDescuento } from "@/components/promo/Campana";
 import ProductGrid from "@/components/product/ProductGrid";
 
 export default async function TiendaPage({
@@ -12,9 +14,10 @@ export default async function TiendaPage({
 }) {
   const { cat } = await searchParams;
 
-  const [products, categorias] = await Promise.all([
+  const [products, categorias, rules] = await Promise.all([
     getProducts(),
     getCategorias(),
+    getLiveRules(),
   ]);
   // el filtro acepta tanto categorías como colecciones transversales
   // (ej. "nuevos-ingresos", "sale"), que viven en el campo collections.
@@ -36,8 +39,19 @@ export default async function TiendaPage({
         ? { slug: temporadaActual.slug, name: temporadaActual.title }
         : undefined);
 
+  // Si la categoria que se abre tiene descuento vigente, lo primero
+  // que se ve es la cinta. Sale de las reglas y del stock reales.
+  const oferta = cat ? descuentosPorCategoria(rules, products).get(cat) : undefined;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
+      {oferta && (
+        <CintaDescuento
+          etiqueta={oferta.etiqueta}
+          categoria={categoriaActual?.name ?? "esta seleccion"}
+        />
+      )}
+
       <div className="text-center mb-10">
         <h1 className="font-script text-5xl text-accent mb-1">
           {categoriaActual ? categoriaActual.name : "Tienda"}

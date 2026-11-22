@@ -5,9 +5,18 @@ import Image from "next/image";
 import { useState } from "react";
 import { store } from "@/config/store";
 import type { Category } from "@/lib/types";
+import { PuntoDescuento } from "@/components/promo/Campana";
 import { useCart } from "@/components/cart/CartContext";
 
-export default function Header({ categorias }: { categorias: Category[] }) {
+export default function Header({
+  categorias,
+  conDescuento = [],
+}: {
+  categorias: Category[];
+  // Slugs de las categorias que ahora mismo tienen descuento activo.
+  conDescuento?: string[];
+}) {
+  const enOferta = new Set(conDescuento);
   const { count, setOpen } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [prodOpen, setProdOpen] = useState(false);
@@ -59,12 +68,6 @@ export default function Header({ categorias }: { categorias: Category[] }) {
             >
               Nuevos ingresos
             </Link>
-            <Link
-              href="/tienda?cat=carteras"
-              className="hover:text-white/70 transition"
-            >
-              Carteras
-            </Link>
 
             {/* Productos con submenu */}
             <div className="relative group">
@@ -81,9 +84,10 @@ export default function Header({ categorias }: { categorias: Category[] }) {
                     <Link
                       key={c.slug}
                       href={`/tienda?cat=${c.slug}`}
-                      className="block px-4 py-2 text-sm hover:bg-k-hueso hover:text-k-fucsia transition"
+                      className="flex items-center justify-between gap-2 px-4 py-2 text-sm hover:bg-k-hueso hover:text-k-fucsia transition"
                     >
-                      {c.name}
+                      <span>{c.name}</span>
+                      {enOferta.has(c.slug) && <PuntoDescuento />}
                     </Link>
                   ))}
                 </div>
@@ -135,9 +139,6 @@ export default function Header({ categorias }: { categorias: Category[] }) {
             <Link href="/tienda?cat=nuevos-ingresos" onClick={closeMenu} className="py-1.5">
               Nuevos ingresos
             </Link>
-            <Link href="/tienda?cat=carteras" onClick={closeMenu} className="py-1.5">
-              Carteras
-            </Link>
 
             <button
               onClick={() => setProdOpen((v) => !v)}
@@ -153,9 +154,10 @@ export default function Header({ categorias }: { categorias: Category[] }) {
                     key={c.slug}
                     href={`/tienda?cat=${c.slug}`}
                     onClick={closeMenu}
-                    className="py-1.5 text-white/80 hover:text-white"
+                    className="flex items-center gap-2 py-1.5 text-white/80 hover:text-white"
                   >
-                    {c.name}
+                    <span>{c.name}</span>
+                    {enOferta.has(c.slug) && <PuntoDescuento />}
                   </Link>
                 ))}
               </div>

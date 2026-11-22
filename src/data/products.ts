@@ -365,6 +365,9 @@ export const products: SeedProduct[] = [
     name: "Cinnamon Bag Beige",
     price: 85,
     category: "carteras",
+    // Kona dejo de vender carteras: la categoria salio del menu
+    // el 22 de noviembre y estas cuatro se retiraron con ella.
+    active: false,
     image: "/products/cinnamon-bag-1.webp",
     images: ["/products/cinnamon-bag-1.webp", "/products/cinnamon-bag-2.webp", "/products/cinnamon-bag-3.webp"],
     description: "Material cuero PU Forma tubular Asa de cadena entrelazado con el cuero Regulador de la asa en forma de esfera Lazo y pompón como accesorio",
@@ -376,6 +379,9 @@ export const products: SeedProduct[] = [
     name: "Ribbon Bag Verde",
     price: 85,
     category: "carteras",
+    // Kona dejo de vender carteras: la categoria salio del menu
+    // el 22 de noviembre y estas cuatro se retiraron con ella.
+    active: false,
     image: "/products/ribbon-bag-1.webp",
     images: ["/products/ribbon-bag-1.webp"],
     description: "Material cuero PU Asa de mano corrugada Asa superior de cuero regulable Accesorio en forma de Lazo dorado en la parte de adelante",
@@ -431,6 +437,9 @@ export const products: SeedProduct[] = [
     name: "Heart bag Verde",
     price: 85,
     category: "carteras",
+    // Kona dejo de vender carteras: la categoria salio del menu
+    // el 22 de noviembre y estas cuatro se retiraron con ella.
+    active: false,
     image: "/products/heart-bag-rosada-1.webp",
     images: ["/products/heart-bag-rosada-1.webp"],
     description: "Material cuero PU Asa de mano y asa superior Accesorio en forma de corazón en la parte del broche imantado Bordado de corazones encima del cuero",
@@ -546,6 +555,9 @@ export const products: SeedProduct[] = [
     name: "Butterfly Blue Bag",
     price: 85,
     category: "carteras",
+    // Kona dejo de vender carteras: la categoria salio del menu
+    // el 22 de noviembre y estas cuatro se retiraron con ella.
+    active: false,
     image: "/products/butterfly-blue-bag-1.webp",
     images: ["/products/butterfly-blue-bag-1.webp", "/products/butterfly-blue-bag-2.png"],
     description: "Material cuero PU Asa de mano y asa superior Accesorio en forma de mariposa",
