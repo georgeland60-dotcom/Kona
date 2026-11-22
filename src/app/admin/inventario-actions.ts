@@ -7,11 +7,8 @@ import {
   setStock,
   adjustStock,
   getProductById,
-  getProducts,
-  upsertProduct,
-  skuFor,
+  rehacerInventarioReal,
 } from "@/lib/store-data";
-import { INVENTARIO_REAL, CORTE_INVENTARIO } from "@/data/inventario-real";
 
 async function refresh(productId: string) {
   const p = await getProductById(productId);
@@ -48,40 +45,17 @@ export async function adjustStockAction(formData: FormData) {
 
 // ---- Traer el inventario de la tienda anterior ----------------------
 //
-//  La tienda nueva nació con 10 unidades inventadas de cada talla
-//  porque al importar el catálogo no había stock de dónde sacarlo.
-//  Esto pone lo que de verdad había en konamoda.pe al 1 de noviembre,
-//  sacado del último backup.
+//  El stock real de konamoda.pe al 1 de noviembre, sacado del último
+//  backup, se aplica solo la primera vez que alguien entra a la tienda
+//  (lib/store-data.ts). Este botón lo vuelve a aplicar a mano: es el
+//  botón de pánico si alguien se lía ajustando tallas.
 //
-//  Es un botón y no algo automático a propósito: cambia lo que se
-//  puede vender de los 84 productos de golpe, y eso lo decide ella.
-//  Se puede volver a apretar sin miedo (deja el mismo resultado), pero
+//  Se puede apretar sin miedo (deja siempre el mismo resultado), pero
 //  pisa los ajustes de stock hechos a mano después.
 export async function importarInventarioRealAction() {
   if (!(await isLoggedIn())) redirect("/admin/login");
 
-  const productos = await getProducts({ includeInactive: true, raw: true });
-  let tocados = 0;
-  let unidades = 0;
-
-  for (const producto of productos) {
-    const real = INVENTARIO_REAL[producto.id];
-    if (!real) continue; // uno que no estaba en la tienda anterior
-
-    const variants = real.map(([size, stock]) => ({
-      size,
-      // El SKU se conserva si esa talla ya existía: es lo que enlaza el
-      // stock con los pedidos que ya están hechos.
-      sku:
-        producto.variants.find((v) => v.size === size)?.sku ??
-        skuFor(producto.slug, size),
-      stock,
-    }));
-
-    await upsertProduct({ ...producto, variants });
-    tocados++;
-    unidades += variants.reduce((s, v) => s + v.stock, 0);
-  }
+  const { productos, unidades, guardado } = await rehacerInventarioReal();
 
   revalidatePath("/admin/inventario");
   revalidatePath("/admin");
@@ -90,5 +64,9 @@ export async function importarInventarioRealAction() {
   revalidatePath("/");
   revalidatePath("/producto/[slug]", "page");
 
-  redirect(`/admin/inventario?importado=${tocados}&unidades=${unidades}`);
+  redirect(
+    guardado
+      ? `/admin/inventario?importado=${productos}&unidades=${unidades}`
+      : "/admin/inventario?error=no-se-pudo-guardar"
+  );
 }

@@ -81,6 +81,42 @@ export async function readDoc<T>(key: string, fallback: () => T): Promise<T> {
   }
 }
 
+// Igual que readDoc, pero DICIENDO qué pasó: si el documento estaba
+// guardado, si no había nada todavía, o si la base no contestó.
+//
+// Existe por una razón concreta y fea: readDoc devuelve los datos "de
+// fábrica" tanto cuando la tienda es nueva como cuando Upstash se cae.
+// Para LEER eso da igual (mejor una tienda con datos de fábrica que una
+// tienda caída), pero para ESCRIBIR encima es la diferencia entre
+// arreglar el inventario y borrar el de verdad.
+export type Lectura<T> =
+  | { ok: true; valor: T }
+  | { ok: false; motivo: "vacio" | "error" };
+
+export async function leerDoc<T>(key: string): Promise<Lectura<T>> {
+  if (isPersistent()) {
+    try {
+      const raw = await kvCommand(["GET", `kona:${key}`]);
+      if (typeof raw === "string" && raw.length > 0) {
+        return { ok: true, valor: JSON.parse(raw) as T };
+      }
+      return { ok: false, motivo: "vacio" };
+    } catch {
+      return { ok: false, motivo: "error" };
+    }
+  }
+
+  try {
+    const raw = await fs.readFile(path.join(DATA_DIR, `${key}.json`), "utf8");
+    return { ok: true, valor: JSON.parse(raw) as T };
+  } catch (error) {
+    // Que el archivo no exista es una tienda nueva; cualquier otra cosa
+    // (permisos, JSON roto) es un problema y no se pisa nada.
+    const codigo = (error as { code?: string })?.code;
+    return { ok: false, motivo: codigo === "ENOENT" ? "vacio" : "error" };
+  }
+}
+
 // ---- Candado ---------------------------------------------------------
 //
 //  Para lo que NO puede pasar dos veces a la vez: descontar stock.

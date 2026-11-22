@@ -10,13 +10,17 @@
 
 import { products as seedProducts } from "@/data/products";
 import type { Product, SeedProduct, Variant } from "@/lib/types";
-import { INVENTARIO_REAL } from "@/data/inventario-real";
+import { INVENTARIO_REAL, CORTE_INVENTARIO } from "@/data/inventario-real";
 import { applyDiscounts, getLiveRules, withDiscount } from "@/lib/promos-data";
-import { readDoc, writeDoc } from "@/lib/kv";
+import { leerDoc, writeDoc } from "@/lib/kv";
 
 type StoreData = {
   products: Product[];
   updatedAt: string;
+  // Fecha del inventario de la tienda anterior que ya está aplicado.
+  // Mientras no coincida con CORTE_INVENTARIO, los datos guardados
+  // todavía llevan el stock inventado y hay que corregirlos.
+  inventarioReal?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -71,8 +75,88 @@ function seedData(): StoreData {
   };
 }
 
+// ---- El stock inventado, de una vez -----------------------------------
+//
+//  La tienda nueva nació con 10 unidades de cada talla porque al
+//  importar el catálogo no había stock de dónde sacarlo. Eso es vender
+//  lo que no hay: una clienta paga una talla que no existe y alguien
+//  tiene que llamarla a devolverle el dinero.
+//
+//  Una tienda recién creada ya nace bien (seedToProduct lee el
+//  inventario real). El problema son las tiendas que YA guardaron los
+//  10 inventados, como producción. Esto lo arregla la primera vez que
+//  alguien entra, sin que nadie tenga que apretar nada, y deja la fecha
+//  del corte anotada para no volver a hacerlo nunca más.
+export function conInventarioReal(productos: Product[]): Product[] {
+  return productos.map((producto) => {
+    const real = INVENTARIO_REAL[producto.id];
+    if (!real) return producto; // no estaba en la tienda anterior: no se toca
+
+    const variants: Variant[] = real.map(([size, stock]) => ({
+      size,
+      // El SKU se conserva si esa talla ya existía: es lo que enlaza el
+      // stock con los pedidos que ya están hechos.
+      sku:
+        producto.variants.find((v) => v.size === size)?.sku ??
+        skuFor(producto.slug, size),
+      stock,
+    }));
+
+    return { ...producto, variants };
+  });
+}
+
+// Lo mismo, pero a mano desde el panel: vuelve a dejar el inventario
+// del backup aunque ya estuviera aplicado. Sirve de botón de pánico si
+// alguien se lía ajustando tallas.
+export async function rehacerInventarioReal(): Promise<{
+  productos: number;
+  unidades: number;
+  guardado: boolean;
+}> {
+  const leido = await leerDoc<StoreData>("store");
+  const datos = leido.ok ? leido.valor : seedData();
+  const products = conInventarioReal(datos.products);
+
+  const tocados = products.filter((p) => INVENTARIO_REAL[p.id]);
+  const guardado = await writeStore({
+    ...datos,
+    products,
+    inventarioReal: CORTE_INVENTARIO,
+  });
+
+  return {
+    productos: tocados.length,
+    unidades: tocados.reduce(
+      (total, p) => total + p.variants.reduce((s, v) => s + v.stock, 0),
+      0
+    ),
+    guardado,
+  };
+}
+
 export async function readStore(): Promise<StoreData> {
-  return readDoc<StoreData>("store", seedData);
+  const leido = await leerDoc<StoreData>("store");
+
+  // Sin datos guardados (tienda nueva) o con la base caída: los datos de
+  // fábrica, que ya traen el inventario real. No se escribe NADA: si la
+  // base no contestó, escribir encima sería borrar el inventario bueno.
+  if (!leido.ok) return seedData();
+
+  const datos = leido.valor;
+  if (datos.inventarioReal === CORTE_INVENTARIO) return datos;
+
+  const corregidos: StoreData = {
+    ...datos,
+    products: conInventarioReal(datos.products),
+    inventarioReal: CORTE_INVENTARIO,
+  };
+
+  // Si la escritura falla, se devuelven igual los datos corregidos: es
+  // mejor enseñar el stock de verdad y volver a intentarlo en la
+  // siguiente visita que enseñar uno inventado.
+  await writeStore(corregidos);
+  return corregidos;
 }
 
 // Devuelve false si no se pudo guardar (disco de solo lectura y sin KV).

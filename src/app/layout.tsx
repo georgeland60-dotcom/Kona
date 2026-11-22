@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Jost, Sacramento } from "next/font/google";
 import "./globals.css";
 import { store } from "@/config/store";
-import { urlDelSitio } from "@/lib/sitio";
+import { esProduccion, urlDelSitio } from "@/lib/sitio";
+import Medicion from "@/components/Medicion";
 
 // =============================================================
 //  LAS DOS LETRAS DE LA MARCA
@@ -63,6 +64,12 @@ export const metadata: Metadata = {
   },
 };
 
+// Los identificadores son públicos (salen en el código de cada página),
+// no son claves: van en variables solo para poder cambiarlos sin tocar
+// código. Hay que volver a desplegar después de ponerlos.
+const ga4 = process.env.NEXT_PUBLIC_GA4_ID?.trim() || undefined;
+const pixel = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || undefined;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -73,7 +80,13 @@ export default function RootLayout({
       lang="es"
       className={`${jost.variable} ${sacramento.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* GA4 y Pixel de Meta: solo en la tienda de verdad, y solo si
+            sus identificadores están puestos en Vercel. Una copia de
+            pruebas no cuenta visitas ni alimenta los anuncios. */}
+        {esProduccion() && (ga4 || pixel) && <Medicion ga4={ga4} pixel={pixel} />}
+      </body>
     </html>
   );
 }

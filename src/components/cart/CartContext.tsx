@@ -11,6 +11,7 @@ import {
   ReactNode,
 } from "react";
 import { Product, totalStock } from "@/lib/types";
+import { medir } from "@/lib/medicion";
 
 export type CartItem = {
   product: Product;
@@ -73,6 +74,10 @@ type CartContextType = {
   calculando: boolean;
   isOpen: boolean;
   setOpen: (v: boolean) => void;
+  // true cuando el carrito guardado en el navegador ya se leyó. Antes de
+  // eso `items` está vacío aunque la clienta tenga cosas: quien necesite
+  // el carrito real al entrar (la página de pago aprobado) espera esto.
+  cargado: boolean;
 };
 
 // Identifica un carrito por su contenido: si cambia algo, cambia la firma.
@@ -101,7 +106,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     datos: PrecioCarrito;
   } | null>(null);
 
-  // Al cargar la pagina, recupera el carrito guardado
+  // Al cargar la pagina, recupera el carrito guardado.
+  //
+  // OJO con el orden: React ejecuta los efectos de los hijos ANTES que
+  // los de este proveedor. Una página que vacía el carrito al entrar
+  // (pago aprobado) lo vaciaba antes de esta lectura, y esta lectura lo
+  // volvía a llenar: la clienta pagaba y seguía viendo sus prendas en
+  // el carrito. Por eso existe `cargado`, y por eso no se guarda nada
+  // hasta haber leído: guardar antes escribía un carrito vacío encima.
+  const [cargado, setCargado] = useState(false);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -109,15 +122,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {
       // si algo falla, empezamos con carrito vacio
     }
+    setCargado(true);
   }, []);
 
   // Cada vez que cambia el carrito, lo guardamos
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    if (!cargado) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      // Navegador sin almacenamiento: el carrito vive solo en esta visita.
+    }
+  }, [items, cargado]);
 
   const add = (product: Product, size?: string) => {
     const tope = disponibleDe(product, size);
+    // Fuera de setItems a propósito: React puede llamar dos veces a esa
+    // función, y una prenda añadida no puede contarse dos veces.
+    medir({
+      tipo: "carrito",
+      linea: { id: product.id, nombre: product.name, precio: product.price, cantidad: 1, talla: size },
+    });
     setItems((prev) => {
       const idx = prev.findIndex(
         (i) => i.product.id === product.id && i.size === size
@@ -225,7 +250,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         items, add, remove, setQty, clear, count, total,
-        precio: precioActual, calculando, isOpen, setOpen,
+        precio: precioActual, calculando, isOpen, setOpen, cargado,
       }}
     >
       {children}
