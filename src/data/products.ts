@@ -149,6 +149,7 @@ export const products: SeedProduct[] = [
     images: ["/products/paper-bag-leti-golden-beige-1.webp", "/products/paper-bag-leti-golden-beige-2.webp", "/products/paper-bag-leti-golden-beige-3.webp", "/products/paper-bag-leti-golden-beige-4.webp"],
     description: "-Tela denim 97% algodón y 3% spandex -Elástico en todo el contorno de la cintura, con dos botones -Tiene un cinturón de la misma tela -Diseño cómodo, para toda ocasión",
     sizes: ["30", "32", "34", "36", "38", "40"],
+    collections: ["full-denim"],
   },
   {
     id: "9415",
@@ -160,6 +161,7 @@ export const products: SeedProduct[] = [
     images: ["/products/paper-bag-leti-negro-1.webp", "/products/paper-bag-leti-negro-2.webp", "/products/paper-bag-leti-negro-3.webp", "/products/paper-bag-leti-negro-4.webp"],
     description: "-Tela denim 97% algodón y 3% spandex -Elástico en todo el contorno de la cintura, con dos botones -Tiene un cinturón de la misma tela -Diseño cómodo, para toda ocasión",
     sizes: ["30", "32", "34", "36", "38", "40"],
+    collections: ["full-denim"],
   },
   {
     id: "9623",
@@ -215,6 +217,7 @@ export const products: SeedProduct[] = [
     images: ["/products/slouchy-jean-cris-2-1.webp", "/products/slouchy-jean-cris-2-2.webp", "/products/slouchy-jean-cris-2-3.webp", "/products/slouchy-jean-cris-2-4.webp", "/products/slouchy-jean-cris-2-5.webp", "/products/slouchy-jean-cris-2-6.webp", "/products/slouchy-jean-cris-2-7.webp"],
     description: "-Tela denim 97% algodón y 3% spandex -Elástico en la parte de atrás en la cintura con un botón adelante -Pliegue en ambos lados debajo de la pretina y en la parte del tobillo -Fit Baggy en las piernas",
     sizes: ["30", "32", "34", "36", "38", "40"],
+    collections: ["full-denim"],
   },
   {
     id: "9756",
@@ -237,6 +240,7 @@ export const products: SeedProduct[] = [
     images: ["/products/slouchy-jean-cris-1.webp", "/products/slouchy-jean-cris-2.webp", "/products/slouchy-jean-cris-3.webp", "/products/slouchy-jean-cris-4.webp", "/products/slouchy-jean-cris-5.webp", "/products/slouchy-jean-cris-6.webp"],
     description: "-Tela denim 97% algodón y 3% spandex -Elástico en la parte de atrás en la cintura con un botón adelante -Pliegue en ambos lados debajo de la pretina y en la parte del tobillo -Fit Baggy en las piernas",
     sizes: ["30", "32", "34", "36", "38", "40"],
+    collections: ["full-denim"],
   },
   {
     id: "9793",
@@ -314,6 +318,7 @@ export const products: SeedProduct[] = [
     images: ["/products/jean-flare-ari-azul-1.webp", "/products/jean-flare-ari-azul-2.webp", "/products/jean-flare-ari-azul-3.webp", "/products/jean-flare-ari-azul-4.webp"],
     description: "-Tela denim 95% algodón y 5% spandex -Bota acampanada -Pretina cómoda con un botón -Diseño versátil y casual",
     sizes: ["30", "32", "34", "36", "38", "40"],
+    collections: ["full-denim"],
   },
   {
     id: "10153",
@@ -325,6 +330,7 @@ export const products: SeedProduct[] = [
     images: ["/products/jean-flare-ari-negro-1.webp", "/products/jean-flare-ari-negro-2.webp", "/products/jean-flare-ari-negro-3.webp"],
     description: "-Tela denim 95% algodón y 5% spandex -Bota acampanada -Pretina cómoda con un botón -Diseño versátil y casual",
     sizes: ["30", "32", "34", "36", "38", "40"],
+    collections: ["full-denim"],
   },
   {
     id: "10181",
@@ -336,6 +342,7 @@ export const products: SeedProduct[] = [
     images: ["/products/paper-bag-jean-lu-1.webp", "/products/paper-bag-jean-lu-2.webp", "/products/paper-bag-jean-lu-3.webp", "/products/paper-bag-jean-lu-4.webp", "/products/paper-bag-jean-lu-5.webp"],
     description: "-Tela denim 98% algodón y 2% spandex -Elástico en todo el contorno de la cintura, con dos botones -Tiene un cinturón de la misma tela -Diseño cómodo y versátil",
     sizes: ["30", "32", "34", "36", "38", "40"],
+    collections: ["full-denim"],
   },
   {
     id: "10258",
@@ -991,6 +998,6 @@ export const products: SeedProduct[] = [
     images: ["/products/palazzo-jean-baggy-1.webp", "/products/palazzo-jean-baggy-2.webp", "/products/palazzo-jean-baggy-3.webp", "/products/palazzo-jean-baggy-4.webp", "/products/palazzo-jean-baggy-5.webp", "/products/palazzo-jean-baggy-6.webp", "/products/palazzo-jean-baggy-7.webp"],
     description: "Tela Denim 70% algodón, tela ligera y rigida -Elastico toda la pretina -Bolsillos a los costados -prenda corte holgado y parejo desde la cadera hasta el tobillo",
     sizes: ["L", "M", "XL", "XXL", "XXXL"],
-    collections: ["nuevos-ingresos"],
+    collections: ["nuevos-ingresos", "full-denim"],
   },
 ];

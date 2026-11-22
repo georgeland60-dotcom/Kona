@@ -26,6 +26,8 @@ type StoreData = {
   pruebasRetiradas?: string;
   // Fecha en que se ocultaron las carteras (ver CARTERAS_RETIRADAS).
   carterasRetiradas?: string;
+  // Fecha en que los jeans de Pantalones pasaron también a Full Denim.
+  denimAgregado?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -182,6 +184,35 @@ export function sinCarteras(productos: Product[]): Product[] {
   );
 }
 
+// ---- Los jeans, también en Full Denim ----------------------------------
+//
+//  Full Denim solo tenía las dos casacas: los jeans vivían en Pantalones
+//  y nadie que entrara a Denim los veía. Se suman a Full Denim SIN salir
+//  de Pantalones (por eso es una colección y no un cambio de categoría):
+//  un jean es las dos cosas. Son los ocho cuya tela es denim según su
+//  propia descripción. Una sola vez, por id y slug, como lo demás.
+const JEANS_A_DENIM = [
+  { id: "9414", slug: "paper-bag-leti-golden-beige" },
+  { id: "9415", slug: "paper-bag-leti-negro" },
+  { id: "9742", slug: "slouchy-jean-cris-2" },
+  { id: "9785", slug: "slouchy-jean-cris" },
+  { id: "10141", slug: "jean-flare-ari-azul" },
+  { id: "10153", slug: "jean-flare-ari-negro" },
+  { id: "10181", slug: "paper-bag-jean-lu" },
+  { id: "12827", slug: "palazzo-jean-baggy" },
+];
+export const DENIM_AGREGADO = "2026-11-22";
+
+export function conJeansEnDenim(productos: Product[]): Product[] {
+  return productos.map((p) => {
+    const esJean = JEANS_A_DENIM.some((j) => j.id === p.id && j.slug === p.slug);
+    const ya = (p.collections ?? []).includes("full-denim");
+    return esJean && !ya
+      ? { ...p, collections: [...(p.collections ?? []), "full-denim"] }
+      : p;
+  });
+}
+
 export async function readStore(): Promise<StoreData> {
   const leido = await leerDoc<StoreData>("store");
 
@@ -194,7 +225,10 @@ export async function readStore(): Promise<StoreData> {
   const faltaInventario = datos.inventarioReal !== CORTE_INVENTARIO;
   const faltaLimpieza = datos.pruebasRetiradas !== LIMPIEZA_PRUEBAS;
   const faltanCarteras = datos.carterasRetiradas !== CARTERAS_RETIRADAS;
-  if (!faltaInventario && !faltaLimpieza && !faltanCarteras) return datos;
+  const faltaDenim = datos.denimAgregado !== DENIM_AGREGADO;
+  if (!faltaInventario && !faltaLimpieza && !faltanCarteras && !faltaDenim) {
+    return datos;
+  }
 
   let corregidos: StoreData = datos;
   if (faltaInventario) {
@@ -216,6 +250,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: sinCarteras(corregidos.products),
       carterasRetiradas: CARTERAS_RETIRADAS,
+    };
+  }
+  if (faltaDenim) {
+    corregidos = {
+      ...corregidos,
+      products: conJeansEnDenim(corregidos.products),
+      denimAgregado: DENIM_AGREGADO,
     };
   }
 

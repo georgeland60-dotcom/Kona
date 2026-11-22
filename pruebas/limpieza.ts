@@ -18,7 +18,9 @@ const temporal = await fs.mkdtemp(path.join(os.tmpdir(), "kona-limpieza-"));
 await fs.mkdir(path.join(temporal, "data"));
 process.chdir(temporal);
 
-const { readStore, getProducts, LIMPIEZA_PRUEBAS } = await import("@/lib/store-data");
+const { readStore, getProducts, conJeansEnDenim, LIMPIEZA_PRUEBAS } = await import(
+  "@/lib/store-data"
+);
 const { getCategorias, crearCategoria } = await import("@/lib/categorias-data");
 const tienda = path.join(temporal, "data", "store.json");
 const categorias = path.join(temporal, "data", "categorias.json");
@@ -101,6 +103,23 @@ const segunda = await readStore();
 comprobar(
   "un producto nuevo con el mismo id se queda",
   segunda.products.some((p) => p.slug === "vestido-nuevo")
+);
+
+// ---- Jeans en Full Denim ----------------------------------------------
+const jean = { ...prenda("10153", "jean-flare-ari-negro", "pantalones"), collections: ["nuevos-ingresos"] };
+const [conDenim] = conJeansEnDenim([jean]);
+comprobar(
+  "un jean pasa a Full Denim sin perder sus otras colecciones",
+  conDenim.category === "pantalones" &&
+    conDenim.collections?.join() === "nuevos-ingresos,full-denim"
+);
+comprobar(
+  "y no se duplica si ya estaba",
+  conJeansEnDenim([conDenim])[0].collections?.length === 2
+);
+comprobar(
+  "otro pantalón no se toca",
+  conJeansEnDenim([real])[0].collections === undefined
 );
 
 // ---- 2. Categorías -------------------------------------------------
