@@ -199,9 +199,14 @@ Los `MX`, `mail`, SPF y DKIM se quedan como están en este camino.
 ## 4. Después del cambio
 
 1. **Mercado Pago** → Tus integraciones → Webhooks: poner
-   `https://konamoda.pe/api/pagos/mercadopago` y copiar la clave secreta
-   a `MERCADOPAGO_WEBHOOK_SECRET`. Sin esto los pagos entran pero el
-   pedido se queda en "pendiente".
+   `https://konamoda.pe/api/pagos/mercadopago` (modo productivo, evento
+   Pagos) y copiar la clave secreta a `MERCADOPAGO_WEBHOOK_SECRET` (solo
+   Production, Sensitive; la pone la persona). **No es lo que hace que
+   los pedidos se marquen pagados:** cada cobro ya lleva su propia
+   dirección de aviso (`notification_url`, sale de
+   `NEXT_PUBLIC_SITE_URL`) y el webhook confirma cada pago preguntándole
+   a Mercado Pago. La clave suma la comprobación de firma, para que la
+   tienda descarte avisos que no vienen de Mercado Pago.
 2. **Google Search Console**: añadir la propiedad del dominio y mandar
    `https://konamoda.pe/sitemap.xml` (106 direcciones, se arma solo del
    catálogo).

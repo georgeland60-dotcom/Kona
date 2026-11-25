@@ -47,8 +47,9 @@ Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
 6. ✅ **Sitio de pruebas separado** (18 nov 2026): `KV_*` y `TELEGRAM_*`
    solo en Production. Una rama de pruebas no guarda nada ni habla como
    el bot (MIGRACION.md §8).
-7. **Mercado Pago** — webhook y `MERCADOPAGO_WEBHOOK_SECRET` (la clave la
-   pone la persona).
+7. **Mercado Pago** — webhook del panel y `MERCADOPAGO_WEBHOOK_SECRET`
+   (la clave la pone la persona). Es la firma de los avisos; los pagos
+   ya se confirman sin ella (MIGRACION.md §4).
 8. ✅ **Vencimiento del dominio: 23 de octubre de 2027** (visto en el
    panel de NIC.PE el 18 nov 2026). Renovar antes desde ese panel.
    Registrado el 24 oct 2020.
