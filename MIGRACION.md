@@ -4,9 +4,9 @@ Guía para el día del cambio. Está escrita en orden: lo de arriba se hace
 antes, lo de abajo después. Lo que lleva ⚠️ rompe la tienda si se olvida.
 
 **Estado al 25 de noviembre de 2026: el cambio está hecho.** konamoda.pe
-usa los servidores de nombres de Vercel y sirve la tienda. Falta que
-Vercel emita el certificado HTTPS; después, la variable de §2.2, §4 y la
-prueba de humo de §5. (La guía se escribió el 7 nov, con la tienda solo en
+usa los servidores de nombres de Vercel, sirve la tienda con HTTPS y la
+variable de §2.2 ya dice `https://konamoda.pe` (solo Production). Lo que
+queda es §4 y la prueba de humo de §5. (La guía se escribió el 7 nov, con la tienda solo en
 `kona-henna.vercel.app` y el hosting anterior suspendido.)
 
 ---
