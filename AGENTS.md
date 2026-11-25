@@ -20,6 +20,13 @@ respaldo.
 | Mismo despliegue | https://kona-henna.vercel.app | La MISMA tienda con otra dirección. No es de pruebas. |
 | Pruebas | rama `pruebas` → `kona-git-pruebas-ai-agenda-s-projects.vercel.app` | Copia para probar. Ver MIGRACION.md §8 antes de usarla. |
 
+**Para cualquier agente que trabaje en la tienda:** la dirección oficial
+es **https://konamoda.pe** (anuncios, Instagram, reels, enlaces que se
+compartan). Lo que se publica sale de la rama **`main`**: todo cambio
+tiene que terminar ahí para verse en la tienda. La rama de pruebas
+`claude/web-v2-latest-nt1n9p` quedó atrasada el 22 nov 2026 (sus
+cambios visuales ya están en `main`); no partir de ella.
+
 **Estado de la migración: CERRADA (25 nov 2026).** En NIC.PE los
 servidores de nombres pasaron a `ns1/ns2.vercel-dns.com`; Vercel tomó la
 zona el 25 nov y konamoda.pe sirve la tienda (www redirige al dominio
