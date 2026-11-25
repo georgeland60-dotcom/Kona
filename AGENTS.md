@@ -20,23 +20,23 @@ respaldo.
 | Mismo despliegue | https://kona-henna.vercel.app | La MISMA tienda con otra dirección. No es de pruebas. |
 | Pruebas | rama `pruebas` → `kona-git-pruebas-ai-agenda-s-projects.vercel.app` | Copia para probar. Ver MIGRACION.md §8 antes de usarla. |
 
-**Estado de la migración (actualizar al cerrarla):** dominios añadidos en
-Vercel el 8 nov 2026. **Pendiente: el DNS**, y antes, decidir el correo
-`pedidos@konamoda.pe` (su `MX` vive en el hosting viejo). El dominio
-está en **NIC.PE** a nombre de la dueña; el camino recomendado es cambiar
-ahí los servidores de nombres a `ns1/ns2.vercel-dns.com`. La zona actual
-está en un hosting suspendido (Private Systems, revendido por la agencia
-BGMax). Después: `NEXT_PUBLIC_SITE_URL=https://konamoda.pe` en
-Production. Hasta que eso pase, konamoda.pe muestra la página de cuenta
-suspendida y la tienda de verdad está en kona-henna.vercel.app.
-Detalle en MIGRACION.md §3.
+**Estado de la migración: CERRADA (25 nov 2026).** En NIC.PE los
+servidores de nombres pasaron a `ns1/ns2.vercel-dns.com`; Vercel tomó la
+zona el 25 nov y konamoda.pe sirve la tienda (www redirige al dominio
+sin www). Al cerrar el día faltaba que Vercel emitiera el certificado
+HTTPS; en cuanto lo haga: `NEXT_PUBLIC_SITE_URL=https://konamoda.pe`
+en Production y desplegar (MIGRACION.md §2.2).
+kona-henna.vercel.app sigue funcionando como la misma tienda. El correo
+`pedidos@konamoda.pe` dejó de llegar con el cambio (decidido: para
+después). Detalle en MIGRACION.md §3.
 
 ## Pendientes (al 8 nov 2026)
 
 Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
 
-1. **DNS de konamoda.pe** → servidores de nombres a Vercel, en NIC.PE.
-   Luego `NEXT_PUBLIC_SITE_URL` y desplegar (MIGRACION.md §3 y §2.2).
+1. **DNS de konamoda.pe** — ✅ servidores de nombres en Vercel (25 nov
+   2026). Falta: certificado HTTPS (lo emite Vercel solo), luego
+   `NEXT_PUBLIC_SITE_URL` y desplegar, y después MIGRACION.md §4.
 2. **Correo `pedidos@konamoda.pe`** — para después. Deja de llegar con el
    cambio de DNS; revisar que ninguna cuenta lo use para recuperar
    contraseña.

@@ -3,10 +3,11 @@
 Guía para el día del cambio. Está escrita en orden: lo de arriba se hace
 antes, lo de abajo después. Lo que lleva ⚠️ rompe la tienda si se olvida.
 
-Estado al escribirla (7 de noviembre de 2026): la tienda nueva corre en
-`kona-henna.vercel.app`, el dominio `konamoda.pe` **todavía no está
-conectado** a Vercel (el proyecto solo tiene el dominio de Vercel), y el
-hosting anterior está suspendido.
+**Estado al 25 de noviembre de 2026: el cambio está hecho.** konamoda.pe
+usa los servidores de nombres de Vercel y sirve la tienda. Falta que
+Vercel emita el certificado HTTPS; después, la variable de §2.2, §4 y la
+prueba de humo de §5. (La guía se escribió el 7 nov, con la tienda solo en
+`kona-henna.vercel.app` y el hosting anterior suspendido.)
 
 ---
 
@@ -119,10 +120,13 @@ pruebas no miden nada.
 
 ## 3. El cambio de dominio
 
-**Estado al 8 de noviembre de 2026:** los dos dominios ya están añadidos
-en Vercel (proyecto `kona`); `www.konamoda.pe` redirige a `konamoda.pe`
-con un 308. Falta el DNS, y antes de eso, **decidir qué pasa con el
-correo** (abajo).
+**✅ Hecho (25 de noviembre de 2026)** por el camino recomendado: en NIC.PE
+los servidores de nombres pasaron a `ns1/ns2.vercel-dns.com`. Ojo para
+otra vez: el registro cambió antes que Vercel, y durante unas horas los
+servidores de Vercel rechazaban las consultas porque Vercel no había
+creado la zona; se destrabó al abrir el dominio en el panel de Vercel
+(Domains → konamoda.pe). `www.konamoda.pe` redirige a `konamoda.pe` con
+un 308. El correo se dejó para después (abajo).
 
 Datos completos (whois, zona DNS, hosting, correo) en
 `DOMINIO_Y_HOSTING.md`, que **no está en el repo** porque tiene datos
