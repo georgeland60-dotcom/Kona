@@ -18,9 +18,18 @@ export type PagoMP = {
   payment_method_id?: string;
 };
 
-export async function leerPago(id: string): Promise<PagoMP | null> {
+// Tres respuestas posibles, porque el webhook las trata distinto: un
+// pago que Mercado Pago dice que NO existe (la "notificación de prueba"
+// del panel manda un número inventado) se ignora; un fallo de red o de
+// clave se devuelve como error para que Mercado Pago reintente.
+export type ConsultaPago =
+  | { estado: "ok"; pago: PagoMP }
+  | { estado: "no-existe" }
+  | { estado: "error" };
+
+export async function consultarPago(id: string): Promise<ConsultaPago> {
   const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!token || !id) return null;
+  if (!token || !id) return { estado: "error" };
 
   try {
     const res = await fetch(`${API}/v1/payments/${encodeURIComponent(id)}`, {
@@ -28,11 +37,17 @@ export async function leerPago(id: string): Promise<PagoMP | null> {
       cache: "no-store",
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return null;
-    return (await res.json()) as PagoMP;
+    if (res.status === 404 || res.status === 400) return { estado: "no-existe" };
+    if (!res.ok) return { estado: "error" };
+    return { estado: "ok", pago: (await res.json()) as PagoMP };
   } catch {
-    return null;
+    return { estado: "error" };
   }
+}
+
+export async function leerPago(id: string): Promise<PagoMP | null> {
+  const r = await consultarPago(id);
+  return r.estado === "ok" ? r.pago : null;
 }
 
 // ¿Este pago paga ese pedido? Aprobado y por el monto completo. El

@@ -18,7 +18,7 @@
 
 import crypto from "crypto";
 import { getOrderById, setOrderStatus } from "@/lib/orders-data";
-import { leerPago, pagaElPedido } from "@/lib/mercadopago";
+import { consultarPago, pagaElPedido } from "@/lib/mercadopago";
 
 // La firma que manda Mercado Pago. Solo se comprueba si hay secreto
 // configurado; sin él, igual se verifica preguntando por el pago, que
@@ -80,11 +80,17 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, error: "firma" }, { status: 401 });
   }
 
-  const pago = await leerPago(String(idPago));
-  if (!pago) {
+  const consulta = await consultarPago(String(idPago));
+  if (consulta.estado === "no-existe") {
+    // La prueba del panel de Mercado Pago, o un número que no es un
+    // pago: no hay nada que marcar y no tiene sentido que reintente.
+    return Response.json({ ok: true, ignorado: "pago inexistente" });
+  }
+  if (consulta.estado === "error") {
     // No se pudo preguntar: que Mercado Pago reintente.
     return Response.json({ ok: false, error: "no se pudo leer" }, { status: 500 });
   }
+  const pago = consulta.pago;
 
   const ref = pago.external_reference;
   if (!ref) return Response.json({ ok: true, ignorado: "sin pedido" });
