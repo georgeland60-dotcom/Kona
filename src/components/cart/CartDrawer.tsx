@@ -38,7 +38,18 @@ type DatosDePago = {
     titular: string;
   };
   nota?: string;
+  // true = todavía no hay números cargados y Yape/Plin va al celular del
+  // WhatsApp del negocio.
+  provisional?: boolean;
 };
+
+type FormaDirecta = "yape-plin" | "transferencia";
+
+// "942187981" -> "942 187 981": así se dicta y así se copia sin errores.
+function celularLegible(numero: string): string {
+  const d = numero.replace(/\D/g, "");
+  return d.length === 9 ? `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}` : numero;
+}
 
 // Dónde cayó la dirección en el mapa, para enseñárselo y que confirme.
 type Mapa = {
@@ -84,6 +95,19 @@ export default function CartDrawer() {
   // todo el mundo.
   const [paso, setPaso] = useState<"carrito" | "pago">("carrito");
   const [datosPago, setDatosPago] = useState<DatosDePago | null>(null);
+  // Qué forma de pago directo tiene abierta (enseña sus datos).
+  const [formaAbierta, setFormaAbierta] = useState<FormaDirecta | null>(null);
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  const copiar = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto.replace(/\s/g, ""));
+      setCopiado(texto);
+      setTimeout(() => setCopiado(null), 2000);
+    } catch {
+      // Sin permiso para copiar: el número sigue a la vista.
+    }
+  };
 
   // A dónde va el pedido: los tres datos, obligatorios. Antes bastaba
   // con escribir algo y buscarlo; con eso llegaban pedidos a "Mz E Lt
@@ -254,15 +278,17 @@ export default function CartDrawer() {
   // stock y lo que hace que la dueña lo vea en el panel. Devuelve el
   // número de pedido, que es lo que luego permite seguirle el rastro.
   const registrarPedido = async (
-    metodo: "whatsapp" | "transferencia"
+    metodo: "whatsapp" | "transferencia",
+    pagoElegido?: FormaDirecta
   ): Promise<{ ok: boolean; id?: string; error?: string }> => {
-    medirPago(metodo);
+    medirPago(pagoElegido ?? metodo);
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           method: metodo,
+          ...(pagoElegido ? { pagoElegido } : {}),
           items: items.map((i) => ({
             productId: i.product.id,
             sku: skuOf(i.product, i.size),
@@ -313,7 +339,7 @@ export default function CartDrawer() {
   // "Ya pagué por Yape / Plin / transferencia": se registra el pedido y
   // se la lleva al chat con TODO escrito, para que lo único que tenga
   // que hacer sea adjuntar la captura.
-  const yaPague = async () => {
+  const yaPague = async (forma: FormaDirecta) => {
     if (items.length === 0 || loading) return;
     setPayError(null);
     setLoading(true);
@@ -322,7 +348,7 @@ export default function CartDrawer() {
     // el navegador la toma por emergente y la bloquea.
     const pestana = window.open("", "_blank");
 
-    const pedido = await registrarPedido("transferencia");
+    const pedido = await registrarPedido("transferencia", forma);
     setLoading(false);
 
     if (!pedido.ok) {
@@ -335,7 +361,9 @@ export default function CartDrawer() {
       pestana,
       wa(
         mensajeDelPedido(
-          `¡Hola ${store.name}! Acabo de pagar mi pedido 💛` +
+          `¡Hola ${store.name}! Acabo de pagar mi pedido por ` +
+            (forma === "yape-plin" ? "Yape/Plin" : "transferencia") +
+            " 💛" +
             (pedido.id ? `\nPedido ${pedido.id}` : "") +
             "\n\n",
           "\n\nTe adjunto la captura del pago 📎\nMi nombre es: "
@@ -759,7 +787,7 @@ export default function CartDrawer() {
 
                 {/* 1. La pasarela: se confirma sola. */}
                 <div className="border border-line rounded-xl p-4 space-y-2">
-                  <p className="text-sm font-medium">Tarjeta, Yape o Plin</p>
+                  <p className="text-sm font-medium">Tarjeta de crédito o débito</p>
                   <p className="text-xs text-muted">
                     Pagas en la página segura de Mercado Pago y tu pedido
                     queda confirmado al instante.
@@ -775,94 +803,146 @@ export default function CartDrawer() {
                   </button>
                 </div>
 
-                {/* 2. Yape/Plin/transferencia directa: la confirma una
-                    persona mirando la captura, así que lo que importa
-                    es que la clienta sepa exactamente qué hacer. */}
-                <div className="border border-line rounded-xl p-4 space-y-2">
-                  <p className="text-sm font-medium">
-                    Yape, Plin o transferencia directa
-                  </p>
-
-                  {datosPago === null ? (
-                    <p className="text-xs text-muted">Cargando los datos…</p>
-                  ) : datosPago.yape?.numero ||
-                    datosPago.plin?.numero ||
-                    datosPago.banco?.numero ? (
-                    <>
+                {/* 2 y 3. Pago directo: lo confirma una persona mirando
+                    su app, así que lo que importa es que la clienta vea
+                    el número, sepa cuánto y mande la captura. */}
+                {datosPago === null ? (
+                  <p className="text-xs text-muted">Cargando los datos…</p>
+                ) : (
+                  <>
+                    <FormaDirectaCaja
+                      titulo="Yape o Plin"
+                      subtitulo="Pagas desde tu app y nos mandas la captura por WhatsApp."
+                      abierta={formaAbierta === "yape-plin"}
+                      onAbrir={() =>
+                        setFormaAbierta(formaAbierta === "yape-plin" ? null : "yape-plin")
+                      }
+                    >
                       <p className="text-xs text-muted">
-                        1. Transfiere {formatPrice(totalConEnvio)} a:
+                        1. Yapea o plinea{" "}
+                        <strong className="text-foreground">
+                          {formatPrice(totalConEnvio)}
+                        </strong>{" "}
+                        a:
                       </p>
-                      <div className="bg-soft rounded-lg p-3 space-y-1.5 text-sm">
-                        {datosPago.yape?.numero && (
-                          <p>
-                            <span className="text-muted text-xs block">Yape</span>
-                            {datosPago.yape.numero}
-                            {datosPago.yape.titular && (
-                              <span className="text-muted">
-                                {" "}
-                                · {datosPago.yape.titular}
-                              </span>
-                            )}
-                          </p>
-                        )}
-                        {datosPago.plin?.numero && (
-                          <p>
-                            <span className="text-muted text-xs block">Plin</span>
-                            {datosPago.plin.numero}
-                            {datosPago.plin.titular && (
-                              <span className="text-muted">
-                                {" "}
-                                · {datosPago.plin.titular}
-                              </span>
-                            )}
-                          </p>
-                        )}
-                        {datosPago.banco?.numero && (
-                          <p>
-                            <span className="text-muted text-xs block">
-                              {datosPago.banco.banco || "Transferencia"}
-                              {datosPago.banco.tipo
-                                ? ` · ${datosPago.banco.tipo}`
-                                : ""}
-                            </span>
-                            {datosPago.banco.numero}
-                            {datosPago.banco.cci && (
-                              <span className="block text-xs text-muted">
-                                CCI {datosPago.banco.cci}
-                              </span>
-                            )}
-                            {datosPago.banco.titular && (
-                              <span className="block text-xs text-muted">
-                                {datosPago.banco.titular}
-                              </span>
-                            )}
-                          </p>
-                        )}
+                      <div className="bg-soft rounded-lg p-3 space-y-2 text-sm">
+                        {[
+                          datosPago.yape?.numero
+                            ? {
+                                app: datosPago.provisional
+                                  ? "Yape o Plin"
+                                  : datosPago.plin?.numero === datosPago.yape.numero
+                                    ? "Yape o Plin"
+                                    : "Yape",
+                                ...datosPago.yape,
+                              }
+                            : null,
+                          datosPago.plin?.numero &&
+                          datosPago.plin.numero !== datosPago.yape?.numero
+                            ? { app: "Plin", ...datosPago.plin }
+                            : null,
+                        ]
+                          .filter((x): x is { app: string; numero: string; titular: string } => !!x)
+                          .map((c) => (
+                            <div key={c.app} className="flex items-center justify-between gap-2">
+                              <p>
+                                <span className="text-muted text-xs block">{c.app}</span>
+                                <span className="text-base font-medium tracking-wide">
+                                  {celularLegible(c.numero)}
+                                </span>
+                                {c.titular && (
+                                  <span className="block text-xs text-muted">{c.titular}</span>
+                                )}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => copiar(c.numero)}
+                                className="text-xs border border-line rounded-full px-3 py-1 hover:bg-background transition"
+                              >
+                                {copiado === c.numero ? "¡Copiado!" : "Copiar"}
+                              </button>
+                            </div>
+                          ))}
                       </div>
                       {datosPago.nota && (
                         <p className="text-xs text-muted">{datosPago.nota}</p>
                       )}
                       <p className="text-xs text-muted">
                         2. Toca el botón: se abre WhatsApp con tu pedido ya
-                        escrito. Adjunta ahí la captura del pago y te
+                        escrito. Adjunta la captura del pago y te
                         confirmamos.
                       </p>
-                    </>
-                  ) : (
-                    <p className="text-xs text-muted">
-                      Toca el botón y te pasamos por WhatsApp el número de
-                      Yape o la cuenta para la transferencia.
-                    </p>
-                  )}
+                      <BotonComprobante
+                        loading={loading}
+                        onClick={() => yaPague("yape-plin")}
+                      />
+                    </FormaDirectaCaja>
 
-                  <button
-                    onClick={yaPague}
-                    disabled={loading}
-                    className="w-full bg-[#25D366] text-white py-2.5 rounded-full text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
-                  >
-                    {loading ? "Un momento…" : "Ya pagué, enviar comprobante"}
-                  </button>
-                </div>
+                    {datosPago.banco?.numero && (
+                      <FormaDirectaCaja
+                        titulo="Transferencia bancaria"
+                        subtitulo={datosPago.banco.banco || "Desde tu banco o app"}
+                        abierta={formaAbierta === "transferencia"}
+                        onAbrir={() =>
+                          setFormaAbierta(
+                            formaAbierta === "transferencia" ? null : "transferencia"
+                          )
+                        }
+                      >
+                        <p className="text-xs text-muted">
+                          1. Transfiere{" "}
+                          <strong className="text-foreground">
+                            {formatPrice(totalConEnvio)}
+                          </strong>{" "}
+                          a:
+                        </p>
+                        <div className="bg-soft rounded-lg p-3 space-y-1 text-sm">
+                          <span className="text-muted text-xs block">
+                            {datosPago.banco.banco || "Cuenta"}
+                            {datosPago.banco.tipo ? ` · ${datosPago.banco.tipo}` : ""}
+                          </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{datosPago.banco.numero}</span>
+                            <button
+                              type="button"
+                              onClick={() => copiar(datosPago.banco!.numero)}
+                              className="text-xs border border-line rounded-full px-3 py-1 hover:bg-background transition"
+                            >
+                              {copiado === datosPago.banco.numero ? "¡Copiado!" : "Copiar"}
+                            </button>
+                          </div>
+                          {datosPago.banco.cci && (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-muted">
+                                CCI {datosPago.banco.cci}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => copiar(datosPago.banco!.cci!)}
+                                className="text-xs border border-line rounded-full px-3 py-1 hover:bg-background transition"
+                              >
+                                {copiado === datosPago.banco.cci ? "¡Copiado!" : "Copiar CCI"}
+                              </button>
+                            </div>
+                          )}
+                          {datosPago.banco.titular && (
+                            <span className="block text-xs text-muted">
+                              {datosPago.banco.titular}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted">
+                          2. Toca el botón: se abre WhatsApp con tu pedido ya
+                          escrito. Adjunta la constancia y te confirmamos.
+                        </p>
+                        <BotonComprobante
+                          loading={loading}
+                          onClick={() => yaPague("transferencia")}
+                        />
+                      </FormaDirectaCaja>
+                    )}
+                  </>
+                )}
 
                 {payError && (
                   <p className="text-xs text-red-600 text-center">{payError}</p>
@@ -873,5 +953,65 @@ export default function CartDrawer() {
         )}
       </aside>
     </>
+  );
+}
+
+// Una forma de pago directo: cerrada enseña qué es; abierta, los datos
+// para pagar y el botón del comprobante. Una sola abierta a la vez, para
+// que en el celular no haya que bajar entre números que no van a usar.
+function FormaDirectaCaja({
+  titulo,
+  subtitulo,
+  abierta,
+  onAbrir,
+  children,
+}: {
+  titulo: string;
+  subtitulo: string;
+  abierta: boolean;
+  onAbrir: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`border rounded-xl transition ${abierta ? "border-accent" : "border-line"}`}
+    >
+      <button
+        type="button"
+        onClick={onAbrir}
+        aria-expanded={abierta}
+        className="w-full flex items-center justify-between gap-3 p-4 text-left"
+      >
+        <span>
+          <span className="block text-sm font-medium">{titulo}</span>
+          <span className="block text-xs text-muted">{subtitulo}</span>
+        </span>
+        <span
+          aria-hidden
+          className={`w-4 h-4 rounded-full border shrink-0 ${
+            abierta ? "border-accent bg-accent" : "border-line"
+          }`}
+        />
+      </button>
+      {abierta && <div className="px-4 pb-4 space-y-2">{children}</div>}
+    </div>
+  );
+}
+
+function BotonComprobante({
+  loading,
+  onClick,
+}: {
+  loading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="w-full bg-[#25D366] text-white py-2.5 rounded-full text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+    >
+      {loading ? "Un momento…" : "Ya pagué, enviar comprobante por WhatsApp"}
+    </button>
   );
 }

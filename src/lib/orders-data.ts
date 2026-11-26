@@ -101,6 +101,7 @@ export async function createOrder(input: {
   items: OrderItem[];
   total: number;
   method: Order["method"];
+  pagoElegido?: Order["pagoElegido"];
   status?: OrderStatus;
   customer?: Order["customer"];
   envio?: Order["envio"];
@@ -126,6 +127,7 @@ export async function createOrder(input: {
       items: input.items,
       total: input.total,
       method: input.method,
+      ...(input.pagoElegido ? { pagoElegido: input.pagoElegido } : {}),
       status: input.status ?? "pendiente",
       customer: input.customer,
       ...(input.envio ? { envio: input.envio } : {}),

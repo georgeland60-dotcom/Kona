@@ -12,6 +12,7 @@
 // =============================================================
 
 import { readDoc, writeDoc } from "@/lib/kv";
+import { store } from "@/config/store";
 
 export type DatosDePago = {
   yape?: { numero: string; titular: string };
@@ -40,6 +41,19 @@ export async function getDatosDePago(): Promise<DatosDePago> {
 // prometer "paga por Yape": no sabe a qué número.
 export function hayDatosDePago(datos: DatosDePago): boolean {
   return !!(datos.yape?.numero || datos.plin?.numero || datos.banco?.numero);
+}
+
+// Lo que ve quien va a pagar. Mientras la dueña no cargue sus números
+// en /admin/pagos, Yape y Plin se ofrecen al celular del WhatsApp del
+// negocio (decidido el 26 nov 2026, hasta que la titular confirme los
+// suyos). En cuanto haya un Yape o un Plin cargado, manda ese y el
+// provisional desaparece solo.
+export type DatosParaPagar = DatosDePago & { provisional?: boolean };
+
+export function conNumeroProvisional(datos: DatosDePago): DatosParaPagar {
+  if (datos.yape?.numero || datos.plin?.numero) return datos;
+  const celular = store.whatsapp.replace(/^51(?=\d{9}$)/, "");
+  return { ...datos, yape: { numero: celular, titular: "" }, provisional: true };
 }
 
 export async function guardarDatosDePago(datos: DatosDePago): Promise<void> {

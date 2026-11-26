@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getOrders } from "@/lib/orders-data";
 import { formatPrice } from "@/lib/format";
 import type { OrderStatus } from "@/lib/types";
+import { nombreDelMetodo } from "@/lib/pedido-metodo";
 
 const STATUS_STYLE: Record<OrderStatus, string> = {
   pendiente: "bg-amber-50 text-amber-700",
@@ -25,12 +26,6 @@ const FILTERS: { key: string; label: string }[] = [
   { key: "cancelado", label: "Cancelados" },
 ];
 
-// Cómo se llama cada forma de pago en cristiano.
-const METODO: Record<string, string> = {
-  mercadopago: "Mercado Pago",
-  transferencia: "Yape / Plin / transferencia",
-  whatsapp: "WhatsApp",
-};
 
 export default async function PedidosPage({
   searchParams,
@@ -101,7 +96,7 @@ export default async function PedidosPage({
                   {fecha(o.createdAt)}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  {METODO[o.method] ?? o.method}
+                  {nombreDelMetodo(o)}
                 </td>
                 <td className="px-4 py-3 font-medium">{formatPrice(o.total)}</td>
                 <td className="px-4 py-3">

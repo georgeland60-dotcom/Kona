@@ -5,6 +5,7 @@ import { formatPrice } from "@/lib/format";
 import { changeOrderStatusAction } from "@/app/admin/pedidos-actions";
 import { registrarPagoAction } from "@/app/admin/pagos-actions";
 import type { OrderStatus } from "@/lib/types";
+import { metodoSugerido, nombreDelMetodo } from "@/lib/pedido-metodo";
 
 const STATUS_STYLE: Record<OrderStatus, string> = {
   pendiente: "bg-amber-50 text-amber-700",
@@ -19,12 +20,6 @@ function fecha(iso: string) {
   });
 }
 
-// Cómo se llama cada forma de pago en cristiano.
-const METODO: Record<string, string> = {
-  mercadopago: "Mercado Pago",
-  transferencia: "Yape / Plin / transferencia",
-  whatsapp: "WhatsApp",
-};
 
 export default async function PedidoDetallePage({
   params,
@@ -51,7 +46,7 @@ export default async function PedidoDetallePage({
       </div>
       <p className="text-muted text-sm mb-6">
         {fecha(order.createdAt)} ·{" "}
-        {METODO[order.method] ?? order.method}
+        {nombreDelMetodo(order)}
       </p>
 
       {/* Artículos */}
@@ -208,7 +203,7 @@ export default async function PedidoDetallePage({
               <span className="block text-xs text-muted mb-1">Pagó con</span>
               <select
                 name="metodo"
-                defaultValue="yape"
+                defaultValue={metodoSugerido(order)}
                 className="border border-line rounded-lg px-3 py-2 text-sm bg-background"
               >
                 <option value="yape">Yape</option>

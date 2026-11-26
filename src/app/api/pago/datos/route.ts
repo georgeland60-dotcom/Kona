@@ -5,10 +5,10 @@
 // Se piden recién cuando la clienta elige esa forma de pago, no al
 // cargar la tienda: no tiene sentido traerlos para quien paga con
 // tarjeta.
-import { getDatosDePago } from "@/lib/pagos-data";
+import { conNumeroProvisional, getDatosDePago } from "@/lib/pagos-data";
 
 export async function GET() {
-  return Response.json(await getDatosDePago(), {
+  return Response.json(conNumeroProvisional(await getDatosDePago()), {
     headers: { "Cache-Control": "private, max-age=60" },
   });
 }

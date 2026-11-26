@@ -1,5 +1,6 @@
 import { getDatosDePago, hayDatosDePago } from "@/lib/pagos-data";
 import { guardarDatosDePagoAction } from "@/app/admin/pagos-actions";
+import { store } from "@/config/store";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,15 @@ export default async function PagosPage({
       {!hayDatosDePago(datos) && (
         <p className="mb-5 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg px-4 py-3">
           Todavía no hay ningún dato cargado. Mientras tanto, a quien elija
-          esa forma de pago se le dice que le pasas los datos por WhatsApp.
+          Yape o Plin se le muestra el celular del WhatsApp de la tienda
+          (+{store.whatsapp}). En cuanto guardes aquí un Yape o un Plin, se
+          muestra ese.
+        </p>
+      )}
+      {hayDatosDePago(datos) && !datos.yape?.numero && !datos.plin?.numero && (
+        <p className="mb-5 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg px-4 py-3">
+          Falta Yape y Plin: para esa opción se muestra el celular del
+          WhatsApp de la tienda (+{store.whatsapp}).
         </p>
       )}
 

@@ -85,6 +85,9 @@ export type OrderStatus = "pendiente" | "pagado" | "cancelado";
 //    por chat.
 export type OrderMethod = "mercadopago" | "transferencia" | "whatsapp";
 
+// Dentro de "transferencia": a dónde dijo la clienta que pagaba.
+export type PagoElegido = "yape-plin" | "transferencia";
+
 // Cómo se pagó un pedido que NO pasó por la pasarela. Es lo que da
 // trazabilidad: sin esto, "pagado" es una palabra sin respaldo.
 export type PagoManual = {
@@ -103,6 +106,10 @@ export type Order = {
   items: OrderItem[];
   total: number;
   method: OrderMethod;
+  // Con qué dijo la clienta que iba a pagar, cuando eligió pagar directo
+  // (method "transferencia"). Es lo que la dueña busca en su app antes
+  // de marcar el pedido como pagado.
+  pagoElegido?: PagoElegido;
   status: OrderStatus;
   customer?: { name?: string; phone?: string; email?: string };
   // A dónde va y cuánto se cobró por llevarlo. Va aparte de los items

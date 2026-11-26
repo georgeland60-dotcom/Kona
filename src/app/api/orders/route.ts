@@ -3,7 +3,7 @@ import { createOrder } from "@/lib/orders-data";
 import { preciarParaPedido } from "@/lib/pricing";
 import { costoDeEnvio, envioGratisAplica } from "@/lib/envios";
 import { puntoValido } from "@/lib/geocodificador";
-import type { OrderItem, OrderMethod } from "@/lib/types";
+import type { OrderItem, OrderMethod, PagoElegido } from "@/lib/types";
 
 // Crea un pedido (usado por el checkout de WhatsApp). El precio de cada
 // producto y el total se RECALCULAN en el servidor (no se confía en el
@@ -11,6 +11,7 @@ import type { OrderItem, OrderMethod } from "@/lib/types";
 export async function POST(req: Request) {
   const body = (await req.json()) as {
     method?: OrderMethod;
+    pagoElegido?: string;
     items?: OrderItem[];
     destino?: string;
     direccion?: string;
@@ -57,6 +58,12 @@ export async function POST(req: Request) {
         : body.method === "transferencia"
           ? "transferencia"
           : "whatsapp",
+    // Solo tiene sentido en un pago directo, y solo con los dos valores
+    // que existen.
+    ...(body.method === "transferencia" &&
+    (body.pagoElegido === "yape-plin" || body.pagoElegido === "transferencia")
+      ? { pagoElegido: body.pagoElegido as PagoElegido }
+      : {}),
     status: "pendiente",
     customer: body.customer,
     ...(envio.destino || body.direccion || punto
