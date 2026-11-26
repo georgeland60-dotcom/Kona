@@ -24,7 +24,9 @@ import { consultarPago, pagaElPedido } from "@/lib/mercadopago";
 // configurado; sin él, igual se verifica preguntando por el pago, que
 // es la garantía de verdad.
 function firmaValida(req: Request, idPago: string): boolean {
-  const secreto = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+  // Sin espacios: un espacio que se cuela al pegar la clave en Vercel
+  // cambia la firma y haría rechazar todos los avisos.
+  const secreto = process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim();
   if (!secreto) return true;
 
   const firma = req.headers.get("x-signature") || "";

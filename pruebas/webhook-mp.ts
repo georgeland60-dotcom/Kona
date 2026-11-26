@@ -64,5 +64,10 @@ ver("firma falsa se rechaza", r.status === 401);
 r = await POST(aviso("777"));
 ver("sin firma se rechaza", r.status === 401);
 
+// 6. Una clave pegada con un espacio al final sigue funcionando.
+process.env.MERCADOPAGO_WEBHOOK_SECRET = "secreto-de-prueba \n";
+r = await POST(aviso("777", { "x-signature": `ts=${ts},v1=${v1}`, "x-request-id": reqId }));
+ver("clave con espacio al pegar: la firma igual pasa", r.status === 200);
+
 console.log(fallos ? `\n${fallos} fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);
