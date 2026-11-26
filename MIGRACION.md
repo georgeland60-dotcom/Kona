@@ -198,7 +198,8 @@ Los `MX`, `mail`, SPF y DKIM se quedan como están en este camino.
 
 ## 4. Después del cambio
 
-1. **Mercado Pago** → Tus integraciones → Webhooks: poner
+1. ✅ **(Hecho el 26 nov 2026, evento "Pagos (legacy)" en Modo
+   productivo.)** **Mercado Pago** → Tus integraciones → Webhooks: poner
    `https://konamoda.pe/api/pagos/mercadopago` (modo productivo, evento
    Pagos) y copiar la clave secreta a `MERCADOPAGO_WEBHOOK_SECRET` (solo
    Production, Sensitive; la pone la persona). **No es lo que hace que
