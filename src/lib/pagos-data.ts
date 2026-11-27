@@ -11,7 +11,7 @@
 //  con el número, y un dato que no se guarda no se puede filtrar.
 // =============================================================
 
-import { readDoc, writeDoc } from "@/lib/kv";
+import { leerDoc, writeDoc } from "@/lib/kv";
 import { store } from "@/config/store";
 
 export type CuentaBanco = {
@@ -40,6 +40,10 @@ export type DatosDePago = {
   // Una línea más que quiera decirle a quien paga ("pon tu nombre en el
   // concepto"). Opcional.
   nota?: string;
+  // Ya se guardó alguna vez a propósito (desde el panel o con la carga
+  // inicial). Sin esta marca, un registro vacío de antes no impide la
+  // carga inicial; con ella, vaciar el panel se respeta.
+  administrado?: boolean;
 };
 
 function vacio(): DatosDePago {
@@ -53,8 +57,36 @@ function normalizar(datos: DatosDePago): DatosDePago {
   return { ...resto, ...(bancos.length ? { bancos } : {}) };
 }
 
+// La primera carga puede venir de Vercel (DATOS_PAGO_INICIALES, un JSON
+// con la misma forma que DatosDePago), para no tener que teclear las
+// cuentas en el panel y SIN ponerlas en el código, que es público. Se
+// usa una sola vez: solo si todavía no hay nada guardado. Desde ahí
+// manda lo que se guarde en el panel, incluso si se vacía.
+function semilla(): DatosDePago | null {
+  const crudo = process.env.DATOS_PAGO_INICIALES?.trim();
+  if (!crudo) return null;
+  try {
+    return JSON.parse(crudo) as DatosDePago;
+  } catch {
+    console.log("[pagos] DATOS_PAGO_INICIALES no es un JSON válido");
+    return null;
+  }
+}
+
 export async function getDatosDePago(): Promise<DatosDePago> {
-  return normalizar(await readDoc<DatosDePago>("datos-pago", vacio));
+  const leido = await leerDoc<DatosDePago>("datos-pago");
+  if (leido.ok && (leido.valor.administrado || hayDatosDePago(leido.valor))) {
+    return normalizar(leido.valor);
+  }
+  // Si la base falló, no se siembra nada encima: se muestra vacío y
+  // se reintenta en la siguiente visita.
+  if (!leido.ok && leido.motivo === "error") return vacio();
+
+  const inicial = semilla();
+  if (!inicial) return vacio();
+  await guardarDatosDePago(inicial);
+  const guardado = await leerDoc<DatosDePago>("datos-pago");
+  return guardado.ok ? normalizar(guardado.valor) : normalizar(inicial);
 }
 
 // ¿Hay algo que enseñar? Si no se cargó nada, la tienda no puede
@@ -110,6 +142,7 @@ export async function guardarDatosDePago(datos: DatosDePago): Promise<void> {
   if (cuentas.length) limpio.bancos = cuentas;
   if (datos.provinciaSoloYapePlin) limpio.provinciaSoloYapePlin = true;
   if (datos.nota?.trim()) limpio.nota = datos.nota.trim().slice(0, 300);
+  limpio.administrado = true;
 
   await writeDoc("datos-pago", limpio);
 }

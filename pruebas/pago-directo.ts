@@ -62,7 +62,32 @@ await guardarDatosDePago({ bancos: [] });
 d = await getDatosDePago();
 ver("vaciar los números borra las cuentas y la regla", !d.bancos && !d.provinciaSoloYapePlin);
 
-if (habia === null) await fs.rm(archivo); else await fs.writeFile(archivo, habia);
+// La carga inicial desde Vercel: solo si no hay nada guardado.
+await fs.rm(archivo, { force: true });
+process.env.DATOS_PAGO_INICIALES = JSON.stringify({
+  yape: { numero: "900111222", titular: "Ana" },
+  bancos: [{ banco: "BCP", tipo: "Ahorro soles", numero: "555", titular: "Ana" }],
+  provinciaSoloYapePlin: true,
+});
+d = await getDatosDePago();
+ver("sin nada guardado, se cargan los datos iniciales", d.yape?.numero === "900111222" && d.bancos?.[0].numero === "555" && d.provinciaSoloYapePlin === true);
+await guardarDatosDePago({ yape: { numero: "900333444", titular: "Ana" } });
+d = await getDatosDePago();
+ver("lo que se guarde después en el panel manda", d.yape?.numero === "900333444" && !d.bancos);
+await guardarDatosDePago({});
+d = await getDatosDePago();
+ver("si el panel lo vacía, no se vuelve a sembrar", !hayDatosDePago(d));
+// Un registro vacío de antes (sin la marca) no impide la carga inicial.
+await fs.writeFile(archivo, "{}");
+d = await getDatosDePago();
+ver("registro vacío viejo: igual se cargan los datos iniciales", d.yape?.numero === "900111222");
+process.env.DATOS_PAGO_INICIALES = "{no es json";
+await fs.rm(archivo, { force: true });
+d = await getDatosDePago();
+ver("un JSON roto no rompe la tienda", !hayDatosDePago(d));
+delete process.env.DATOS_PAGO_INICIALES;
+
+if (habia === null) await fs.rm(archivo, { force: true }); else await fs.writeFile(archivo, habia);
 
 // (Que el pedido guarde la elección se prueba con la tienda corriendo:
 // la ruta /api/orders necesita Next para cargarse.)

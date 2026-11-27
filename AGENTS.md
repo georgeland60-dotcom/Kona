@@ -48,12 +48,13 @@ Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
    contraseña.
 3. **Crédito de OpenRouter** — 10 USD una vez (no mensual): de 50 a 1000
    consultas de IA al día. Por decidir.
-4. **`/admin/pagos` vacío** — Yape, Plin y la cuenta del banco. Desde
-   el 26 nov 2026 el carrito tiene "Yape o Plin" como opción aparte y,
-   mientras no haya números cargados, muestra el celular del WhatsApp
-   del negocio (provisional, a confirmar por la titular). Al guardar un
-   Yape o Plin en el panel, manda ese solo. "Transferencia bancaria"
-   aparece cuando se cargue la cuenta.
+4. ✅ **Datos de pago** (27 nov 2026): Yape/Plin y cuatro cuentas
+   (Interbank, BCP, BBVA, Scotiabank) cargados con la variable
+   `DATOS_PAGO_INICIALES` de Vercel (Production), que se aplica una sola
+   vez cuando no hay datos guardados; desde ahí se editan en
+   `/admin/pagos`. Los números NO van en el código (repo público).
+   Regla activa: a provincia solo tarjeta o Yape/Plin, sin
+   transferencia.
 5. **Contraseña del panel** — `ADMIN_PASSWORD` es temporal; cambiarla
    por una larga y crearla como Sensitive (la pone la persona).
 6. ✅ **Sitio de pruebas separado** (18 nov 2026): `KV_*` y `TELEGRAM_*`
