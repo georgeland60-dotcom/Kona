@@ -241,7 +241,10 @@ export default function CartDrawer() {
   // Poner en el mapa un punto que dio ella.
   const ponerPuntoPropio = (
     p: { lat: number; lon: number },
-    origen: "gps" | "enlace"
+    origen: "gps" | "enlace",
+    // El nombre que trae el enlace de Google, si trae: manda sobre el
+    // de OpenStreetMap.
+    nombre?: string | null
   ) => {
     setPuntoPropio(origen);
     setPin(null);
@@ -252,9 +255,42 @@ export default function CartDrawer() {
       zona: null,
       precision: "exacta",
     });
-    setAvisoMapa(
-      "Revisa que el pin esté en tu puerta; si no, arrástralo. Escribe igual tu dirección y una referencia para quien reparte."
-    );
+    setAvisoMapa("Revisa que el pin esté en tu puerta; si no, arrástralo.");
+    rellenarDesdeElPunto(p, nombre);
+  };
+
+  // Con el punto, se le rellenan provincia, distrito y calle: quien ya
+  // dijo dónde está no tiene por qué escribirlo. Es lo que dice el
+  // mapa, que a veces no sabe el número o llama distinto a la calle,
+  // así que se le pide revisarlo.
+  const rellenarDesdeElPunto = async (
+    p: { lat: number; lon: number },
+    nombre?: string | null
+  ) => {
+    try {
+      const res = await fetch(`/api/direccion/punto?lat=${p.lat}&lon=${p.lon}`);
+      const { entrega } = (await res.json()) as {
+        entrega: { provincia: string; distrito: string; direccion: string } | null;
+      };
+      if (!entrega && !nombre) return;
+      const cambio: { provincia?: string; distrito?: string; direccion?: string } = {};
+      if (entrega?.provincia) {
+        cambio.provincia = entrega.provincia;
+        // Cambiar de provincia deja sin sentido el distrito anterior.
+        cambio.distrito = entrega.distrito;
+      }
+      const calle = nombre || entrega?.direccion;
+      if (calle) cambio.direccion = calle;
+      if (cambio.provincia !== undefined) setProvincia(cambio.provincia);
+      if (cambio.distrito !== undefined) setDistrito(cambio.distrito);
+      if (cambio.direccion !== undefined) setDireccion(cambio.direccion);
+      recordar(cambio);
+      setAvisoMapa(
+        "Rellené tu dirección con lo que dice el mapa: revisa la calle y el número, añade dpto. o referencia, y mueve el pin si hace falta."
+      );
+    } catch {
+      // Si no se puede, el punto ya está en el mapa: ella escribe el resto.
+    }
   };
 
   // El GPS del celular: gratis, sin buscador y tan exacto como el teléfono.
@@ -299,7 +335,7 @@ export default function CartDrawer() {
       });
       const datos = await res.json();
       if (datos.punto) {
-        ponerPuntoPropio(datos.punto, "enlace");
+        ponerPuntoPropio(datos.punto, "enlace", datos.nombre);
         setEnlace("");
       } else {
         setAvisoMapa(datos.aviso ?? "Ese enlace no trae una ubicación.");

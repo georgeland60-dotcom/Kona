@@ -409,6 +409,74 @@ export async function buscarDireccion(
   }
 }
 
+// ---- Al revés: qué dirección hay en un punto ------------------------
+// Cuando la clienta usa su ubicación (o pega un enlace), se le rellenan
+// provincia, distrito y calle para que no tenga que escribirlos. Lo que
+// diga el mapa es una propuesta: ella lo puede corregir.
+
+export type LoQueHayAqui = {
+  calle: string; // "Los Insurgentes 790", o "" si el mapa no sabe
+  // Barrio, distrito y ciudad, de lo más fino a lo más grueso.
+  lugares: string[];
+  // Región, departamento y provincia ("Arequipa", "La Libertad"...).
+  regiones: string[];
+  // ¿Está en Lima Metropolitana o en el Callao?
+  enLima: boolean;
+};
+
+const cacheInversa = new Map<string, { hasta: number; datos: LoQueHayAqui | null }>();
+
+export async function queHayAqui(lat: number, lon: number): Promise<LoQueHayAqui | null> {
+  const clave = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  const guardado = cacheInversa.get(clave);
+  if (guardado && Date.now() < guardado.hasta) return guardado.datos;
+
+  try {
+    await esperarTurno();
+    const res = await fetch(
+      `${NOMINATIM}/reverse?format=jsonv2&addressdetails=1&zoom=18` +
+        `&accept-language=es&lat=${lat}&lon=${lon}`,
+      {
+        headers: { "User-Agent": QUIEN_SOY, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+    if (!res.ok) return null;
+    const d = (await res.json()) as ResultadoOsm & { error?: string };
+    if (d.error || !d.address) return null;
+    const a = d.address;
+
+    const calle = [a.road ?? a.pedestrian ?? a.footway ?? "", a.house_number ?? ""]
+      .join(" ")
+      .trim();
+    const enLima =
+      /lima metropolitana/i.test(a.state_district ?? "") ||
+      /callao/i.test([a.state, a.region, a.city].join(" "));
+
+    const datos: LoQueHayAqui = {
+      calle,
+      lugares: [
+        a.neighbourhood,
+        a.quarter,
+        a.suburb,
+        a.city_district,
+        a.city,
+        a.town,
+        a.village,
+      ].filter((x): x is string => !!x),
+      regiones: [a.county, a.state_district, a.region, a.state].filter(
+        (x): x is string => !!x
+      ),
+      enLima,
+    };
+    cacheInversa.set(clave, { hasta: Date.now() + VIGENCIA_MS, datos });
+    return datos;
+  } catch {
+    return null;
+  }
+}
+
 // ---- Un punto que de verdad puede ser de aquí ------------------------
 // El navegador manda el pin que movió la clienta, y lo que viene del
 // navegador se revisa siempre. Sin esto, un pedido podría llegar con

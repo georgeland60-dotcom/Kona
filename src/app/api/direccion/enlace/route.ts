@@ -81,6 +81,27 @@ async function seguir(inicio: URL): Promise<string | null> {
   return url.toString();
 }
 
+// Los enlaces de un lugar traen su nombre: ".../maps/place/Jirón+Los+
+// Brigadieres+790,+Santiago+de+Surco.../@...". Es el nombre de Google,
+// mejor que el de OpenStreetMap (que a la calle de la tienda la llama
+// "Los Insurgentes"), así que se usa para rellenar la dirección.
+function nombreDe(url: string): string | null {
+  const m = url.match(/\/maps\/place\/([^/@?]+)/);
+  if (!m) return null;
+  let nombre: string;
+  try {
+    nombre = decodeURIComponent(m[1].replace(/\+/g, " "));
+  } catch {
+    return null;
+  }
+  const primera = nombre.split(",")[0].trim();
+  // Solo si parece una calle con número, no "Plaza Vea" ni un par de
+  // coordenadas.
+  return /\d/.test(primera) && /[a-záéíóúñ]{3}/i.test(primera) && primera.length <= 120
+    ? primera
+    : null;
+}
+
 const NO_SIRVE =
   "Ese enlace no trae una ubicación. En Google Maps toca tu casa, luego \"Compartir\" y copia el enlace; o en WhatsApp comparte tu ubicación.";
 
@@ -91,7 +112,9 @@ export async function POST(req: Request) {
 
   // Unas coordenadas pegadas tal cual, o un enlace largo que ya las trae.
   const directo = puntoDe(texto);
-  if (directo) return Response.json({ punto: directo, aviso: null });
+  if (directo) {
+    return Response.json({ punto: directo, nombre: nombreDe(texto), aviso: null });
+  }
 
   // El enlace puede venir dentro de un texto ("Mira mi ubicación: https://…").
   const enlace = texto.match(/https:\/\/\S+/)?.[0];
@@ -114,7 +137,11 @@ export async function POST(req: Request) {
   try {
     const final = await seguir(url);
     const punto = final ? puntoDe(final) : null;
-    return Response.json({ punto, aviso: punto ? null : NO_SIRVE });
+    return Response.json({
+      punto,
+      nombre: punto && final ? nombreDe(final) : null,
+      aviso: punto ? null : NO_SIRVE,
+    });
   } catch {
     return Response.json({
       punto: null,
