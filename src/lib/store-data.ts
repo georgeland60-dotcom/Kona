@@ -28,6 +28,7 @@ type StoreData = {
   carterasRetiradas?: string;
   // Fecha en que los jeans de Pantalones pasaron también a Full Denim.
   denimAgregado?: string;
+  stockPrueba?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -201,6 +202,18 @@ const JEANS_A_DENIM = [
   { id: "10181", slug: "paper-bag-jean-lu" },
   { id: "12827", slug: "palazzo-jean-baggy" },
 ];
+// El producto "Prueba" (S/ 1, para probar cobros reales) se quedó sin
+// unidades con los intentos de pago del 27 nov 2026. La dueña pidió
+// dejarle 5 para seguir probando. Solo ese producto, y una sola vez.
+export const STOCK_PRUEBA = "2026-11-27";
+export function conStockDePrueba(productos: Product[]): Product[] {
+  return productos.map((p) =>
+    p.slug === "prueba" && p.name === "Prueba" && p.price <= 1
+      ? { ...p, variants: (p.variants ?? []).map((v) => ({ ...v, stock: 5 })) }
+      : p
+  );
+}
+
 export const DENIM_AGREGADO = "2026-11-22";
 
 export function conJeansEnDenim(productos: Product[]): Product[] {
@@ -226,7 +239,14 @@ export async function readStore(): Promise<StoreData> {
   const faltaLimpieza = datos.pruebasRetiradas !== LIMPIEZA_PRUEBAS;
   const faltanCarteras = datos.carterasRetiradas !== CARTERAS_RETIRADAS;
   const faltaDenim = datos.denimAgregado !== DENIM_AGREGADO;
-  if (!faltaInventario && !faltaLimpieza && !faltanCarteras && !faltaDenim) {
+  const faltaStockPrueba = datos.stockPrueba !== STOCK_PRUEBA;
+  if (
+    !faltaInventario &&
+    !faltaLimpieza &&
+    !faltanCarteras &&
+    !faltaDenim &&
+    !faltaStockPrueba
+  ) {
     return datos;
   }
 
@@ -257,6 +277,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: conJeansEnDenim(corregidos.products),
       denimAgregado: DENIM_AGREGADO,
+    };
+  }
+  if (faltaStockPrueba) {
+    corregidos = {
+      ...corregidos,
+      products: conStockDePrueba(corregidos.products),
+      stockPrueba: STOCK_PRUEBA,
     };
   }
 

@@ -75,13 +75,14 @@ Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
    el Pixel viejo, confirmar que es de la cuenta de Meta de la dueña
    (MIGRACION.md §2.3-bis).
 
-10. **Mapa de direcciones** (27 nov 2026): hoy busca en OpenStreetMap,
-   que no tiene muchas calles de Lima (ni el Jr. Los Brigadieres de la
-   tienda). Ya se arregló lo que no necesita clave: nombres de distrito
-   ("Surco" → "Santiago de Surco"), preferir resultados del distrito
-   elegido y no decir "exacta" cuando solo halló la calle. Para que
-   encuentre casi todo falta `GOOGLE_MAPS_API_KEY` (Places API, la pone
-   la persona en Production como Sensitive). Por decidir.
+10. ✅ **Mapa de direcciones** (27 nov 2026): busca en OpenStreetMap,
+   que no tiene muchas calles de Lima (el Jr. Los Brigadieres de la
+   tienda sale ahí como "Los Insurgentes"). La búsqueda se limita a la
+   provincia y el distrito elegidos y, si no encuentra la calle, lo dice
+   y muestra el distrito. Para el punto exacto la clienta tiene "Usar mi
+   ubicación" (GPS) y "pega tu ubicación de Google Maps / WhatsApp"
+   (`/api/direccion/enlace`): gratis y sin clave. Decidido: sin
+   `GOOGLE_MAPS_API_KEY` (pide tarjeta).
 
 ## Reglas que no se negocian
 
