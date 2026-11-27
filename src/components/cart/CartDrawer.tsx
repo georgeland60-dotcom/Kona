@@ -33,17 +33,21 @@ const MapaEntrega = dynamic(() => import("@/components/cart/MapaEntrega"), {
 type DatosDePago = {
   yape?: { numero: string; titular: string };
   plin?: { numero: string; titular: string };
-  banco?: {
-    banco: string;
-    tipo: string;
-    numero: string;
-    cci?: string;
-    titular: string;
-  };
+  bancos?: CuentaBanco[];
+  // A provincia solo Yape o Plin: no se ofrece la transferencia.
+  provinciaSoloYapePlin?: boolean;
   nota?: string;
   // true = todavía no hay números cargados y Yape/Plin va al celular del
   // WhatsApp del negocio.
   provisional?: boolean;
+};
+
+type CuentaBanco = {
+  banco: string;
+  tipo: string;
+  numero: string;
+  cci?: string;
+  titular: string;
 };
 
 type FormaDirecta = "yape-plin" | "transferencia";
@@ -104,7 +108,8 @@ export default function CartDrawer() {
 
   const copiar = async (texto: string) => {
     try {
-      await navigator.clipboard.writeText(texto.replace(/\s/g, ""));
+      // Solo los dígitos: hay apps de banco que rechazan los guiones al pegar.
+      await navigator.clipboard.writeText(texto.replace(/[\s-]/g, ""));
       setCopiado(texto);
       setTimeout(() => setCopiado(null), 2000);
     } catch {
@@ -221,6 +226,19 @@ export default function CartDrawer() {
   // El punto que se manda con el pedido: el que ella marcó, o el que
   // encontró el buscador.
   const punto = recojo ? null : pin ?? (mapa ? { lat: mapa.lat, lon: mapa.lon } : null);
+
+  // Las cuentas para transferir. A provincia, si la tienda así lo
+  // pidió, solo Yape o Plin.
+  const cuentas = (datosPago?.bancos ?? []).filter((c) => c.numero);
+  const esProvincia = !recojo && !!provincia && provincia !== LIMA_Y_CALLAO;
+  const sinTransferencia = !!datosPago?.provinciaSoloYapePlin && esProvincia;
+  // Si todas las cuentas son de la misma persona, el nombre se dice una
+  // vez y no cuatro.
+  const titulares = Array.from(new Set(cuentas.map((c) => c.titular).filter(Boolean)));
+  const titularComun =
+    titulares.length === 1 && cuentas.every((c) => c.titular === titulares[0])
+      ? titulares[0]
+      : null;
 
   // Lo que se manda al servidor sobre la entrega. El costo lo calcula
   // él: aquí solo va a dónde (o que lo recoge).
@@ -952,10 +970,15 @@ export default function CartDrawer() {
                       />
                     </FormaDirectaCaja>
 
-                    {datosPago.banco?.numero && (
+                    {cuentas.length > 0 && !sinTransferencia && (
                       <FormaDirectaCaja
                         titulo="Transferencia bancaria"
-                        subtitulo={datosPago.banco.banco || "Desde tu banco o app"}
+                        subtitulo={
+                          cuentas
+                            .map((c) => c.banco)
+                            .filter(Boolean)
+                            .join(", ") || "Desde tu banco o app"
+                        }
                         abierta={formaAbierta === "transferencia"}
                         onAbrir={() =>
                           setFormaAbierta(
@@ -968,43 +991,52 @@ export default function CartDrawer() {
                           <strong className="text-foreground">
                             {formatPrice(totalConEnvio)}
                           </strong>{" "}
-                          a:
+                          a la cuenta de tu banco (o usa el CCI desde otro
+                          banco):
                         </p>
-                        <div className="bg-soft rounded-lg p-3 space-y-1 text-sm">
-                          <span className="text-muted text-xs block">
-                            {datosPago.banco.banco || "Cuenta"}
-                            {datosPago.banco.tipo ? ` · ${datosPago.banco.tipo}` : ""}
-                          </span>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium">{datosPago.banco.numero}</span>
-                            <button
-                              type="button"
-                              onClick={() => copiar(datosPago.banco!.numero)}
-                              className="text-xs border border-line rounded-full px-3 py-1 hover:bg-background transition"
+                        <div className="space-y-2">
+                          {cuentas.map((c) => (
+                            <div
+                              key={c.numero}
+                              className="bg-soft rounded-lg p-3 space-y-1.5 text-sm"
                             >
-                              {copiado === datosPago.banco.numero ? "¡Copiado!" : "Copiar"}
-                            </button>
-                          </div>
-                          {datosPago.banco.cci && (
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs text-muted">
-                                CCI {datosPago.banco.cci}
+                              <span className="text-xs font-medium block">
+                                {c.banco || "Cuenta"}
+                                {c.tipo && (
+                                  <span className="text-muted font-normal"> · {c.tipo}</span>
+                                )}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => copiar(datosPago.banco!.cci!)}
-                                className="text-xs border border-line rounded-full px-3 py-1 hover:bg-background transition"
-                              >
-                                {copiado === datosPago.banco.cci ? "¡Copiado!" : "Copiar CCI"}
-                              </button>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium tracking-wide">{c.numero}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => copiar(c.numero)}
+                                  className="text-xs border border-line rounded-full px-3 py-1 hover:bg-background transition shrink-0"
+                                >
+                                  {copiado === c.numero ? "¡Copiado!" : "Copiar"}
+                                </button>
+                              </div>
+                              {c.cci && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs text-muted">CCI {c.cci}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copiar(c.cci!)}
+                                    className="text-xs border border-line rounded-full px-3 py-1 hover:bg-background transition shrink-0"
+                                  >
+                                    {copiado === c.cci ? "¡Copiado!" : "Copiar CCI"}
+                                  </button>
+                                </div>
+                              )}
+                              {c.titular && !titularComun && (
+                                <span className="block text-xs text-muted">{c.titular}</span>
+                              )}
                             </div>
-                          )}
-                          {datosPago.banco.titular && (
-                            <span className="block text-xs text-muted">
-                              {datosPago.banco.titular}
-                            </span>
-                          )}
+                          ))}
                         </div>
+                        {titularComun && (
+                          <p className="text-xs text-muted">A nombre de {titularComun}</p>
+                        )}
                         <p className="text-xs text-muted">
                           2. Toca el botón: se abre WhatsApp con tu pedido ya
                           escrito. Adjunta la constancia y te confirmamos.
@@ -1014,6 +1046,12 @@ export default function CartDrawer() {
                           onClick={() => yaPague("transferencia")}
                         />
                       </FormaDirectaCaja>
+                    )}
+                    {cuentas.length > 0 && sinTransferencia && (
+                      <p className="text-xs text-muted px-1">
+                        Para envíos a provincia aceptamos Yape o Plin (o
+                        tarjeta), no transferencia bancaria.
+                      </p>
                     )}
                   </>
                 )}

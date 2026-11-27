@@ -14,16 +14,29 @@
 import { readDoc, writeDoc } from "@/lib/kv";
 import { store } from "@/config/store";
 
+export type CuentaBanco = {
+  banco: string; // BCP, Interbank...
+  tipo: string; // "Ahorro soles"
+  numero: string;
+  cci?: string;
+  titular: string;
+};
+
+// Hasta cuántas cuentas se pueden cargar. Más de esto ya no se lee en
+// un celular.
+export const MAX_CUENTAS = 6;
+
 export type DatosDePago = {
   yape?: { numero: string; titular: string };
   plin?: { numero: string; titular: string };
-  banco?: {
-    banco: string; // BCP, Interbank...
-    tipo: string; // "Cuenta de ahorros soles"
-    numero: string;
-    cci?: string;
-    titular: string;
-  };
+  // Las cuentas para transferencia. Antes había una sola (`banco`); los
+  // datos guardados así se siguen leyendo como una lista de una.
+  bancos?: CuentaBanco[];
+  /** @deprecated una sola cuenta, de antes del 27 nov 2026. */
+  banco?: CuentaBanco;
+  // true = a provincia solo se cobra por Yape o Plin: la transferencia
+  // bancaria no se ofrece cuando el envío es fuera de Lima y Callao.
+  provinciaSoloYapePlin?: boolean;
   // Una línea más que quiera decirle a quien paga ("pon tu nombre en el
   // concepto"). Opcional.
   nota?: string;
@@ -33,14 +46,26 @@ function vacio(): DatosDePago {
   return {};
 }
 
+// Lo guardado, con las cuentas siempre como lista.
+function normalizar(datos: DatosDePago): DatosDePago {
+  const { banco, ...resto } = datos;
+  const bancos = datos.bancos ?? (banco?.numero ? [banco] : []);
+  return { ...resto, ...(bancos.length ? { bancos } : {}) };
+}
+
 export async function getDatosDePago(): Promise<DatosDePago> {
-  return readDoc<DatosDePago>("datos-pago", vacio);
+  return normalizar(await readDoc<DatosDePago>("datos-pago", vacio));
 }
 
 // ¿Hay algo que enseñar? Si no se cargó nada, la tienda no puede
 // prometer "paga por Yape": no sabe a qué número.
 export function hayDatosDePago(datos: DatosDePago): boolean {
-  return !!(datos.yape?.numero || datos.plin?.numero || datos.banco?.numero);
+  return !!(
+    datos.yape?.numero ||
+    datos.plin?.numero ||
+    datos.bancos?.some((b) => b.numero) ||
+    datos.banco?.numero
+  );
 }
 
 // Lo que ve quien va a pagar. Mientras la dueña no cargue sus números
@@ -72,15 +97,18 @@ export async function guardarDatosDePago(datos: DatosDePago): Promise<void> {
       titular: (datos.plin.titular ?? "").trim(),
     };
   }
-  if (datos.banco?.numero?.trim()) {
-    limpio.banco = {
-      banco: (datos.banco.banco ?? "").trim(),
-      tipo: (datos.banco.tipo ?? "").trim(),
-      numero: datos.banco.numero.trim(),
-      ...(datos.banco.cci?.trim() ? { cci: datos.banco.cci.trim() } : {}),
-      titular: (datos.banco.titular ?? "").trim(),
-    };
-  }
+  const cuentas = (datos.bancos ?? [])
+    .filter((b) => b.numero?.trim())
+    .slice(0, MAX_CUENTAS)
+    .map((b) => ({
+      banco: (b.banco ?? "").trim(),
+      tipo: (b.tipo ?? "").trim(),
+      numero: b.numero.trim(),
+      ...(b.cci?.trim() ? { cci: b.cci.trim() } : {}),
+      titular: (b.titular ?? "").trim(),
+    }));
+  if (cuentas.length) limpio.bancos = cuentas;
+  if (datos.provinciaSoloYapePlin) limpio.provinciaSoloYapePlin = true;
   if (datos.nota?.trim()) limpio.nota = datos.nota.trim().slice(0, 300);
 
   await writeDoc("datos-pago", limpio);

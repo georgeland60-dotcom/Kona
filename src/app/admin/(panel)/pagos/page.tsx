@@ -1,4 +1,4 @@
-import { getDatosDePago, hayDatosDePago } from "@/lib/pagos-data";
+import { MAX_CUENTAS, getDatosDePago, hayDatosDePago } from "@/lib/pagos-data";
 import { guardarDatosDePagoAction } from "@/app/admin/pagos-actions";
 import { store } from "@/config/store";
 
@@ -96,53 +96,76 @@ export default async function PagosPage({
         </div>
 
         <div className={caja}>
-          <p className="text-sm font-medium">Transferencia bancaria</p>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm mb-1.5">Banco</label>
-              <input
-                name="bancoNombre"
-                defaultValue={datos.banco?.banco}
-                className={campo}
-                placeholder="BCP, Interbank…"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1.5">Tipo de cuenta</label>
-              <input
-                name="bancoTipo"
-                defaultValue={datos.banco?.tipo}
-                className={campo}
-                placeholder="Ahorros soles"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1.5">Número de cuenta</label>
-              <input
-                name="bancoNumero"
-                defaultValue={datos.banco?.numero}
-                className={campo}
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1.5">
-                CCI <span className="text-muted">(para otros bancos)</span>
-              </label>
-              <input
-                name="bancoCci"
-                defaultValue={datos.banco?.cci}
-                className={campo}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm mb-1.5">A nombre de</label>
-              <input
-                name="bancoTitular"
-                defaultValue={datos.banco?.titular}
-                className={campo}
-              />
-            </div>
+          <div>
+            <p className="text-sm font-medium">Transferencia bancaria</p>
+            <p className="text-xs text-muted mt-1">
+              Hasta {MAX_CUENTAS} cuentas. Las que dejes sin número no se
+              muestran. Para borrar una, vacía su número.
+            </p>
           </div>
+          {Array.from({ length: MAX_CUENTAS }, (_, i) => {
+            const b = datos.bancos?.[i];
+            return (
+              <fieldset
+                key={i}
+                className="grid sm:grid-cols-2 gap-3 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0"
+              >
+                <legend className="text-xs text-muted mb-2">Cuenta {i + 1}</legend>
+                <div>
+                  <label className="block text-sm mb-1.5">Banco</label>
+                  <input
+                    name={`banco${i}Nombre`}
+                    defaultValue={b?.banco}
+                    className={campo}
+                    placeholder="BCP, Interbank, BBVA…"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1.5">Tipo de cuenta</label>
+                  <input
+                    name={`banco${i}Tipo`}
+                    defaultValue={b?.tipo}
+                    className={campo}
+                    placeholder="Ahorro soles"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1.5">Número de cuenta</label>
+                  <input name={`banco${i}Numero`} defaultValue={b?.numero} className={campo} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1.5">
+                    CCI <span className="text-muted">(para otros bancos)</span>
+                  </label>
+                  <input name={`banco${i}Cci`} defaultValue={b?.cci} className={campo} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm mb-1.5">A nombre de</label>
+                  <input name={`banco${i}Titular`} defaultValue={b?.titular} className={campo} />
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+
+        <div className={caja}>
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              name="provinciaSoloYapePlin"
+              defaultChecked={datos.provinciaSoloYapePlin}
+              className="mt-1"
+            />
+            <span>
+              <span className="font-medium block">
+                Pagos de provincia solo por Yape o Plin
+              </span>
+              <span className="text-muted text-xs">
+                Si la clienta pide envío fuera de Lima y Callao, no se le
+                ofrece la transferencia bancaria.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className={caja}>
