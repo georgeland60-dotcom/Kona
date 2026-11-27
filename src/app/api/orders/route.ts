@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/orders-data";
 import { preciarParaPedido } from "@/lib/pricing";
-import { costoDeEnvio, envioGratisAplica } from "@/lib/envios";
+import {
+  RECOJO,
+  costoDeEnvio,
+  direccionDeRecojo,
+  envioGratisAplica,
+} from "@/lib/envios";
 import { puntoValido } from "@/lib/geocodificador";
 import type { OrderItem, OrderMethod, PagoElegido } from "@/lib/types";
 
@@ -17,6 +22,7 @@ export async function POST(req: Request) {
     direccion?: string;
     lat?: number;
     lon?: number;
+    recojo?: boolean;
     customer?: { name?: string; phone?: string; email?: string };
   };
 
@@ -35,15 +41,21 @@ export async function POST(req: Request) {
 
   // El envío se busca por nombre en la tabla de la tienda: lo que diga
   // el navegador sobre el precio da igual.
-  const envio = costoDeEnvio(body.destino);
+  // Quien recoge en la tienda no paga envío ni manda dirección: la
+  // dirección del pedido es la de la tienda.
+  const recojo = body.recojo === true;
+  const envio = recojo ? RECOJO : costoDeEnvio(body.destino);
+  const direccion = recojo ? direccionDeRecojo() : body.direccion;
   // ¿Hay una promoción que regala el envío? Se decide AQUÍ, con lo que
   // de verdad lleva el carrito; lo que diga el navegador no cuenta.
   const envioRegalado =
-    !!envioGratis && envioGratisAplica(envioGratis.destinos, body.destino);
+    !recojo &&
+    !!envioGratis &&
+    envioGratisAplica(envioGratis.destinos, body.destino);
   const costoEnvio = envioRegalado ? 0 : envio.costo;
   // El punto del mapa viene del navegador, así que se comprueba que sea
   // un punto de Perú antes de guardarlo.
-  const punto = puntoValido(body.lat, body.lon);
+  const punto = recojo ? null : puntoValido(body.lat, body.lon);
   const total =
     items.reduce((s, i) => s + i.price * i.qty, 0) + costoEnvio;
 
@@ -66,13 +78,14 @@ export async function POST(req: Request) {
       : {}),
     status: "pendiente",
     customer: body.customer,
-    ...(envio.destino || body.direccion || punto
+    ...(envio.destino || direccion || punto
       ? {
           envio: {
             destino: envio.destino ?? "",
             costo: costoEnvio,
             ...(envioRegalado ? { promo: envioGratis!.nombre } : {}),
-            ...(body.direccion ? { direccion: body.direccion.slice(0, 200) } : {}),
+            ...(direccion ? { direccion: direccion.slice(0, 200) } : {}),
+            ...(recojo ? { recojo: true } : {}),
             ...(punto ?? {}),
           },
         }

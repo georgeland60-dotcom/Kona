@@ -127,6 +127,8 @@ export type Order = {
     // Si el envío salió gratis por una promoción, cuál fue. Sin esto,
     // en el panel un envío en cero parece un error de cobro.
     promo?: string;
+    // true = la clienta lo recoge en la tienda; no hay nada que despachar.
+    recojo?: boolean;
   };
   // true = este pedido tiene stock reservado (se reserva al crearlo).
   stockApplied?: boolean;

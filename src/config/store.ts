@@ -19,6 +19,13 @@ export const store = {
   // desplegar: se incrusta al construir).
   whatsapp: process.env.NEXT_PUBLIC_WHATSAPP || "51942187981",
 
+  // Recojo en tienda: gratis, la clienta pasa a buscar su pedido. Se
+  // ofrece en el carrito como alternativa al envío (27 nov 2026).
+  recojo: {
+    direccion: "Jr. Los Brigadieres 790",
+    distrito: "Lima",
+  },
+
   // Referencia de las modelos de las fotos, para ayudar con la talla.
   //
   // Es lo que se usa MIENTRAS una prenda no traiga la suya: cada producto

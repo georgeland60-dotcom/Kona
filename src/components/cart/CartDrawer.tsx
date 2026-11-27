@@ -8,7 +8,10 @@ import { medir } from "@/lib/medicion";
 import { formatPrice } from "@/lib/format";
 import {
   LIMA_Y_CALLAO,
+  RECOJO,
   destinoDelFormulario,
+  direccionDeRecojo,
+  mapaDeRecojo,
   distritosDeLima,
   envioGratisAplica,
   provincias,
@@ -116,6 +119,9 @@ export default function CartDrawer() {
   const [direccion, setDireccion] = useState("");
   const [distrito, setDistrito] = useState("");
   const [provincia, setProvincia] = useState("");
+  // Envío a domicilio, o lo recoge ella en la tienda (gratis, sin
+  // dirección ni mapa).
+  const [recojo, setRecojo] = useState(false);
 
   const [mapa, setMapa] = useState<Mapa | null>(null);
   // Dónde dejó ELLA el pin, si lo movió. Manda sobre lo que encontró el
@@ -134,14 +140,17 @@ export default function CartDrawer() {
         setDireccion(e.direccion ?? "");
         setDistrito(e.distrito ?? "");
         setProvincia(e.provincia ?? "");
+        setRecojo(e.recojo === true);
       }
     } catch {
       // Modo incógnito: simplemente no se recuerda.
     }
   }, []);
 
-  const recordar = (cambio: Partial<{ direccion: string; distrito: string; provincia: string }>) => {
-    const entrega = { direccion, distrito, provincia, ...cambio };
+  const recordar = (
+    cambio: Partial<{ direccion: string; distrito: string; provincia: string; recojo: boolean }>
+  ) => {
+    const entrega = { direccion, distrito, provincia, recojo, ...cambio };
     try {
       localStorage.setItem("kona-entrega", JSON.stringify(entrega));
     } catch {
@@ -151,12 +160,13 @@ export default function CartDrawer() {
 
   // El costo que se MUESTRA. El que se cobra lo vuelve a calcular el
   // servidor con esta misma tabla, así que no pueden discrepar.
-  const envio = destinoDelFormulario({ provincia, distrito });
+  const envio = recojo ? RECOJO : destinoDelFormulario({ provincia, distrito });
 
   // ¿Alguna promoción regala el envío? Quien lo decide es el servidor
   // (viene en el precio del carrito); aquí solo se comprueba que el
   // destino elegido esté entre los que cubre.
   const promoEnvio =
+    !recojo &&
     precio?.envioGratis &&
     envioGratisAplica(
       precio.envioGratis.destinos,
@@ -169,8 +179,10 @@ export default function CartDrawer() {
   const totalConEnvio = total + costoEnvio;
 
   // Sin los tres datos no se puede despachar, así que no se deja pagar.
-  const faltanDatos =
+  // Quien recoge en la tienda no tiene nada que completar.
+  const faltanDireccion =
     direccion.trim().length < 5 || !distrito.trim() || !provincia.trim();
+  const faltanDatos = !recojo && faltanDireccion;
 
   const verEnElMapa = async () => {
     if (faltanDatos || buscando) return;
@@ -196,7 +208,7 @@ export default function CartDrawer() {
   // El mapa se pide solo cuando los tres datos están completos, con una
   // pausa para no consultar en cada tecla.
   useEffect(() => {
-    if (faltanDatos) {
+    if (recojo || faltanDireccion) {
       setMapa(null);
       setPin(null);
       return;
@@ -204,11 +216,21 @@ export default function CartDrawer() {
     const t = setTimeout(verEnElMapa, 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [direccion, distrito, provincia]);
+  }, [direccion, distrito, provincia, recojo]);
 
   // El punto que se manda con el pedido: el que ella marcó, o el que
   // encontró el buscador.
-  const punto = pin ?? (mapa ? { lat: mapa.lat, lon: mapa.lon } : null);
+  const punto = recojo ? null : pin ?? (mapa ? { lat: mapa.lat, lon: mapa.lon } : null);
+
+  // Lo que se manda al servidor sobre la entrega. El costo lo calcula
+  // él: aquí solo va a dónde (o que lo recoge).
+  const datosDeEntrega = recojo
+    ? { recojo: true }
+    : {
+        destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
+        direccion: `${direccion}, ${distrito}, ${provincia}`,
+        ...(punto ? { lat: punto.lat, lon: punto.lon } : {}),
+      };
 
   // Pago online con Mercado Pago (tarjeta / Yape)
   const payOnline = async () => {
@@ -229,14 +251,12 @@ export default function CartDrawer() {
             qty: i.qty,
             size: i.size,
           })),
-          destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
-          direccion: `${direccion}, ${distrito}, ${provincia}`,
-          ...(punto ? { lat: punto.lat, lon: punto.lon } : {}),
+          ...datosDeEntrega,
         }),
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url; // lleva a la pagina de pago
+        window.location.assign(data.url); // lleva a la pagina de pago
       } else {
         setPayError(data.error || "No se pudo iniciar el pago.");
       }
@@ -259,13 +279,17 @@ export default function CartDrawer() {
     return (
       encabezado +
       lineas.join("\n") +
-      (envio.conocido
-        ? `\n\nEnvío a ${envio.destino}: ` +
-          (promoEnvio ? `gratis (${promoEnvio.nombre})` : formatPrice(envio.costo))
-        : "") +
+      (recojo
+        ? `\n\nRecojo en tienda (${direccionDeRecojo()}): gratis`
+        : envio.conocido
+          ? `\n\nEnvío a ${envio.destino}: ` +
+            (promoEnvio ? `gratis (${promoEnvio.nombre})` : formatPrice(envio.costo))
+          : "") +
       `\n\nTotal: ${formatPrice(totalConEnvio)}` +
-      `\n\nDirección de entrega: ${direccion.trim()}` +
-      `\nDistrito: ${distrito} · ${provincia}` +
+      (recojo
+        ? "\n\nLo recojo en la tienda."
+        : `\n\nDirección de entrega: ${direccion.trim()}` +
+          `\nDistrito: ${distrito} · ${provincia}`) +
       (punto
         ? `\nUbicación${pin ? " (marcada por mí)" : ""}: ` +
           `https://www.google.com/maps/search/?api=1&query=${punto.lat},${punto.lon}`
@@ -297,9 +321,7 @@ export default function CartDrawer() {
             qty: i.qty,
             size: i.size,
           })),
-          destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
-          direccion: `${direccion}, ${distrito}, ${provincia}`,
-          ...(punto ? { lat: punto.lat, lon: punto.lon } : {}),
+          ...datosDeEntrega,
         }),
       });
 
@@ -592,7 +614,52 @@ export default function CartDrawer() {
                 Y los tres datos son obligatorios porque sin ellos no
                 hay manera de despachar el pedido. */}
             <div className="border-t border-line pt-3 space-y-2">
-              <p className="text-sm font-medium">¿A dónde te lo enviamos?</p>
+              <p className="text-sm font-medium">¿Cómo lo recibes?</p>
+
+              <div className="grid grid-cols-2 gap-2" role="radiogroup">
+                {[
+                  { valor: false, titulo: "Envío a domicilio", detalle: "Según tu distrito" },
+                  { valor: true, titulo: "Recojo en tienda", detalle: "Gratis" },
+                ].map((o) => (
+                  <button
+                    key={o.titulo}
+                    type="button"
+                    role="radio"
+                    aria-checked={recojo === o.valor}
+                    onClick={() => {
+                      setRecojo(o.valor);
+                      recordar({ recojo: o.valor });
+                    }}
+                    className={`text-left border rounded-lg px-3 py-2 transition ${
+                      recojo === o.valor
+                        ? "border-accent bg-accent/5"
+                        : "border-line hover:border-foreground/30"
+                    }`}
+                  >
+                    <span className="block text-sm font-medium">{o.titulo}</span>
+                    <span className="block text-xs text-muted">{o.detalle}</span>
+                  </button>
+                ))}
+              </div>
+
+              {recojo ? (
+                <div className="bg-soft rounded-lg p-3 text-sm space-y-1">
+                  <p className="font-medium">{direccionDeRecojo()}</p>
+                  <p className="text-xs text-muted">
+                    Te escribimos por WhatsApp cuando tu pedido esté listo
+                    para recoger.
+                  </p>
+                  <a
+                    href={mapaDeRecojo()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs underline"
+                  >
+                    Ver en Google Maps
+                  </a>
+                </div>
+              ) : (
+              <>
 
               <label className="block">
                 <span className="text-xs text-muted">Provincia</span>
@@ -702,12 +769,19 @@ export default function CartDrawer() {
               {!!distrito && !!provincia && !envio.conocido && (
                 <p className="text-xs text-muted">{OTRAS_ZONAS}</p>
               )}
+              </>
+              )}
             </div>
               </>
             )}
 
             {/* En la pantalla de pago basta con recordar a dónde va. */}
-            {paso === "pago" && envio.conocido && (
+            {paso === "pago" && recojo && (
+              <p className="text-xs text-muted">
+                Recojo en tienda · {direccionDeRecojo()}
+              </p>
+            )}
+            {paso === "pago" && !recojo && envio.conocido && (
               <p className="text-xs text-muted">
                 Entrega en {envio.destino} · {direccion.trim()}
               </p>

@@ -84,7 +84,9 @@ export default async function PedidoDetallePage({
             {order.envio && (
               <tr className="border-t border-line">
                 <td colSpan={2} className="px-4 py-3 text-right text-muted">
-                  Envío a {order.envio.destino || "coordinar"}
+                  {order.envio.recojo
+                    ? "Recojo en tienda"
+                    : `Envío a ${order.envio.destino || "coordinar"}`}
                   {order.envio.direccion && (
                     <span className="block text-xs">
                       {order.envio.direccion}

@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { createOrder } from "@/lib/orders-data";
 import { preciarParaPedido } from "@/lib/pricing";
-import { costoDeEnvio, envioGratisAplica } from "@/lib/envios";
+import {
+  RECOJO,
+  costoDeEnvio,
+  direccionDeRecojo,
+  envioGratisAplica,
+} from "@/lib/envios";
 import { puntoValido } from "@/lib/geocodificador";
 
 // Esta funcion corre en el SERVIDOR (seguro). Aqui se usa el token secreto
@@ -31,14 +36,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const { items: rawItems, destino, direccion, lat, lon } =
-    (await req.json()) as {
-      items: IncomingItem[];
-      destino?: string;
-      direccion?: string;
-      lat?: number;
-      lon?: number;
-    };
+  const cuerpo = (await req.json()) as {
+    items: IncomingItem[];
+    destino?: string;
+    direccion?: string;
+    lat?: number;
+    lon?: number;
+    recojo?: boolean;
+  };
+  const { items: rawItems, destino, lat, lon } = cuerpo;
+  // Recojo en tienda: sin envío, y la dirección es la de la tienda.
+  const recojo = cuerpo.recojo === true;
+  const direccion = recojo ? direccionDeRecojo() : cuerpo.direccion;
   if (!rawItems || rawItems.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
   }
@@ -52,13 +61,13 @@ export async function POST(req: Request) {
   }
   // El envío, igual que los precios, sale de la tabla de la tienda y no
   // de lo que mande el navegador.
-  const envio = costoDeEnvio(destino);
+  const envio = recojo ? RECOJO : costoDeEnvio(destino);
   // El envío gratis se decide aquí, con el carrito real.
   const envioRegalado =
-    !!envioGratis && envioGratisAplica(envioGratis.destinos, destino);
+    !recojo && !!envioGratis && envioGratisAplica(envioGratis.destinos, destino);
   const costoEnvio = envioRegalado ? 0 : envio.costo;
   // Igual que los precios: el punto que manda el navegador se revisa.
-  const punto = puntoValido(lat, lon);
+  const punto = recojo ? null : puntoValido(lat, lon);
   const total =
     items.reduce((s, i) => s + i.price * i.qty, 0) + costoEnvio;
 
@@ -77,6 +86,7 @@ export async function POST(req: Request) {
             costo: costoEnvio,
             ...(envioRegalado ? { promo: envioGratis!.nombre } : {}),
             ...(direccion ? { direccion: direccion.slice(0, 200) } : {}),
+            ...(recojo ? { recojo: true } : {}),
             ...(punto ?? {}),
           },
         }

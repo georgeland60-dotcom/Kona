@@ -12,6 +12,7 @@
 // =============================================================
 
 import { DESTINOS, OTRAS_ZONAS, type Destino } from "@/data/envios";
+import { store } from "@/config/store";
 
 function normalizar(s: string): string {
   return s
@@ -30,6 +31,22 @@ export type Envio = {
 };
 
 export const SIN_DESTINO: Envio = { destino: null, costo: 0, conocido: false };
+
+// Recoger en la tienda: no hay envío que cobrar ni mapa que buscar.
+export const RECOJO_EN_TIENDA = "Recojo en tienda";
+export const RECOJO: Envio = { destino: RECOJO_EN_TIENDA, costo: 0, conocido: true };
+
+export function direccionDeRecojo(): string {
+  return `${store.recojo.direccion}, ${store.recojo.distrito}`;
+}
+
+// Para abrirla en el celular. Va por texto y no por coordenadas: es
+// Google Maps quien la busca, no nuestro buscador.
+export function mapaDeRecojo(): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${direccionDeRecojo()}, Perú`
+  )}`;
+}
 
 // Busca el destino por nombre. Acepta que lo escriban sin tildes, en
 // mayúsculas o con el nombre largo ("SAN MARTIN DE PORRES").
