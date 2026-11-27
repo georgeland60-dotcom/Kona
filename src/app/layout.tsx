@@ -46,6 +46,38 @@ const sacramento = Sacramento({
 // localhost y al compartir un producto no se ve la foto.
 const descripcion = `${store.name} - ${store.tagline}. Envíos a todo Lima y provincias.`;
 
+function datosDeLaMarca() {
+  const sitio = urlDelSitio();
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${sitio}/#marca`,
+        name: store.name,
+        url: sitio,
+        logo: `${sitio}/icon.png`,
+        sameAs: [store.instagram],
+        contactPoint: {
+          "@type": "ContactPoint",
+          telephone: `+${store.whatsapp}`,
+          contactType: "customer service",
+          areaServed: "PE",
+          availableLanguage: "es",
+        },
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${sitio}/#web`,
+        name: store.name,
+        url: sitio,
+        inLanguage: "es-PE",
+        publisher: { "@id": `${sitio}/#marca` },
+      },
+    ],
+  };
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(urlDelSitio()),
   title: {
@@ -81,6 +113,13 @@ export default function RootLayout({
       className={`${jost.variable} ${sacramento.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* Quién es la tienda, en el formato que leen Google y Bing: el
+            nombre, el logo y sus redes. Es lo que usan para poner el
+            logo y los datos de la marca junto a los resultados. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(datosDeLaMarca()) }}
+        />
         {children}
         {/* GA4 y Pixel de Meta: solo en la tienda de verdad, y solo si
             sus identificadores están puestos en Vercel. Una copia de
