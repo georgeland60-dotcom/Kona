@@ -1,14 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import CintaOferta from "@/components/promo/CintaOferta";
 
 // Galería de fotos del producto: imagen grande + miniaturas.
 export default function ProductGallery({
   images,
   name,
+  descuentoPct,
+  lemaCampana,
 }: {
   images: string[];
   name: string;
+  // La misma cinta de la tarjeta, sobre la foto grande.
+  descuentoPct?: number;
+  lemaCampana?: string;
 }) {
   const gallery = images.filter(Boolean);
   const [active, setActive] = useState(0);
@@ -51,13 +57,14 @@ export default function ProductGallery({
       )}
 
       {/* Imagen principal (proporción natural, sin recorte) */}
-      <div className="flex-1 placeholder-box rounded-xl overflow-hidden self-start">
+      <div className="relative flex-1 placeholder-box rounded-xl overflow-hidden self-start">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={gallery[active]}
           alt={name}
           className="w-full h-auto object-contain"
         />
+        {descuentoPct ? <CintaOferta pct={descuentoPct} lema={lemaCampana} /> : null}
       </div>
     </div>
   );

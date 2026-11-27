@@ -14,15 +14,9 @@ import { getProducts } from "@/lib/store-data";
 import { getOrders } from "@/lib/orders-data";
 import { getHistorial } from "@/lib/historial-data";
 import { getCategorias } from "@/lib/categorias-data";
+import { celda } from "@/lib/csv";
 
 type Fila = Record<string, string | number>;
-
-// Escapa un valor para CSV: entrecomilla si trae comas, comillas o saltos
-// de línea, que es justo lo que rompe estos archivos al abrirlos.
-function celda(valor: string | number): string {
-  const s = String(valor ?? "");
-  return /[",;\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
 
 function aCSV(filas: Fila[]): string {
   if (filas.length === 0) return "";

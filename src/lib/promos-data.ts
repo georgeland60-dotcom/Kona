@@ -10,7 +10,8 @@
 
 import { banners as seedBanners } from "@/data/banners";
 import type { Banner, DiscountRule, Product, SeasonBlock } from "@/lib/types";
-import { precioVitrina } from "@/lib/promo-engine";
+import { vitrina } from "@/lib/promo-engine";
+import { campana } from "@/data/campana";
 import { readDoc, writeDoc } from "@/lib/kv";
 
 type PromosData = {
@@ -202,6 +203,7 @@ export type Priced = {
   price: number; // precio final a cobrar
   oldPrice?: number; // precio anterior tachado (si hay descuento)
   discounted: boolean;
+  pct?: number; // el % que anuncia la regla (ver vitrina en promo-engine)
 };
 
 // Calcula el precio que se MUESTRA de un producto.
@@ -213,10 +215,10 @@ export type Priced = {
 // el carrito cobrara el precio entero.
 export function priceFor(product: Product, liveRules: DiscountRule[]): Priced {
   const base = product.price;
-  const price = precioVitrina(product, liveRules);
+  const { precio: price, pct } = vitrina(product, liveRules);
 
   if (price < base) {
-    return { price, oldPrice: product.oldPrice ?? base, discounted: true };
+    return { price, oldPrice: product.oldPrice ?? base, discounted: true, pct };
   }
   return { price: base, oldPrice: product.oldPrice, discounted: false };
 }
@@ -231,6 +233,10 @@ export function withDiscount(product: Product, liveRules: DiscountRule[]): Produ
     price: p.price,
     oldPrice: p.oldPrice,
     onSale: true,
+    ...(p.pct ? { descuentoPct: p.pct } : {}),
+    // El lema solo mientras la campaña esté vigente (la misma condición
+    // que su banner): pasado el domingo, la cinta no dice "Black Friday".
+    ...(campana?.vigente(liveRules) ? { lemaCampana: campana.lema } : {}),
   };
 }
 

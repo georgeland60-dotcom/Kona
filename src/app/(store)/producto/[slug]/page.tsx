@@ -9,6 +9,7 @@ import AddToCartButton from "@/components/product/AddToCartButton";
 import GuiaTallas from "@/components/product/GuiaTallas";
 import PreguntarTalla from "@/components/product/PreguntarTalla";
 import ProductGallery from "@/components/product/ProductGallery";
+import { CintaDescuento } from "@/components/promo/Campana";
 import ProductGrid from "@/components/product/ProductGrid";
 import TrackView from "@/components/TrackView";
 
@@ -54,6 +55,14 @@ export async function generateMetadata({
 }
 
 // Genera las paginas de cada producto de antemano (mas rapido)
+// Las fichas se generan de antemano, y el panel las regenera al guardar
+// un descuento. Pero un descuento también termina SOLO, por su fecha, y
+// entonces nadie guarda nada: la ficha seguía con el precio rebajado (y
+// la cinta de "50% OFF") mientras el carrito ya cobraba el precio
+// entero. Con esto se rehacen como mucho cada minuto: siguen siendo
+// rápidas y nunca se quedan más de un minuto atrás del carrito.
+export const revalidate = 60;
+
 export async function generateStaticParams() {
   const products = await getProducts();
   return products.map((p) => ({ slug: p.slug }));
@@ -96,9 +105,26 @@ export default async function ProductPage({
           miniaturas (10 fotos = 748 px) estiraba la pagina entera.
           grid-cols-1 la define como minmax(0,1fr), que si se deja
           encoger hasta el ancho de la pantalla. */}
+      {/* Lo primero al entrar: el descuento que tiene ESTA prenda, con su
+          campana. Sale de la regla que se le aplica, igual que la cinta
+          de la foto, así que en una prenda sin descuento no aparece. */}
+      {product.descuentoPct ? (
+        <CintaDescuento
+          titulo={
+            product.lemaCampana
+              ? `${product.lemaCampana} · descuento especial`
+              : "Descuento activo"
+          }
+          etiqueta={`${product.descuentoPct}% OFF`}
+          categoria="esta prenda"
+        />
+      ) : null}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* Galería de fotos */}
         <ProductGallery
+          descuentoPct={product.descuentoPct}
+          lemaCampana={product.lemaCampana}
           images={
             product.images && product.images.length > 0
               ? product.images

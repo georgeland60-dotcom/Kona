@@ -74,9 +74,12 @@ export function PuntoDescuento({ className = "" }: { className?: string }) {
 export function CintaDescuento({
   etiqueta,
   categoria,
+  titulo = "Descuento activo",
 }: {
   etiqueta: string;
   categoria: string;
+  // En campaña dice su nombre: "Black Friday · descuento especial".
+  titulo?: string;
 }) {
   return (
     <div className="relative overflow-hidden rounded-[1.75rem] bg-k-fucsia text-white px-6 py-6 md:px-10 md:py-7 mb-10 shadow-xl shadow-k-fucsia/25">
@@ -97,7 +100,7 @@ export function CintaDescuento({
         </span>
         <div className="min-w-0">
           <p className="uppercase tracking-[0.3em] text-[10px] md:text-[11px] font-semibold text-white/85">
-            Descuento activo
+            {titulo}
           </p>
           <p className="font-bold text-2xl md:text-4xl leading-tight mt-0.5">
             {etiqueta}{" "}

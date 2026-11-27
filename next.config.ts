@@ -29,7 +29,33 @@ const RUTAS_WOO = [
   "/shop",
 ];
 
+// ---- Protecciones que el navegador aplica a la tienda ---------------
+//
+//  - Nadie puede meter la tienda dentro de otra página (un "marco") para
+//    engañar a la clienta con botones falsos encima.
+//  - El navegador no "adivina" el tipo de un archivo: una foto se trata
+//    siempre como foto, aunque alguien colara otra cosa dentro.
+//  - Al salir hacia otra web no se manda la dirección completa (que
+//    puede llevar el número de pedido), solo el dominio.
+//  - Cámara, micrófono y pagos del navegador apagados; la ubicación solo
+//    para la propia tienda ("Usar mi ubicación" del carrito).
+const CABECERAS_SEGURIDAD = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), payment=(), geolocation=(self)",
+  },
+];
+
 const nextConfig: NextConfig = {
+  // No anunciar con qué está hecha la tienda (cabecera x-powered-by).
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: CABECERAS_SEGURIDAD }];
+  },
   async redirects() {
     return [
       // Categoría: /categoria-producto/vestidos -> /tienda?cat=vestidos

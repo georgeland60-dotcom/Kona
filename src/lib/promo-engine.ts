@@ -202,7 +202,23 @@ export function precioVitrina(
   reglas: DiscountRule[],
   ahora: Date = new Date()
 ): number {
+  return vitrina(producto, reglas, ahora).precio;
+}
+
+// El precio de vitrina y QUÉ se puede anunciar de él.
+//
+// "pct" es el porcentaje de la regla que ganó, no el que sale de dividir
+// precios. Con el redondeo a favor de la clienta, 50% de S/ 21 es S/ 10,
+// un 52% real: anunciar "52% OFF" al lado de un banner de 50% confunde, y
+// el de la regla nunca exagera (el real siempre es igual o mayor). Si la
+// regla no es de porcentaje (rebaja en soles, precio fijo), no hay pct.
+export function vitrina(
+  producto: Product,
+  reglas: DiscountRule[],
+  ahora: Date = new Date()
+): { precio: number; pct?: number } {
   let mejor = producto.price;
+  let pct: number | undefined;
 
   for (const regla of reglas) {
     if (!vigente(regla, ahora)) continue;
@@ -215,15 +231,24 @@ export function precioVitrina(
       const tramo = tramoPara(regla.tramos ?? [], 1);
       if (!tramo) continue;
       const candidato = aplicar(tramo.kind, tramo.value, producto.price);
-      if (candidato < mejor) mejor = candidato;
+      if (candidato < mejor) {
+        mejor = candidato;
+        pct = tramo.kind === "percent" ? tramo.value : undefined;
+      }
       continue;
     }
 
     const candidato = aplicar(regla.kind, regla.value, producto.price);
-    if (candidato < mejor) mejor = candidato;
+    if (candidato < mejor) {
+      mejor = candidato;
+      pct = regla.kind === "percent" ? regla.value : undefined;
+    }
   }
 
-  return redondear(mejor);
+  const precio = redondear(mejor);
+  // Si el redondeo dejó el precio igual (1 sol al 50% sigue en 1), no
+  // hay descuento que anunciar.
+  return precio < producto.price ? { precio, pct } : { precio };
 }
 
 // ---- Descuentos de carrito ------------------------------------------
