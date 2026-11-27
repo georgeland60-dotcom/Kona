@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrderById, setOrderStatus } from "@/lib/orders-data";
 import { leerPago, pagaElPedido } from "@/lib/mercadopago";
+import { resumenDelPedido } from "@/lib/resumen-pedido";
 
 // La clienta vuelve a la tienda después de pagar y pasa por aquí.
 //
@@ -33,14 +34,17 @@ export async function GET(req: Request) {
     );
   }
 
-  if (paymentId && order.status !== "pagado") {
+  // ¿Quien pregunta pagó ESTE pedido? Solo entonces se le enseña el
+  // detalle (qué compró y a dónde va). Los números de pedido son
+  // correlativos: sin esta comprobación, cambiando PED-0012 por PED-0011
+  // se verían los pedidos de otras clientas.
+  let esSuPago = !!paymentId && order.mpPaymentId === String(paymentId);
+
+  if (paymentId && !esSuPago) {
     const pago = await leerPago(paymentId);
     // Que el pago sea de ESTE pedido, no de otro cualquiera.
-    if (
-      pago &&
-      pago.external_reference === ref &&
-      pagaElPedido(pago, order.total)
-    ) {
+    esSuPago = !!pago && pago.external_reference === ref;
+    if (pago && esSuPago && order.status !== "pagado" && pagaElPedido(pago, order.total)) {
       await setOrderStatus(ref, "pagado", {
         mpPaymentId: String(pago.id ?? paymentId),
       });
@@ -48,5 +52,10 @@ export async function GET(req: Request) {
   }
 
   const updated = await getOrderById(ref);
-  return NextResponse.json({ ok: true, id: ref, status: updated?.status });
+  return NextResponse.json({
+    ok: true,
+    id: ref,
+    status: updated?.status,
+    ...(esSuPago && updated ? { resumen: await resumenDelPedido(updated) } : {}),
+  });
 }
