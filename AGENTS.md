@@ -84,6 +84,16 @@ Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
    (`/api/direccion/enlace`): gratis y sin clave. Decidido: sin
    `GOOGLE_MAPS_API_KEY` (pide tarjeta).
 
+11. **Correos de pedido (Resend)** — código listo (27 nov 2026):
+   resumen a la clienta y aviso a la tienda cuando entra un pedido por
+   Yape/Plin/transferencia ("recibido") y cuando se confirma el pago
+   ("pagado"), una sola vez cada uno (`src/lib/correos-pedido.ts`). El
+   carrito pide el correo (obligatorio). Falta: cuenta de Resend,
+   dominio konamoda.pe verificado (registros DNS en Vercel),
+   `RESEND_API_KEY` (la pone la persona, Sensitive, solo Production) y
+   `CORREO_TIENDA` (correos que reciben el aviso, separados por coma).
+   Sin la clave no se manda nada y la tienda funciona igual.
+
 ## Reglas que no se negocian
 
 - **El repositorio es PÚBLICO.** Ninguna clave, token ni contraseña en

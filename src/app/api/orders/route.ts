@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createOrder } from "@/lib/orders-data";
+import { avisarPedidoRecibido, createOrder } from "@/lib/orders-data";
+import { esCorreo } from "@/lib/correo";
 import { preciarParaPedido } from "@/lib/pricing";
 import {
   RECOJO,
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     lat?: number;
     lon?: number;
     recojo?: boolean;
+    email?: string;
     customer?: { name?: string; phone?: string; email?: string };
   };
 
@@ -77,7 +79,12 @@ export async function POST(req: Request) {
       ? { pagoElegido: body.pagoElegido as PagoElegido }
       : {}),
     status: "pendiente",
-    customer: body.customer,
+    // El correo al que le llega el resumen. Lo que mande el navegador se
+    // revisa: si no parece un correo, no se guarda.
+    customer: {
+      ...(body.customer ?? {}),
+      ...(esCorreo(body.email) ? { email: body.email.trim().toLowerCase() } : {}),
+    },
     ...(envio.destino || direccion || punto
       ? {
           envio: {
@@ -106,6 +113,12 @@ export async function POST(req: Request) {
       },
       { status: 409 }
     );
+  }
+
+  // Si pagó por Yape, Plin o transferencia, le llega su resumen y a la
+  // tienda el aviso para revisar el pago.
+  if (resultado.order.method === "transferencia") {
+    await avisarPedidoRecibido(resultado.order.id);
   }
 
   return NextResponse.json({

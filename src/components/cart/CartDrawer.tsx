@@ -125,6 +125,9 @@ export default function CartDrawer() {
   // Envío a domicilio, o lo recoge ella en la tienda (gratis, sin
   // dirección ni mapa).
   const [recojo, setRecojo] = useState(false);
+  // A dónde le llega el resumen del pedido. Obligatorio (pedido de la
+  // dueña, 27 nov 2026).
+  const [email, setEmail] = useState("");
 
   const [mapa, setMapa] = useState<Mapa | null>(null);
   // Dónde dejó ELLA el pin, si lo movió. Manda sobre lo que encontró el
@@ -151,6 +154,7 @@ export default function CartDrawer() {
         setDistrito(e.distrito ?? "");
         setProvincia(e.provincia ?? "");
         setRecojo(e.recojo === true);
+        setEmail(e.email ?? "");
       }
     } catch {
       // Modo incógnito: simplemente no se recuerda.
@@ -158,9 +162,15 @@ export default function CartDrawer() {
   }, []);
 
   const recordar = (
-    cambio: Partial<{ direccion: string; distrito: string; provincia: string; recojo: boolean }>
+    cambio: Partial<{
+      direccion: string;
+      distrito: string;
+      provincia: string;
+      recojo: boolean;
+      email: string;
+    }>
   ) => {
-    const entrega = { direccion, distrito, provincia, recojo, ...cambio };
+    const entrega = { direccion, distrito, provincia, recojo, email, ...cambio };
     try {
       localStorage.setItem("kona-entrega", JSON.stringify(entrega));
     } catch {
@@ -192,7 +202,8 @@ export default function CartDrawer() {
   // Quien recoge en la tienda no tiene nada que completar.
   const faltanDireccion =
     direccion.trim().length < 5 || !distrito.trim() || !provincia.trim();
-  const faltanDatos = !recojo && faltanDireccion;
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const faltanDatos = (!recojo && faltanDireccion) || !emailValido;
 
   const verEnElMapa = async () => {
     if (faltanDatos || buscando) return;
@@ -374,8 +385,9 @@ export default function CartDrawer() {
   // Lo que se manda al servidor sobre la entrega. El costo lo calcula
   // él: aquí solo va a dónde (o que lo recoge).
   const datosDeEntrega = recojo
-    ? { recojo: true }
+    ? { recojo: true, email: email.trim() }
     : {
+        email: email.trim(),
         destino: provincia === LIMA_Y_CALLAO ? distrito : provincia,
         direccion: `${direccion}, ${distrito}, ${provincia}`,
         ...(punto ? { lat: punto.lat, lon: punto.lon } : {}),
@@ -429,7 +441,7 @@ export default function CartDrawer() {
       encabezado +
       lineas.join("\n") +
       (recojo
-        ? `\n\nRecojo en tienda (${store.recojo.referencia.replace(/^Tienda /, "")}): gratis`
+        ? `\n\nRecojo en tienda (${store.recojo.referencia}): gratis`
         : envio.conocido
           ? `\n\nEnvío a ${envio.destino}: ` +
             (promoEnvio ? `gratis (${promoEnvio.nombre})` : formatPrice(envio.costo))
@@ -763,7 +775,31 @@ export default function CartDrawer() {
                 Y los tres datos son obligatorios porque sin ellos no
                 hay manera de despachar el pedido. */}
             <div className="border-t border-line pt-3 space-y-2">
-              <p className="text-sm font-medium">¿Cómo lo recibes?</p>
+              <label className="block">
+                <span className="text-sm font-medium">Tu correo</span>
+                <span className="block text-xs text-muted">
+                  Ahí te llegarán los datos de tu pedido.
+                </span>
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    recordar({ email: e.target.value });
+                  }}
+                  placeholder="tucorreo@gmail.com"
+                  className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
+                />
+                {email.trim() && !emailValido && (
+                  <span className="block text-xs text-red-600 mt-1">
+                    Revisa tu correo: parece que le falta algo.
+                  </span>
+                )}
+              </label>
+
+              <p className="text-sm font-medium pt-1">¿Cómo lo recibes?</p>
 
               <div className="grid grid-cols-2 gap-2" role="radiogroup">
                 {[
@@ -792,15 +828,11 @@ export default function CartDrawer() {
               </div>
 
               {recojo ? (
-                // Sin la dirección exacta ni el mapa: se da al culminar la
-                // compra (la confirmación del pedido la muestra).
                 <div className="bg-soft rounded-lg p-3 text-sm space-y-1">
+                  {/* La dirección exacta no se publica: se da al
+                      terminar la compra. */}
                   <p className="font-medium">{store.recojo.referencia}</p>
-                  <p className="text-xs text-muted">
-                    Te brindamos la dirección al culminar tu compra, y te
-                    escribimos por WhatsApp cuando tu pedido esté listo para
-                    recoger.
-                  </p>
+                  <p className="text-xs text-muted">{store.recojo.aviso}</p>
                 </div>
               ) : (
               <>
@@ -970,7 +1002,7 @@ export default function CartDrawer() {
             {/* En la pantalla de pago basta con recordar a dónde va. */}
             {paso === "pago" && recojo && (
               <p className="text-xs text-muted">
-                Recojo en tienda · {store.recojo.referencia.replace(/^Tienda /, "")}
+                Recojo en tienda · {store.recojo.referencia}
               </p>
             )}
             {paso === "pago" && !recojo && envio.conocido && (
@@ -997,8 +1029,11 @@ export default function CartDrawer() {
             </div>
             {faltanDatos && (
               <p className="text-xs text-muted -mt-2">
-                Completa provincia, distrito y dirección para ver el envío y
-                poder pagar.
+                {!emailValido && (recojo || !faltanDireccion)
+                  ? "Escribe tu correo para poder pagar: ahí te llegarán los datos de tu pedido."
+                  : !emailValido
+                    ? "Completa tu correo, provincia, distrito y dirección para poder pagar."
+                    : "Completa provincia, distrito y dirección para ver el envío y poder pagar."}
               </p>
             )}
             {precio && precio.ahorro > 0 && (
