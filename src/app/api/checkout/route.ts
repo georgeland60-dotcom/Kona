@@ -60,9 +60,17 @@ export async function POST(req: Request) {
   const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   // Recalculamos precios en el servidor (con descuentos vigentes).
-  const { items, envioGratis } = await preciarParaPedido(rawItems);
+  const { items, envioGratis, sinTalla } = await preciarParaPedido(rawItems);
   if (items.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
+  }
+  if (sinTalla.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Elige la talla de ${sinTalla.join(", ")}: quítala del carrito y agrégala de nuevo desde su página.`,
+      },
+      { status: 400 }
+    );
   }
   // El envío, igual que los precios, sale de la tabla de la tienda y no
   // de lo que mande el navegador.

@@ -42,12 +42,18 @@ export async function preciarPedido(
   ]);
 
   return preciarCarrito(
-    incoming.map((i) => ({
-      productId: i.productId,
-      sku: i.sku,
-      size: i.size,
-      qty: Math.max(0, Math.floor(i.qty)),
-    })),
+    incoming.map((i) => {
+      // Una prenda de talla única que llegó sin talla (carritos viejos):
+      // no hay duda de cuál es, se completa.
+      const variantes = productos.find((p) => p.id === i.productId)?.variants ?? [];
+      const unica = !i.sku && variantes.length === 1 ? variantes[0] : undefined;
+      return {
+        productId: i.productId,
+        sku: unica?.sku ?? i.sku,
+        size: unica?.size ?? i.size,
+        qty: Math.max(0, Math.floor(i.qty)),
+      };
+    }),
     productos,
     reglas
   );
@@ -80,10 +86,16 @@ export async function priceForItems(
 export async function preciarParaPedido(incoming: IncomingItem[]): Promise<{
   items: OrderItem[];
   envioGratis?: { nombre: string; destinos?: string[] };
+  // Prendas de varias tallas que llegaron sin talla. Con una sola, el
+  // pedido no se crea: no se sabría qué entregar ni qué unidad apartar.
+  sinTalla: string[];
 }> {
   const carrito = await preciarPedido(incoming);
+  const items = aItems(carrito.lineas);
+  const sinTalla = [...new Set(items.filter((i) => !i.sku).map((i) => i.name))];
   return {
-    items: aItems(carrito.lineas),
+    items,
+    sinTalla,
     ...(carrito.envioGratis ? { envioGratis: carrito.envioGratis } : {}),
   };
 }

@@ -19,6 +19,8 @@ import { conCandado, readDoc, writeDoc } from "@/lib/kv";
 type OrdersData = {
   orders: Order[];
   seq: number; // contador para numerar pedidos
+  // Fecha de la limpieza de pedidos de prueba ya hecha (ver abajo).
+  pruebasBorradas?: string;
 };
 
 async function readOrders(): Promise<OrdersData> {
@@ -64,6 +66,7 @@ function hayAbandonados(orders: Order[]): boolean {
 // unidades abandonadas no se verían disponibles y nadie podría llegar a
 // crear el pedido que las liberaría. Se quedarían atascadas para siempre.
 export async function liberarAbandonados(): Promise<void> {
+  await borrarPedidosDePrueba();
   const { orders } = await readOrders();
   if (!hayAbandonados(orders)) return; // lo normal: no se escribe nada
 
@@ -86,6 +89,46 @@ async function soltarAbandonados(data: OrdersData): Promise<void> {
     pedido.stockApplied = false;
     pedido.stockLiberado = new Date().toISOString();
   }
+}
+
+// ---- Pedidos de prueba, fuera -----------------------------------------
+//
+//  Del PED-0001 al PED-0019 fueron todos pruebas de la tienda (la dueña lo
+//  confirmó el 27 nov 2026): compras de S/ 1 del producto Prueba, envíos
+//  a la propia tienda, intentos de pago. Se borran para que el panel, las
+//  ventas y los más vendidos empiecen limpios.
+//
+//  Lo que alguno tenía apartado vuelve al inventario antes de borrarlo:
+//  si no, esas unidades se quedarían reservadas para un pedido que ya no
+//  existe y nadie más podría comprarlas.
+//
+//  El contador NO se reinicia: el próximo pedido es el PED-0020. Mercado
+//  Pago y los correos ya enviados conocen los números viejos; si un aviso
+//  tardío de un pago de prueba llegara con "PED-0016", no debe caer sobre
+//  un pedido real con ese mismo número. Una sola vez, por número.
+const PEDIDOS_DE_PRUEBA = Array.from(
+  { length: 19 },
+  (_, i) => makeId(i + 1)
+);
+export const LIMPIEZA_PEDIDOS = "2026-11-27";
+
+export async function borrarPedidosDePrueba(): Promise<void> {
+  const { pruebasBorradas } = await readOrders();
+  if (pruebasBorradas === LIMPIEZA_PEDIDOS) return; // lo normal
+
+  await conCandado("stock", async () => {
+    const data = await readOrders();
+    if (data.pruebasBorradas === LIMPIEZA_PEDIDOS) return;
+
+    for (const pedido of data.orders) {
+      if (!PEDIDOS_DE_PRUEBA.includes(pedido.id) || !pedido.stockApplied) continue;
+      // Un pedido pagado ya salió del almacén de verdad; uno de prueba no.
+      await devolverStock(pedido.items);
+    }
+    data.orders = data.orders.filter((o) => !PEDIDOS_DE_PRUEBA.includes(o.id));
+    data.pruebasBorradas = LIMPIEZA_PEDIDOS;
+    await writeOrders(data);
+  });
 }
 
 export type ResultadoPedido =
@@ -142,6 +185,7 @@ export async function createOrder(input: {
 export async function getOrders(opts?: {
   status?: OrderStatus;
 }): Promise<Order[]> {
+  await borrarPedidosDePrueba();
   const { orders } = await readOrders();
   const list = opts?.status
     ? orders.filter((o) => o.status === opts.status)
@@ -151,6 +195,7 @@ export async function getOrders(opts?: {
 }
 
 export async function getOrderById(id: string): Promise<Order | undefined> {
+  await borrarPedidosDePrueba();
   const { orders } = await readOrders();
   return orders.find((o) => o.id === id);
 }
@@ -271,6 +316,7 @@ export type SalesSummary = {
 };
 
 export async function getSalesSummary(): Promise<SalesSummary> {
+  await borrarPedidosDePrueba();
   const { orders } = await readOrders();
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

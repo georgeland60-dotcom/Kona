@@ -74,7 +74,16 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         <button
-          onClick={() => add(product)}
+          onClick={() => {
+            // Sin talla no hay pedido: el pedido no sabría qué entregar
+            // ni de qué talla apartar la unidad. Si la prenda tiene una
+            // sola talla, va esa; si tiene varias, se abre la vista
+            // rápida para elegirla.
+            const tallas = product.variants ?? [];
+            if (tallas.length === 1) add(product, tallas[0].size);
+            else if (tallas.length === 0) add(product);
+            else setQuickView(true);
+          }}
           className="mt-3 w-full bg-k-fucsia text-white text-xs font-bold uppercase tracking-wide py-2.5 rounded-full hover:bg-k-fucsia-dark transition"
         >
           Agregar

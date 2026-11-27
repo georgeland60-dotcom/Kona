@@ -33,11 +33,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Pedido vacío" }, { status: 400 });
   }
 
-  const { items, envioGratis } = await preciarParaPedido(incoming);
+  const { items, envioGratis, sinTalla } = await preciarParaPedido(incoming);
   if (items.length === 0) {
     return NextResponse.json(
       { error: "Los productos del carrito ya no están disponibles" },
       { status: 409 }
+    );
+  }
+  if (sinTalla.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Elige la talla de ${sinTalla.join(", ")}: quítala del carrito y agrégala de nuevo desde su página.`,
+      },
+      { status: 400 }
     );
   }
 
