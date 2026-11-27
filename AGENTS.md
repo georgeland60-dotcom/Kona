@@ -84,15 +84,17 @@ Lo que falta, para que nadie lo dé por hecho. Detalle en MIGRACION.md §7.
    (`/api/direccion/enlace`): gratis y sin clave. Decidido: sin
    `GOOGLE_MAPS_API_KEY` (pide tarjeta).
 
-11. **Correos de pedido (Resend)** — código listo (27 nov 2026):
-   resumen a la clienta y aviso a la tienda cuando entra un pedido por
-   Yape/Plin/transferencia ("recibido") y cuando se confirma el pago
-   ("pagado"), una sola vez cada uno (`src/lib/correos-pedido.ts`). El
-   carrito pide el correo (obligatorio). Falta: cuenta de Resend,
-   dominio konamoda.pe verificado (registros DNS en Vercel),
-   `RESEND_API_KEY` (la pone la persona, Sensitive, solo Production) y
-   `CORREO_TIENDA` (correos que reciben el aviso, separados por coma).
-   Sin la clave no se manda nada y la tienda funciona igual.
+11. **Correos de pedido (Resend)** (27 nov 2026): resumen a la clienta
+   y aviso a la tienda cuando entra un pedido por Yape/Plin/transferencia
+   ("recibido") y cuando se confirma el pago ("pagado"), una sola vez
+   cada uno (`src/lib/correos-pedido.ts`). El carrito pide el correo
+   (obligatorio). Hecho: cuenta de Resend, dominio konamoda.pe
+   verificado (DKIM `resend._domainkey`, `send`/`rsend` CNAME, puestos
+   por Resend en Vercel) más `_dmarc` (p=none), y `RESEND_API_KEY`
+   (Production). Salen desde `pedidos@konamoda.pe`, que NO tiene buzón:
+   las respuestas van a `CORREO_TIENDA`. Falta: `CORREO_TIENDA` (por
+   ahora el Gmail de la dueña; más adelante quizá un buzón
+   @konamoda.pe).
 
 ## Reglas que no se negocian
 
