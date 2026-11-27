@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useCart } from "@/components/cart/CartContext";
 import { store } from "@/config/store";
@@ -142,6 +142,7 @@ export default function CartDrawer() {
   const [ubicando, setUbicando] = useState(false);
   const [pegando, setPegando] = useState(false);
   const [enlace, setEnlace] = useState("");
+  const campoDireccion = useRef<HTMLInputElement | null>(null);
 
   // Se recuerda entre visitas: quien ya dio su dirección no tiene por
   // qué repetirla cada vez.
@@ -200,13 +201,22 @@ export default function CartDrawer() {
 
   // Sin los tres datos no se puede despachar, así que no se deja pagar.
   // Quien recoge en la tienda no tiene nada que completar.
-  const faltanDireccion =
+  // Lo mínimo para buscar en el mapa.
+  const direccionCorta =
     direccion.trim().length < 5 || !distrito.trim() || !provincia.trim();
+  // Sin el número de la casa, quien reparte (o el taxi que manden) no
+  // la encuentra. Pasaba sobre todo con "Usar mi ubicación": el mapa
+  // sabe la calle pero casi nunca el número ("Batallón Tarma" sin el
+  // 462). Vale cualquier número (Mz E Lt 24 también) o "s/n".
+  const sinNumero =
+    direccion.trim().length >= 5 && !/\d|\bs\/?n\b|sin n[uú]mero/i.test(direccion);
+  const faltanDireccion = direccionCorta || sinNumero;
   const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   const faltanDatos = (!recojo && faltanDireccion) || !emailValido;
 
   const verEnElMapa = async () => {
-    if (faltanDatos || buscando) return;
+    // Para el mapa basta con la dirección: el correo no hace falta aquí.
+    if (direccionCorta || buscando) return;
     setBuscando(true);
     setAvisoMapa(null);
     try {
@@ -237,7 +247,7 @@ export default function CartDrawer() {
     }
     // Lo que marcó ella manda: no se busca encima.
     if (puntoPropio) return;
-    if (faltanDireccion) {
+    if (direccionCorta) {
       setMapa(null);
       setPin(null);
       return;
@@ -290,13 +300,27 @@ export default function CartDrawer() {
       }
       const calle = nombre || entrega?.direccion;
       if (calle) cambio.direccion = calle;
+      const sinNum = !!calle && !/\d/.test(calle);
       if (cambio.provincia !== undefined) setProvincia(cambio.provincia);
       if (cambio.distrito !== undefined) setDistrito(cambio.distrito);
       if (cambio.direccion !== undefined) setDireccion(cambio.direccion);
       recordar(cambio);
       setAvisoMapa(
-        "Rellené tu dirección con lo que dice el mapa: revisa la calle y el número, añade dpto. o referencia, y mueve el pin si hace falta."
+        sinNum
+          ? "Ubiqué tu calle pero no el número: escríbelo al final de la dirección (y dpto. o referencia si hace falta)."
+          : "Rellené tu dirección con lo que dice el mapa: revisa la calle y el número, añade dpto. o referencia, y mueve el pin si hace falta."
       );
+      // Dejar el cursor al final, listo para escribir el número.
+      if (sinNum && calle) {
+        const texto = `${calle} `;
+        setDireccion(texto);
+        setTimeout(() => {
+          const campo = campoDireccion.current;
+          if (!campo) return;
+          campo.focus();
+          campo.setSelectionRange(texto.length, texto.length);
+        }, 50);
+      }
     } catch {
       // Si no se puede, el punto ya está en el mapa: ella escribe el resto.
     }
@@ -362,7 +386,7 @@ export default function CartDrawer() {
     setMapa(null);
     setPin(null);
     setAvisoMapa(null);
-    if (!faltanDireccion) verEnElMapa();
+    if (!direccionCorta) verEnElMapa();
   };
 
   // El punto que se manda con el pedido: el que ella marcó, o el que
@@ -902,14 +926,23 @@ export default function CartDrawer() {
                   Dirección (calle, número, referencia)
                 </span>
                 <input
+                  ref={campoDireccion}
                   value={direccion}
                   onChange={(e) => {
                     setDireccion(e.target.value);
                     recordar({ direccion: e.target.value });
                   }}
                   placeholder="Av. José Larco 1234, dpto. 502"
-                  className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent"
+                  aria-invalid={sinNumero}
+                  className={`mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:border-accent ${
+                    sinNumero ? "border-accent" : "border-line"
+                  }`}
                 />
+                {sinNumero && (
+                  <span className="block mt-1 text-xs text-accent">
+                    Falta el número de tu casa (o Mz y Lt). Si no tiene, escribe s/n.
+                  </span>
+                )}
               </label>
 
               {/* El mapa: que vea el punto y lo confirme. Una dirección
@@ -1039,7 +1072,9 @@ export default function CartDrawer() {
                   ? "Escribe tu correo para poder pagar: ahí te llegarán los datos de tu pedido."
                   : !emailValido
                     ? "Completa tu correo, provincia, distrito y dirección para poder pagar."
-                    : "Completa provincia, distrito y dirección para ver el envío y poder pagar."}
+                    : sinNumero && !direccionCorta
+                      ? "Agrega el número de tu casa para poder pagar."
+                      : "Completa provincia, distrito y dirección para ver el envío y poder pagar."}
               </p>
             )}
             {precio && precio.ahorro > 0 && (
