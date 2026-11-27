@@ -79,10 +79,22 @@ type ResultadoOsm = {
   lon?: string;
 };
 
-async function buscarEnOsm(texto: string): Promise<DireccionEncontrada[]> {
+// Un rectángulo en el mapa: oeste, norte, este, sur.
+export type Caja = [number, number, number, number];
+
+// Lima Metropolitana y el Callao, de Ancón a Pucusana y de la costa a
+// Chosica. Con "Lima y Callao" elegido, nada fuera de aquí vale: así
+// "Surco" no puede volver a caer en el Surco de Huarochirí.
+export const CAJA_LIMA_Y_CALLAO: Caja = [-77.25, -11.55, -76.6, -12.55];
+
+async function buscarEnOsm(
+  texto: string,
+  caja?: Caja
+): Promise<DireccionEncontrada[]> {
   const url =
     `${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=5` +
-    `&countrycodes=pe&accept-language=es&q=${encodeURIComponent(texto)}`;
+    `&countrycodes=pe&accept-language=es&q=${encodeURIComponent(texto)}` +
+    (caja ? `&viewbox=${caja.join(",")}&bounded=1` : "");
 
   const res = await fetch(url, {
     headers: { "User-Agent": QUIEN_SOY, Accept: "application/json" },
@@ -140,7 +152,10 @@ async function buscarEnOsm(texto: string): Promise<DireccionEncontrada[]> {
 
 // ---- Google (opcional, solo si hay clave) ---------------------------
 
-async function buscarEnGoogle(texto: string): Promise<DireccionEncontrada[]> {
+async function buscarEnGoogle(
+  texto: string,
+  caja?: Caja
+): Promise<DireccionEncontrada[]> {
   const api = process.env.GOOGLE_MAPS_API_KEY;
   if (!api) return [];
 
@@ -161,6 +176,14 @@ async function buscarEnGoogle(texto: string): Promise<DireccionEncontrada[]> {
       languageCode: "es",
       includedRegionCodes: ["pe"],
       maxResultCount: 5,
+      ...(caja && {
+        locationRestriction: {
+          rectangle: {
+            low: { latitude: caja[3], longitude: caja[0] },
+            high: { latitude: caja[1], longitude: caja[2] },
+          },
+        },
+      }),
     }),
     signal: AbortSignal.timeout(8000),
   });
@@ -283,6 +306,8 @@ export async function ubicar(datos: {
   // Otros nombres del mismo distrito (los alias de la tabla de envíos),
   // para reconocerlo venga como venga en el mapa.
   otrosNombres?: string[];
+  // Si se da, solo vale lo que cae dentro (la provincia elegida).
+  caja?: Caja;
 }): Promise<{ lugar: DireccionEncontrada; precision: Precision } | null> {
   const nombres = datos.distrito
     ? [datos.distrito, ...(datos.otrosNombres ?? [])]
@@ -314,39 +339,28 @@ export async function ubicar(datos: {
   }
 
   // Una calle con el mismo nombre en otro distrito es el error más
-  // común: hay "Jr. Los Pinos" en media Lima. Si la clienta dijo su
-  // distrito, se prefiere lo que cae en él; lo de otro distrito se
-  // guarda solo por si no aparece nada mejor.
+  // común: hay "Jr. Los Pinos" en media Lima. Decisión de la dueña
+  // (27 nov 2026): se busca SIEMPRE dentro de la provincia y el
+  // distrito que eligió la clienta. Lo que cae en otro sitio no se
+  // enseña; si la calle no aparece ahí, se le dice y se le muestra su
+  // distrito para que marque la casa ella misma.
   const enSuDistrito = (d: DireccionEncontrada) =>
     !nombres.length ||
     (d.finos ?? []).some((c) => nombres.some((n) => mismoNombre(c, n)));
 
-  let deOtroDistrito: { lugar: DireccionEncontrada; precision: Precision } | null =
-    null;
-
   for (const intento of intentos) {
-    const encontradas = (await buscarDireccion(intento.texto)).filter(
+    const encontradas = (await buscarDireccion(intento.texto, datos.caja)).filter(
       (d) => d.lat !== undefined && d.lon !== undefined
     );
-    if (!encontradas.length) continue;
+    const lugar = encontradas.find(enSuDistrito);
+    if (!lugar) continue;
 
     // Solo es "exacta" si de verdad trae el número.
-    const precisionDe = (d: DireccionEncontrada): Precision =>
-      intento.precision === "exacta" && !d.conNumero ? "calle" : intento.precision;
-
-    const lugar = encontradas.find(enSuDistrito);
-    if (lugar) return { lugar, precision: precisionDe(lugar) };
-
-    // La zona (el distrito solo) no se compara: es su propio distrito.
-    if (intento.precision === "zona") {
-      return deOtroDistrito ?? { lugar: encontradas[0], precision: "zona" };
-    }
-    deOtroDistrito ??= {
-      lugar: encontradas[0],
-      precision: precisionDe(encontradas[0]),
-    };
+    const precision: Precision =
+      intento.precision === "exacta" && !lugar.conNumero ? "calle" : intento.precision;
+    return { lugar, precision };
   }
-  return deOtroDistrito;
+  return null;
 }
 
 function sinTildes(s: string): string {
@@ -366,22 +380,24 @@ function mismoNombre(a: string, b: string): boolean {
 }
 
 export async function buscarDireccion(
-  texto: string
+  texto: string,
+  caja?: Caja
 ): Promise<DireccionEncontrada[]> {
   const limpio = texto.trim().slice(0, 150);
   if (limpio.length < 6) return [];
+  const clave = `${limpio.toLowerCase()}|${caja?.join(",") ?? ""}`;
 
-  const guardado = cache.get(limpio.toLowerCase());
+  const guardado = cache.get(clave);
   if (guardado && Date.now() < guardado.hasta) return guardado.datos;
 
   try {
     await esperarTurno();
     const datos =
       geocodificadorEnUso() === "google"
-        ? await buscarEnGoogle(limpio)
-        : await buscarEnOsm(limpio);
+        ? await buscarEnGoogle(limpio, caja)
+        : await buscarEnOsm(limpio, caja);
 
-    cache.set(limpio.toLowerCase(), {
+    cache.set(clave, {
       hasta: Date.now() + VIGENCIA_MS,
       datos,
     });

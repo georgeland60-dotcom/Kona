@@ -14,7 +14,11 @@
 //  nada por nuestra cuenta.
 // =============================================================
 
-import { ubicar, geocodificadorEnUso } from "@/lib/geocodificador";
+import {
+  ubicar,
+  geocodificadorEnUso,
+  CAJA_LIMA_Y_CALLAO,
+} from "@/lib/geocodificador";
 import {
   LIMA_Y_CALLAO,
   buscarDestino,
@@ -24,14 +28,6 @@ import { huellaDe } from "@/lib/asistente/limites";
 import { contar } from "@/lib/kv";
 
 export const maxDuration = 20;
-
-function normalizar(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
@@ -70,38 +66,35 @@ export async function GET(req: Request) {
     distrito,
     ciudad: provincia === LIMA_Y_CALLAO ? "Lima" : provincia,
     otrosNombres: elegido ? [elegido.nombre, ...(elegido.alias ?? [])] : [],
+    // Solo se busca dentro de la provincia elegida (y del distrito: eso
+    // lo revisa ubicar). Lo de otro sitio no se enseña.
+    caja: provincia === LIMA_Y_CALLAO ? CAJA_LIMA_Y_CALLAO : undefined,
   });
+
+  // Cómo llamar a su zona en los avisos: el distrito que eligió, o la
+  // provincia si no eligió distrito.
+  const suZona = distrito || provincia || "tu distrito";
 
   if (!encontrado) {
     return Response.json({
       envio,
       mapa: null,
-      aviso:
-        "No pude ubicar esa dirección en el mapa. El envío se calcula igual con tu distrito.",
+      aviso: `No encontré esa dirección en ${suZona}. Revisa que la calle esté bien escrita; el envío se calcula igual con tu distrito.`,
     });
   }
 
   const { lugar: mejor, precision } = encontrado;
 
-  // ¿El mapa cree que esto está en otro distrito? No se cambia nada: se
-  // dice, y ella decide. Corregirlo por nuestra cuenta sería cobrarle
-  // un precio distinto del que eligió sin avisar.
-  const delMapa = mejor.candidatos
-    .map((c) => buscarDestino(c))
-    .find((d) => d !== null);
-
-  const esperado = provincia === LIMA_Y_CALLAO ? distrito : provincia;
-  const discrepa =
-    !!delMapa &&
-    !!esperado &&
-    normalizar(delMapa.nombre) !== normalizar(esperado);
+  // Todo lo que llega aquí ya cae en su distrito, así que el distrito
+  // del mapa es el suyo.
+  const delMapa = buscarDestino(distrito);
 
   // Se dice con qué precisión se encontró: marcar la cuadra no es lo
   // mismo que marcar el portal, y callarlo haría que confiara de más.
   const porPrecision: Record<string, string | null> = {
     exacta: null,
     calle: "Encontré tu calle pero no el número: el punto puede estar a unas cuadras de tu casa. Arrástralo hasta tu puerta.",
-    zona: "No encontré esa calle en el mapa: el punto está en el centro de tu distrito, no en tu casa. Arrástralo hasta tu puerta o añade una referencia para quien reparte.",
+    zona: `No encontré esa calle en ${suZona}. Te muestro ${suZona}: arrastra el pin hasta tu casa o añade una referencia para quien reparte.`,
   };
 
   return Response.json({
@@ -113,9 +106,7 @@ export async function GET(req: Request) {
       zona: delMapa?.nombre ?? mejor.zona ?? null,
       precision,
     },
-    aviso: discrepa
-      ? `Ojo: en el mapa esa dirección sale en ${delMapa!.nombre}, no en ${esperado}. Si te equivocaste, corrígelo arriba.`
-      : porPrecision[precision],
+    aviso: porPrecision[precision],
     motor: geocodificadorEnUso(),
   });
 }
