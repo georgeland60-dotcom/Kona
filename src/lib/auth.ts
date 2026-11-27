@@ -12,8 +12,20 @@ import { cookies } from "next/headers";
 const COOKIE_NAME = "kona_admin";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 días en segundos
 
+// Si en producción faltara ADMIN_SESSION_SECRET, NO se usa una clave
+// conocida: el repositorio es público y cualquiera podría fabricarse la
+// cookie del panel con ella. Se usa una al azar que nadie conoce (las
+// sesiones durarán poco, pero nadie se cuela) y se avisa en los logs.
+const AL_AZAR = crypto.randomBytes(32).toString("hex");
+
 function secret(): string {
-  return process.env.ADMIN_SESSION_SECRET || "kona-dev-secret-cambia-esto";
+  const real = process.env.ADMIN_SESSION_SECRET?.trim();
+  if (real) return real;
+  if (process.env.NODE_ENV === "production") {
+    console.error("[panel] falta ADMIN_SESSION_SECRET: se usa una clave al azar");
+    return AL_AZAR;
+  }
+  return "kona-dev-secret-solo-en-la-laptop";
 }
 
 // Firma un texto con HMAC-SHA256.
