@@ -78,6 +78,17 @@ const C = {
 const LETRA = "'Jost', Helvetica, Arial, sans-serif";
 const MANUSCRITA = "'Sacramento', 'Brush Script MT', cursive";
 
+// Los títulos van como IMAGEN con la manuscrita de la marca: Gmail no
+// carga letras de fuera y los ponía en otra cursiva. Las imágenes están
+// en public/correo (a 3x para que se vean nítidas) y su texto va en
+// "alt", que es lo que se lee si el correo bloquea las imágenes.
+const TITULOS: Record<string, { archivo: string; ancho: number; alto: number }> = {
+  "¡Gracias!": { archivo: "titulo-gracias.png", ancho: 183, alto: 73 },
+  "¡Lo recibimos!": { archivo: "titulo-lo-recibimos.png", ancho: 270, alto: 73 },
+  "¡Pedido nuevo!": { archivo: "titulo-pedido-nuevo.png", ancho: 271, alto: 73 },
+  "¡Venta pagada!": { archivo: "titulo-venta-pagada.png", ancho: 283, alto: 73 },
+};
+
 function boton(texto: string, href: string, oscuro = false): string {
   const fondo = oscuro ? C.texto : C.fucsia;
   return `<a href="${href}" style="display:inline-block;background:${fondo};color:#ffffff;font-family:${LETRA};font-size:15px;padding:12px 28px;border-radius:999px;text-decoration:none">${escapar(texto)}</a>`;
@@ -191,7 +202,11 @@ function marco(datos: {
           <a href="${sitio}"><img src="${sitio}/logo-foot.png" width="110" alt="${escapar(store.name)}" style="display:block;border:0"></a>
         </td></tr>
         <tr><td style="padding:32px 28px 8px;text-align:center">
-          <div style="font-family:${MANUSCRITA};font-size:48px;line-height:1.1;color:${C.fucsia}">${escapar(datos.titulo)}</div>
+          ${
+            TITULOS[datos.titulo]
+              ? `<img src="${sitio}/correo/${TITULOS[datos.titulo].archivo}" width="${TITULOS[datos.titulo].ancho}" height="${TITULOS[datos.titulo].alto}" alt="${escapar(datos.titulo)}" style="display:block;margin:0 auto;border:0;max-width:100%;height:auto;font-family:${MANUSCRITA};font-size:40px;color:${C.fucsia}">`
+              : `<div style="font-family:${MANUSCRITA};font-size:48px;line-height:1.1;color:${C.fucsia}">${escapar(datos.titulo)}</div>`
+          }
           ${
             datos.subtitulo
               ? `<p style="font-family:${LETRA};font-size:15px;line-height:1.6;color:${C.gris};margin:14px 0 0">${datos.subtitulo}</p>`
@@ -225,7 +240,7 @@ function cajaPedido(r: ResumenPedido, comoPagoTexto: string): string {
       <tr>
         <td style="padding:14px 16px;font-family:${LETRA}">
           <span style="font-size:12px;color:${C.gris}">Tu pedido</span><br>
-          <span style="font-size:18px;font-weight:500;color:${C.texto}">${escapar(r.id)}</span>
+          <span style="font-size:18px;font-weight:500;color:${C.texto};white-space:nowrap">${escapar(r.id)}</span>
         </td>
         <td style="padding:14px 16px;font-family:${LETRA};text-align:right;font-size:12px;color:${C.gris}">
           ${escapar(fecha)}<br>${escapar(comoPagoTexto)}
