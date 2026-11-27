@@ -110,7 +110,24 @@ const PEDIDOS_DE_PRUEBA = Array.from(
   { length: 19 },
   (_, i) => makeId(i + 1)
 );
-export const LIMPIEZA_PEDIDOS = "2026-11-27";
+// Y el PED-0020 al PED-0024: los creó por error una comprobación del
+// asistente mientras se publicaba lo de arriba (27 nov 2026, 10:53-10:54
+// UTC). Un Cárdigan Joy verde sin talla, sin clienta y sin stock apartado.
+// Se borran solo si son exactamente eso: si un número de esos fuera de
+// un pedido real, no se toca.
+const PEDIDOS_DEL_ASISTENTE = ["PED-0020", "PED-0021", "PED-0022", "PED-0023", "PED-0024"];
+function esDelAsistente(o: Order): boolean {
+  return (
+    PEDIDOS_DEL_ASISTENTE.includes(o.id) &&
+    o.createdAt.startsWith("2026-11-27T10:5") &&
+    !o.customer?.email &&
+    !o.customer?.phone &&
+    o.items.length === 1 &&
+    o.items[0].productId === "12571" &&
+    !o.items[0].sku
+  );
+}
+export const LIMPIEZA_PEDIDOS = "2026-11-27b";
 
 export async function borrarPedidosDePrueba(): Promise<void> {
   const { pruebasBorradas } = await readOrders();
@@ -121,11 +138,14 @@ export async function borrarPedidosDePrueba(): Promise<void> {
     if (data.pruebasBorradas === LIMPIEZA_PEDIDOS) return;
 
     for (const pedido of data.orders) {
-      if (!PEDIDOS_DE_PRUEBA.includes(pedido.id) || !pedido.stockApplied) continue;
+      const borrar = PEDIDOS_DE_PRUEBA.includes(pedido.id) || esDelAsistente(pedido);
+      if (!borrar || !pedido.stockApplied) continue;
       // Un pedido pagado ya salió del almacén de verdad; uno de prueba no.
       await devolverStock(pedido.items);
     }
-    data.orders = data.orders.filter((o) => !PEDIDOS_DE_PRUEBA.includes(o.id));
+    data.orders = data.orders.filter(
+      (o) => !PEDIDOS_DE_PRUEBA.includes(o.id) && !esDelAsistente(o)
+    );
     data.pruebasBorradas = LIMPIEZA_PEDIDOS;
     await writeOrders(data);
   });
