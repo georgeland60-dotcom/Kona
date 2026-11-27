@@ -164,10 +164,12 @@ export async function setOrderStatus(
   status: OrderStatus,
   extra?: { mpPaymentId?: string }
 ): Promise<Order | undefined> {
-  return conCandado("stock", async () => {
+  let recienPagado = false;
+  const resultado = await conCandado("stock", async () => {
     const data = await readOrders();
     const order = data.orders.find((o) => o.id === id);
     if (!order) return undefined;
+    recienPagado = status === "pagado" && order.status !== "pagado";
 
     if (status === "cancelado" && order.stockApplied) {
       await devolverStock(order.items);
@@ -188,6 +190,51 @@ export async function setOrderStatus(
     await writeOrders(data);
     return order;
   });
+
+  // El correo de "pago confirmado", fuera del candado: mandar un correo
+  // tarda, y mientras tanto nadie más podría tocar el stock.
+  if (recienPagado) await avisar(id, "pagado");
+  return resultado;
+}
+
+async function avisar(id: string, momento: "recibido" | "pagado") {
+  const { avisarPedido } = await import("@/lib/correos-pedido");
+  await avisarPedido(id, momento);
+}
+
+// Marca que el correo de ese momento ya se está mandando. Devuelve false
+// si otro camino ya lo hizo: así no le llegan dos iguales a la clienta.
+export async function reclamarCorreo(
+  id: string,
+  momento: "recibido" | "pagado"
+): Promise<boolean> {
+  return conCandado("stock", async () => {
+    const data = await readOrders();
+    const order = data.orders.find((o) => o.id === id);
+    if (!order || order.correos?.[momento]) return false;
+    order.correos = { ...order.correos, [momento]: new Date().toISOString() };
+    await writeOrders(data);
+    return true;
+  });
+}
+
+// Si el envío falló, se quita la marca para poder intentarlo otra vez.
+export async function soltarCorreo(id: string, momento: "recibido" | "pagado") {
+  await conCandado("stock", async () => {
+    const data = await readOrders();
+    const order = data.orders.find((o) => o.id === id);
+    if (!order?.correos?.[momento]) return;
+    const { [momento]: _fuera, ...resto } = order.correos;
+    void _fuera;
+    order.correos = resto;
+    await writeOrders(data);
+  });
+}
+
+// Pedido por Yape, Plin o transferencia: la clienta dice que pagó. Le
+// llega su resumen y a la tienda el aviso para revisar el pago.
+export async function avisarPedidoRecibido(id: string) {
+  await avisar(id, "recibido");
 }
 
 // ---- Pagos por fuera de la pasarela ---------------------------------

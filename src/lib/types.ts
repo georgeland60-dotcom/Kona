@@ -143,6 +143,10 @@ export type Order = {
   // El pago hecho por fuera de la pasarela (Yape, Plin, transferencia),
   // tal como lo registró la dueña.
   pago?: PagoManual;
+  // Qué correos ya se mandaron de este pedido (fecha ISO). Evita mandar
+  // dos veces el mismo cuando el pago se confirma por dos caminos a la
+  // vez (el aviso de Mercado Pago y la vuelta de la clienta).
+  correos?: { recibido?: string; pagado?: string };
 };
 
 // ---- PROMOCIONES (banners + descuentos) -----------------------------

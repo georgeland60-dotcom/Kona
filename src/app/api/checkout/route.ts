@@ -9,6 +9,7 @@ import {
   envioGratisAplica,
 } from "@/lib/envios";
 import { puntoValido } from "@/lib/geocodificador";
+import { esCorreo } from "@/lib/correo";
 
 // Esta funcion corre en el SERVIDOR (seguro). Aqui se usa el token secreto
 // para crear el cobro. El navegador del cliente nunca ve el token.
@@ -43,11 +44,15 @@ export async function POST(req: Request) {
     lat?: number;
     lon?: number;
     recojo?: boolean;
+    email?: string;
   };
   const { items: rawItems, destino, lat, lon } = cuerpo;
   // Recojo en tienda: sin envío, y la dirección es la de la tienda.
   const recojo = cuerpo.recojo === true;
   const direccion = recojo ? direccionDeRecojo() : cuerpo.direccion;
+  // A este correo le llega el resumen; a Mercado Pago también le sirve
+  // saber quién paga (ayuda a que no rechace el pago por desconfianza).
+  const email = esCorreo(cuerpo.email) ? cuerpo.email.trim().toLowerCase() : undefined;
   if (!rawItems || rawItems.length === 0) {
     return NextResponse.json({ error: "El carrito esta vacio" }, { status: 400 });
   }
@@ -79,6 +84,7 @@ export async function POST(req: Request) {
     total,
     method: "mercadopago",
     status: "pendiente",
+    ...(email ? { customer: { email } } : {}),
     ...(envio.destino || direccion || punto
       ? {
           envio: {
@@ -114,6 +120,7 @@ export async function POST(req: Request) {
     const result = await preference.create({
       body: {
         external_reference: order.id,
+        ...(email ? { payer: { email } } : {}),
         items: [
           ...items.map((i, idx) => ({
             id: String(idx),
