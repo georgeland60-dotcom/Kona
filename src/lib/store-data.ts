@@ -31,6 +31,7 @@ type StoreData = {
   stockPrueba?: string;
   precioPrueba?: string;
   blazersAgregados?: string;
+  fotosBlazers?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -251,8 +252,12 @@ const DESCRIPCION_BLAZER =
   "Blazer de corte relajado, con manga 3/4 de vuelta y un solo botón. " +
   "Va igual de bien con jean que con pantalón de vestir o sobre un vestido.";
 
-const FOTOS_VERDE = [1, 2, 3, 4].map((n) => `/products/blazer-verde-menta-${n}.webp`);
-const FOTOS_AZUL = [1, 2, 3].map((n) => `/products/blazer-azul-${n}.webp`);
+// La primera es la principal. La dueña eligió (27 nov 2026): la del azul
+// en la mesa con el café y la del verde levantando la cartera.
+const FOTOS_VERDE = [4, 1, 2, 3].map((n) => `/products/blazer-verde-menta-${n}.webp`);
+const FOTOS_AZUL = [2, 1, 3].map((n) => `/products/blazer-azul-${n}.webp`);
+const FOTOS_VERDE_ANTES = [1, 2, 3, 4].map((n) => `/products/blazer-verde-menta-${n}.webp`);
+const FOTOS_AZUL_ANTES = [1, 2, 3].map((n) => `/products/blazer-azul-${n}.webp`);
 
 const BLAZERS: { slug: string; name: string; fotos: string[]; tallas: [string, number][] }[] = [
   {
@@ -305,6 +310,25 @@ export function conBlazers(productos: Product[]): Product[] {
   return [...productos, ...nuevos];
 }
 
+// Los blazers ya creados con el orden viejo de fotos pasan al nuevo. Solo
+// si siguen con el orden viejo tal cual: si alguien las cambió a mano,
+// se respeta. Una sola vez.
+export const FOTOS_BLAZERS = "2026-11-27b";
+
+export function conFotosDeBlazers(productos: Product[]): Product[] {
+  const igual = (a: string[] | undefined, b: string[]) =>
+    !!a && a.length === b.length && a.every((x, i) => x === b[i]);
+  return productos.map((p) => {
+    if (!p.slug.startsWith("blazer-")) return p;
+    const nuevas = igual(p.images, FOTOS_VERDE_ANTES)
+      ? FOTOS_VERDE
+      : igual(p.images, FOTOS_AZUL_ANTES)
+        ? FOTOS_AZUL
+        : null;
+    return nuevas ? { ...p, images: nuevas, image: nuevas[0] } : p;
+  });
+}
+
 export async function readStore(): Promise<StoreData> {
   const leido = await leerDoc<StoreData>("store");
 
@@ -321,6 +345,7 @@ export async function readStore(): Promise<StoreData> {
   const faltaStockPrueba = datos.stockPrueba !== STOCK_PRUEBA;
   const faltaPrecioPrueba = datos.precioPrueba !== PRECIO_PRUEBA;
   const faltanBlazers = datos.blazersAgregados !== BLAZERS_AGREGADOS;
+  const faltanFotosBlazers = datos.fotosBlazers !== FOTOS_BLAZERS;
   if (
     !faltaInventario &&
     !faltaLimpieza &&
@@ -328,7 +353,8 @@ export async function readStore(): Promise<StoreData> {
     !faltaDenim &&
     !faltaStockPrueba &&
     !faltaPrecioPrueba &&
-    !faltanBlazers
+    !faltanBlazers &&
+    !faltanFotosBlazers
   ) {
     return datos;
   }
@@ -381,6 +407,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: conBlazers(corregidos.products),
       blazersAgregados: BLAZERS_AGREGADOS,
+    };
+  }
+  if (faltanFotosBlazers) {
+    corregidos = {
+      ...corregidos,
+      products: conFotosDeBlazers(corregidos.products),
+      fotosBlazers: FOTOS_BLAZERS,
     };
   }
 
