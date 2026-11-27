@@ -33,6 +33,7 @@ type StoreData = {
   blazersAgregados?: string;
   fotosBlazers?: string;
   fotosCeleste?: string;
+  maquillajeRetirado?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -82,7 +83,8 @@ function seedToProduct(seed: SeedProduct): Product {
 // mientras no se haya guardado nada todavía.
 function seedData(): StoreData {
   return {
-    products: seedProducts.map(seedToProduct),
+    // Lo retirado de la venta tampoco nace visible en una tienda nueva.
+    products: sinMaquillaje(seedProducts.map(seedToProduct)),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -346,6 +348,27 @@ export function conFotosDelCeleste(productos: Product[]): Product[] {
   });
 }
 
+// ---- Maquillaje, fuera de la vista ---------------------------------------
+//
+//  Kona deja de vender maquillaje (27 nov 2026, pedido de la dueña): el
+//  rubor, el labial y las sombras en barra. Estaban dentro de Básicos.
+//  Igual que las carteras: se ocultan, no se borran (reversible desde el
+//  panel, conserva fotos e historial). Una sola vez, por id y slug.
+const MAQUILLAJE = [
+  { id: "11631", slug: "blush-stick" },
+  { id: "11653", slug: "lipstick-mate-hidratante-labial-en-barra" },
+  { id: "11656", slug: "sombras-en-stick-en-barra" },
+];
+export const MAQUILLAJE_RETIRADO = "2026-11-27";
+
+export function sinMaquillaje(productos: Product[]): Product[] {
+  return productos.map((p) =>
+    MAQUILLAJE.some((m) => m.id === p.id && m.slug === p.slug)
+      ? { ...p, active: false }
+      : p
+  );
+}
+
 export async function readStore(): Promise<StoreData> {
   const leido = await leerDoc<StoreData>("store");
 
@@ -364,6 +387,7 @@ export async function readStore(): Promise<StoreData> {
   const faltanBlazers = datos.blazersAgregados !== BLAZERS_AGREGADOS;
   const faltanFotosBlazers = datos.fotosBlazers !== FOTOS_BLAZERS;
   const faltanFotosCeleste = datos.fotosCeleste !== FOTOS_CELESTE_PUESTAS;
+  const faltaMaquillaje = datos.maquillajeRetirado !== MAQUILLAJE_RETIRADO;
   if (
     !faltaInventario &&
     !faltaLimpieza &&
@@ -373,7 +397,8 @@ export async function readStore(): Promise<StoreData> {
     !faltaPrecioPrueba &&
     !faltanBlazers &&
     !faltanFotosBlazers &&
-    !faltanFotosCeleste
+    !faltanFotosCeleste &&
+    !faltaMaquillaje
   ) {
     return datos;
   }
@@ -440,6 +465,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: conFotosDelCeleste(corregidos.products),
       fotosCeleste: FOTOS_CELESTE_PUESTAS,
+    };
+  }
+  if (faltaMaquillaje) {
+    corregidos = {
+      ...corregidos,
+      products: sinMaquillaje(corregidos.products),
+      maquillajeRetirado: MAQUILLAJE_RETIRADO,
     };
   }
 
