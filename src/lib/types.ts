@@ -76,6 +76,10 @@ export type OrderItem = {
   name: string;
   size?: string;
   price: number; // precio unitario al momento de la compra
+  // El precio de lista por unidad, sin promociones, al momento de la
+  // compra. Con él el resumen y los correos tachan el "antes" como la
+  // tienda. Los pedidos viejos no lo tienen.
+  priceLista?: number;
   qty: number;
 };
 

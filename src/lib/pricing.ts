@@ -103,6 +103,7 @@ function aItems(lineas: CarritoPreciado["lineas"]): OrderItem[] {
         name: price === 0 ? `${l.nombre} (regalo)` : l.nombre,
         size: l.size,
         price,
+        ...(l.precioLista > price ? { priceLista: l.precioLista } : {}),
         qty,
       });
     }

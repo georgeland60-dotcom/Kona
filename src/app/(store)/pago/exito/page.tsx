@@ -130,7 +130,15 @@ export default function PagoExito() {
                     Cantidad {l.cantidad}
                   </p>
                   <p className="text-sm text-muted">
-                    {formatPrice(l.precio)} c/u
+                    {l.precioAntes && (
+                      <span className="line-through mr-2">
+                        {formatPrice(l.precioAntes)}
+                      </span>
+                    )}
+                    <span className={l.precioAntes ? "text-accent font-medium" : ""}>
+                      {formatPrice(l.precio)}
+                    </span>{" "}
+                    c/u
                   </p>
                 </div>
                 <p className="font-medium shrink-0">{formatPrice(l.subtotal)}</p>
@@ -175,6 +183,12 @@ export default function PagoExito() {
                 <span className="shrink-0">
                   {resumen.envio.costo > 0 ? formatPrice(resumen.envio.costo) : "Gratis"}
                 </span>
+              </div>
+            )}
+            {resumen.ahorro > 0 && (
+              <div className="flex justify-between text-green-700 font-medium">
+                <span>Ahorraste</span>
+                <span>{formatPrice(resumen.ahorro)}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-medium pt-2 border-t border-line">

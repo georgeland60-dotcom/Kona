@@ -58,6 +58,20 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // La misma tienda con la dirección de Vercel: a konamoda.pe, para
+      // que Google y Bing no la muestren dos veces (pedido de la dueña,
+      // 27 nov 2026). /api/ NO se redirige: el bot de Telegram y los
+      // avisos que se configuraron con esta dirección no siguen
+      // redirecciones, y dejarían de llegar.
+      {
+        source: "/:ruta((?!api/).*)",
+        has: [{ type: "host" as const, value: "kona-henna.vercel.app" }],
+        destination: "https://konamoda.pe/:ruta",
+        permanent: true,
+      },
+      // La página "Acerca de" de la web anterior, que todavía sale en
+      // los buscadores.
+      { source: "/acerca-de-kona{/}?", destination: "/nosotros", permanent: true },
       // Categoría: /categoria-producto/vestidos -> /tienda?cat=vestidos
       ...Object.entries(CATEGORIAS_VIEJAS).map(([vieja, nueva]) => ({
         source: `/:base(categoria-producto|product-category)/${vieja}{/}?`,

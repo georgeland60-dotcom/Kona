@@ -17,7 +17,7 @@ respaldo.
 | | Dirección | Qué es |
 |---|---|---|
 | **Producción** | **https://konamoda.pe** | La tienda de verdad (activa desde el 25 nov 2026). `www` redirige aquí. |
-| Mismo despliegue | https://kona-henna.vercel.app | La MISMA tienda con otra dirección. No es de pruebas. |
+| Mismo despliegue | https://kona-henna.vercel.app | La MISMA tienda. Desde el 27 nov 2026 redirige (308) a konamoda.pe, salvo `/api/` (bot de Telegram y avisos siguen llegando ahí). |
 | Pruebas | rama `pruebas` → `kona-git-pruebas-ai-agenda-s-projects.vercel.app` | Copia para probar. Ver MIGRACION.md §8 antes de usarla. |
 
 **Para cualquier agente que trabaje en la tienda:** la dirección oficial

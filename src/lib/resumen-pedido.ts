@@ -17,6 +17,9 @@ export type LineaResumen = {
   talla?: string;
   cantidad: number;
   precio: number; // unitario, el cobrado
+  // El "antes" por unidad, como lo tacha la tienda, solo si se cobró
+  // menos.
+  precioAntes?: number;
   subtotal: number;
   imagen?: string;
   enlace?: string;
@@ -35,23 +38,29 @@ export type ResumenPedido = {
     promo?: string;
   };
   total: number;
+  // Cuánto se ahorró en total frente a los precios de antes.
+  ahorro: number;
 };
 
 export async function resumenDelPedido(o: Order): Promise<ResumenPedido> {
   const { products } = await readStore();
   const porId = new Map(products.map((p) => [p.id, p]));
 
-  return {
+  const resumen: Omit<ResumenPedido, "ahorro"> = {
     id: o.id,
     fecha: o.createdAt,
     estado: o.status,
     lineas: o.items.map((i) => {
       const p = porId.get(i.productId);
+      // Igual que la tienda: el "antes" es el que se haya puesto a mano
+      // (oldPrice) o el de lista sin promociones.
+      const antes = Math.max(p?.oldPrice ?? 0, i.priceLista ?? 0);
       return {
         nombre: i.name,
         ...(i.size ? { talla: i.size } : {}),
         cantidad: i.qty,
         precio: i.price,
+        ...(antes > i.price ? { precioAntes: antes } : {}),
         subtotal: Math.round(i.price * i.qty * 100) / 100,
         ...(p?.image || p?.images?.[0] ? { imagen: p.image ?? p.images![0] } : {}),
         ...(p?.slug ? { enlace: `/producto/${p.slug}` } : {}),
@@ -70,4 +79,9 @@ export async function resumenDelPedido(o: Order): Promise<ResumenPedido> {
       : {}),
     total: o.total,
   };
+  const ahorro = resumen.lineas.reduce(
+    (s, l) => s + (l.precioAntes ? (l.precioAntes - l.precio) * l.cantidad : 0),
+    0
+  );
+  return { ...resumen, ahorro: Math.round(ahorro * 100) / 100 };
 }
