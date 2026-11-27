@@ -13,9 +13,45 @@
 //  cada enlace de pago de Mercado Pago (preference-id=NÚMERO-...).
 // =============================================================
 
+import { isLoggedIn } from "@/lib/auth";
+
 const API = process.env.MERCADOPAGO_API_URL || "https://api.mercadopago.com";
 
-export async function GET() {
+// Los últimos intentos de cobro, con el motivo de Mercado Pago. Solo
+// con la sesión del panel abierta: es información de ventas.
+async function ultimosIntentos(token: string) {
+  const res = await fetch(
+    `${API}/v1/payments/search?sort=date_created&criteria=desc&limit=10`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    }
+  );
+  if (!res.ok) return { error: res.status };
+  const datos = (await res.json()) as {
+    results?: {
+      date_created?: string;
+      status?: string;
+      status_detail?: string;
+      external_reference?: string;
+      payment_method_id?: string;
+      payment_type_id?: string;
+      transaction_amount?: number;
+    }[];
+  };
+  return (datos.results ?? []).map((p) => ({
+    fecha: p.date_created,
+    pedido: p.external_reference,
+    estado: p.status,
+    motivo: p.status_detail,
+    medio: p.payment_method_id,
+    tipo: p.payment_type_id,
+    monto: p.transaction_amount,
+  }));
+}
+
+export async function GET(req: Request) {
   const token = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim();
   const sinCache = { headers: { "Cache-Control": "no-store" } };
 
@@ -44,6 +80,8 @@ export async function GET() {
       site_id?: string;
       tags?: string[];
     };
+    const verIntentos =
+      new URL(req.url).searchParams.has("intentos") && (await isLoggedIn());
     return Response.json(
       {
         credenciales: tipo,
@@ -51,6 +89,7 @@ export async function GET() {
         cuenta: yo.id,
         pais: yo.site_id,
         usuarioDePrueba: (yo.tags ?? []).includes("test_user"),
+        ...(verIntentos ? { intentos: await ultimosIntentos(token) } : {}),
       },
       sinCache
     );
