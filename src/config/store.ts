@@ -22,7 +22,7 @@ export const store = {
   // Recojo en tienda: gratis, la clienta pasa a buscar su pedido. Se
   // ofrece en el carrito como alternativa al envío (27 nov 2026).
   recojo: {
-    direccion: "Jr. Los Brigadieres 790",
+    direccion: "Jirón Los Brigadieres 790",
     distrito: "Santiago de Surco",
     // Tal como la encuentra Google Maps (confirmado por la dueña el 27
     // nov 2026): es lo que se busca al tocar "Ver en Google Maps".
