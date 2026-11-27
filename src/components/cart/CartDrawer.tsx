@@ -134,6 +134,13 @@ export default function CartDrawer() {
   const [pin, setPin] = useState<Punto | null>(null);
   const [avisoMapa, setAvisoMapa] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
+  // Un punto que dio ELLA (su ubicación o un enlace de Google Maps).
+  // Mientras exista, el buscador por texto no lo pisa: OpenStreetMap no
+  // conoce muchas calles de Lima, y el GPS o Google sí.
+  const [puntoPropio, setPuntoPropio] = useState<"gps" | "enlace" | null>(null);
+  const [ubicando, setUbicando] = useState(false);
+  const [pegando, setPegando] = useState(false);
+  const [enlace, setEnlace] = useState("");
 
   // Se recuerda entre visitas: quien ya dio su dirección no tiene por
   // qué repetirla cada vez.
@@ -213,7 +220,15 @@ export default function CartDrawer() {
   // El mapa se pide solo cuando los tres datos están completos, con una
   // pausa para no consultar en cada tecla.
   useEffect(() => {
-    if (recojo || faltanDireccion) {
+    if (recojo) {
+      setMapa(null);
+      setPin(null);
+      setPuntoPropio(null);
+      return;
+    }
+    // Lo que marcó ella manda: no se busca encima.
+    if (puntoPropio) return;
+    if (faltanDireccion) {
       setMapa(null);
       setPin(null);
       return;
@@ -222,6 +237,88 @@ export default function CartDrawer() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [direccion, distrito, provincia, recojo]);
+
+  // Poner en el mapa un punto que dio ella.
+  const ponerPuntoPropio = (
+    p: { lat: number; lon: number },
+    origen: "gps" | "enlace"
+  ) => {
+    setPuntoPropio(origen);
+    setPin(null);
+    setMapa({
+      direccion: origen === "gps" ? "Tu ubicación actual" : "La ubicación de tu enlace",
+      lat: p.lat,
+      lon: p.lon,
+      zona: null,
+      precision: "exacta",
+    });
+    setAvisoMapa(
+      "Revisa que el pin esté en tu puerta; si no, arrástralo. Escribe igual tu dirección y una referencia para quien reparte."
+    );
+  };
+
+  // El GPS del celular: gratis, sin buscador y tan exacto como el teléfono.
+  const usarMiUbicacion = () => {
+    if (!("geolocation" in navigator)) {
+      setAvisoMapa("Tu navegador no deja usar la ubicación. Pega un enlace de Google Maps o mueve el pin.");
+      return;
+    }
+    setUbicando(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUbicando(false);
+        ponerPuntoPropio(
+          {
+            lat: Number(pos.coords.latitude.toFixed(6)),
+            lon: Number(pos.coords.longitude.toFixed(6)),
+          },
+          "gps"
+        );
+      },
+      (err) => {
+        setUbicando(false);
+        setAvisoMapa(
+          err.code === err.PERMISSION_DENIED
+            ? "No diste permiso para usar tu ubicación. Puedes darlo en el candado de la barra del navegador, o pegar un enlace de Google Maps."
+            : "No pude saber dónde estás. Prueba otra vez o pega un enlace de Google Maps."
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  };
+
+  // Un enlace de Google Maps o la ubicación compartida por WhatsApp.
+  const usarEnlace = async () => {
+    if (!enlace.trim()) return;
+    setPegando(true);
+    try {
+      const res = await fetch("/api/direccion/enlace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enlace }),
+      });
+      const datos = await res.json();
+      if (datos.punto) {
+        ponerPuntoPropio(datos.punto, "enlace");
+        setEnlace("");
+      } else {
+        setAvisoMapa(datos.aviso ?? "Ese enlace no trae una ubicación.");
+      }
+    } catch {
+      setAvisoMapa("No pude leer ese enlace. Prueba con \"Usar mi ubicación\".");
+    } finally {
+      setPegando(false);
+    }
+  };
+
+  // Volver a ubicar por lo escrito.
+  const olvidarPuntoPropio = () => {
+    setPuntoPropio(null);
+    setMapa(null);
+    setPin(null);
+    setAvisoMapa(null);
+    if (!faltanDireccion) verEnElMapa();
+  };
 
   // El punto que se manda con el pedido: el que ella marcó, o el que
   // encontró el buscador.
@@ -753,6 +850,54 @@ export default function CartDrawer() {
               {buscando && (
                 <p className="text-xs text-muted">Buscando en el mapa…</p>
               )}
+
+              {/* Si el buscador no da con su calle (OpenStreetMap no
+                  conoce muchas de Lima), que lo marque ella: con el GPS
+                  del celular o con un enlace de Google Maps. */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={usarMiUbicacion}
+                    disabled={ubicando}
+                    className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-accent disabled:opacity-50"
+                  >
+                    {ubicando ? "Buscando dónde estás…" : "📍 Usar mi ubicación"}
+                  </button>
+                  {puntoPropio && (
+                    <button
+                      type="button"
+                      onClick={olvidarPuntoPropio}
+                      className="text-xs underline text-muted"
+                    >
+                      Ubicar por la dirección escrita
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={enlace}
+                    onChange={(e) => setEnlace(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        usarEnlace();
+                      }
+                    }}
+                    placeholder="o pega tu ubicación de Google Maps / WhatsApp"
+                    aria-label="Enlace de Google Maps con tu ubicación"
+                    className="flex-1 min-w-0 border border-line rounded-lg px-3 py-1.5 text-xs bg-background focus:outline-none focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={usarEnlace}
+                    disabled={pegando || !enlace.trim()}
+                    className="text-xs border border-line rounded-lg px-3 py-1.5 hover:border-accent disabled:opacity-50"
+                  >
+                    {pegando ? "Leyendo…" : "Ver"}
+                  </button>
+                </div>
+              </div>
 
               {mapa && (
                 <MapaEntrega
