@@ -22,6 +22,12 @@ export const store = {
   // Recojo en tienda: gratis, la clienta pasa a buscar su pedido. Se
   // ofrece en el carrito como alternativa al envío (27 nov 2026).
   recojo: {
+    // Lo que VE la clienta en el carrito. La dirección exacta no se
+    // publica: se la damos al terminar la compra (decisión de la dueña,
+    // 27 nov 2026).
+    referencia: "Tienda al frente del Jockey Plaza",
+    aviso: "Te brindamos la dirección al culminar tu compra.",
+    // La dirección real: solo para el pedido que ve la tienda.
     direccion: "Jirón Los Brigadieres 790",
     distrito: "Santiago de Surco",
     // Tal como la encuentra Google Maps (confirmado por la dueña el 27

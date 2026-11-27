@@ -6,6 +6,7 @@ import { useCart } from "@/components/cart/CartContext";
 import { medir } from "@/lib/medicion";
 import { formatPrice } from "@/lib/format";
 import type { ResumenPedido } from "@/lib/resumen-pedido";
+import { mapaDeRecojo } from "@/lib/envios";
 
 export default function PagoExito() {
   const { clear, items, total, cargado } = useCart();
@@ -152,6 +153,18 @@ export default function PagoExito() {
                     : `Envío a ${resumen.envio.destino || "coordinar"}`}
                   {resumen.envio.direccion && (
                     <span className="block text-xs">{resumen.envio.direccion}</span>
+                  )}
+                  {/* En el carrito solo se dice "al frente del Jockey
+                      Plaza": la dirección exacta se da aquí, al terminar. */}
+                  {resumen.envio.recojo && (
+                    <a
+                      href={mapaDeRecojo()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-xs underline"
+                    >
+                      Ver en Google Maps
+                    </a>
                   )}
                   {resumen.envio.promo && (
                     <span className="block text-xs text-green-700">
