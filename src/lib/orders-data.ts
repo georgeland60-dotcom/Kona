@@ -111,15 +111,16 @@ const PEDIDOS_DE_PRUEBA = Array.from(
   (_, i) => makeId(i + 1)
 );
 // Y el PED-0020 al PED-0024: los creó por error una comprobación del
-// asistente mientras se publicaba lo de arriba (27 nov 2026, 10:53-10:54
+// asistente mientras se publicaba lo de arriba (27 nov 2026, 05:53-05:54
 // UTC). Un Cárdigan Joy verde sin talla, sin clienta y sin stock apartado.
 // Se borran solo si son exactamente eso: si un número de esos fuera de
-// un pedido real, no se toca.
+// un pedido real, no se toca. (Las horas de abajo son UTC: en Lima
+// era la 1 de la madrugada.)
 const PEDIDOS_DEL_ASISTENTE = ["PED-0020", "PED-0021", "PED-0022", "PED-0023", "PED-0024"];
 function esDelAsistente(o: Order): boolean {
   return (
     PEDIDOS_DEL_ASISTENTE.includes(o.id) &&
-    o.createdAt.startsWith("2026-11-27T10:5") &&
+    o.createdAt.startsWith("2026-11-27T05:5") &&
     !o.customer?.email &&
     !o.customer?.phone &&
     o.items.length === 1 &&
@@ -127,7 +128,7 @@ function esDelAsistente(o: Order): boolean {
     !o.items[0].sku
   );
 }
-export const LIMPIEZA_PEDIDOS = "2026-11-27b";
+export const LIMPIEZA_PEDIDOS = "2026-11-27c";
 
 export async function borrarPedidosDePrueba(): Promise<void> {
   const { pruebasBorradas } = await readOrders();

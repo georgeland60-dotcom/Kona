@@ -15,6 +15,7 @@ function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-PE", {
     day: "2-digit",
     month: "short",
+    timeZone: "America/Lima",
   });
 }
 

@@ -17,6 +17,9 @@ function fecha(iso: string) {
   return new Date(iso).toLocaleString("es-PE", {
     dateStyle: "long",
     timeStyle: "short",
+    // El servidor corre en hora UTC: sin esto, cada pedido salía con
+    // 5 horas de más.
+    timeZone: "America/Lima",
   });
 }
 

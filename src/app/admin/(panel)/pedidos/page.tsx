@@ -16,6 +16,7 @@ function fecha(iso: string) {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Lima",
   });
 }
 
