@@ -72,8 +72,17 @@ export function descuentosPorCategoria(
     mapa.set(slug, { etiqueta: gancho(regla), pct: p, _peso: p });
   };
 
+  // Lo que ya tiene TODA la tienda. Una campana tiene que señalar algo
+  // mejor que eso: en Black Friday (50% en todo, 35% en blazers y en
+  // ropa de baño entera) la regla del 35% ponía "35% OFF" sobre Ropa de
+  // baño, donde los bikinis están al 50%. La campana apuntaba justo a
+  // la oferta peor. Sin descuento general, el umbral es 0 y todo sigue
+  // como antes.
+  const titular = Math.max(0, ...reglas.filter(esDeTodaLaTienda).map(peso));
+
   for (const regla of reglas) {
     if (esDeTodaLaTienda(regla)) continue;
+    if (peso(regla) <= titular) continue;
     for (const prod of productos) {
       // Sin stock no hay promesa que cumplir.
       if (stockDisponible(prod) <= 0) continue;

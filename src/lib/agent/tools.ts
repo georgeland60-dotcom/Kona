@@ -14,6 +14,7 @@
 //     corren cuando la dueña aprieta "Confirmar" en Telegram.
 // =============================================================
 
+import { fechaDeLima } from "@/lib/fechas";
 import {
   getProducts,
   upsertProduct,
@@ -125,11 +126,9 @@ function slugificar(s: string): string {
 
 // Convierte una fecha suelta ("2026-08-20") a ISO. Devuelve undefined si
 // no se entiende, para no inventar fechas.
+// En hora de Lima, igual que el panel (ver fechaDeLima).
 function fechaISO(valor: string, finDelDia = false): string | undefined {
-  if (!valor) return undefined;
-  const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(valor);
-  const d = new Date(soloFecha && finDelDia ? `${valor}T23:59:59` : valor);
-  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+  return fechaDeLima(valor, finDelDia);
 }
 
 // ---- Resolver un producto por id, slug o nombre ----------------------

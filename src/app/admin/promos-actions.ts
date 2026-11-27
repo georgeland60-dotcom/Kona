@@ -1,5 +1,6 @@
 "use server";
 
+import { fechaDeLima } from "@/lib/fechas";
 import { promises as fs } from "fs";
 import path from "path";
 import { redirect } from "next/navigation";
@@ -225,8 +226,9 @@ export async function saveRuleAction(formData: FormData) {
     scope: "all",
     kind,
     value,
-    startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
-    endsAt: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : undefined,
+    // En hora de Lima: ver fechaDeLima.
+    startsAt: fechaDeLima(startsAt),
+    endsAt: fechaDeLima(endsAt, true),
   };
 
   // Y lo propio de cada clase. Se arma desde cero en vez de mezclar con

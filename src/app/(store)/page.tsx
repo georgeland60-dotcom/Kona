@@ -15,6 +15,8 @@ import Testimonios from "@/components/home/Testimonios";
 import Instagram from "@/components/home/Instagram";
 import PreguntasFrecuentes from "@/components/home/PreguntasFrecuentes";
 import BannerRotativo from "@/components/home/BannerRotativo";
+import BannerCampana from "@/components/home/BannerCampana";
+import { campana } from "@/data/campana";
 import Revelar from "@/components/home/Revelar";
 import Foto from "@/components/brand/Foto";
 import { Corazon, Estrella, Flor, Trazo } from "@/components/brand/Garabatos";
@@ -146,6 +148,9 @@ export default async function Home() {
   // Que categorias llevan campana. Sale de las reglas vigentes y del
   // stock real, no de una lista escrita a mano.
   const descuentos = descuentosPorCategoria(rules, products);
+  // La campaña sale solo mientras su descuento esté vigente: la imagen
+  // lleva el porcentaje dibujado y no se apaga sola (ver data/campana).
+  const enCampana = campana !== null && campana.vigente(rules);
   const [favoritos, topColecciones] = await Promise.all([
     getBestSellers(products, 8),
     getTopCollections(products, 4),
@@ -194,6 +199,9 @@ export default async function Home() {
            Solo una de las dos versiones existe a la vez (la otra esta
            en display:none), asi que un lector de pantalla lee el texto
            una vez, no dos. */}
+      {enCampana && campana ? (
+        <BannerCampana campana={campana} />
+      ) : (
       <section className="relative">
         <div className="relative w-full aspect-[1920/939] overflow-hidden">
           <BannerRotativo fotos={fotosPortada} sizes="100vw" />
@@ -219,6 +227,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ---- CATEGORIAS ---- */}
       <section className="bg-white">

@@ -116,8 +116,14 @@ function aplicar(kind: DiscountRule["kind"], value: number, base: number): numbe
 }
 
 // Entero y nunca por debajo de 1 sol... salvo un regalo, que sí puede ser 0.
+//
+// Hacia ABAJO, siempre. Redondear al más cercano subía el medio sol:
+// con "50% OFF" una blusa de S/ 69 quedaba en S/ 35 (49%), y el banner
+// prometía la mitad. Un descuento anunciado nunca puede quedarse corto,
+// así que la diferencia del redondeo va a favor de la clienta. Lo mismo,
+// al revés, en el monto de un descuento sobre el total: ese sube.
 function redondear(precio: number, permitirCero = false): number {
-  const r = Math.round(precio);
+  const r = Math.floor(precio);
   return permitirCero ? Math.max(0, r) : Math.max(1, r);
 }
 
@@ -457,7 +463,8 @@ export function preciarCarrito(
     const tope = regla.carrito?.maximoDescuento;
     const conTope = tope !== undefined ? Math.min(bruto, tope) : bruto;
     // Nunca más que la propia compra: el total no puede quedar negativo.
-    const monto = Math.min(Math.round(conTope), base);
+    // Hacia arriba: es lo que se descuenta (ver redondear).
+    const monto = Math.min(Math.ceil(conTope), base);
     if (monto < 1) continue;
 
     if (!elegida || monto > elegida.monto) {

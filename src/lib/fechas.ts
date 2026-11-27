@@ -27,6 +27,34 @@ function diaEn(zona: string, momento: Date = new Date()): string {
   }).format(momento);
 }
 
+// Perú no cambia de hora (desde 1994): su desfase es fijo.
+const DESFASE_LIMA = "-05:00";
+
+// Una fecha que escribe la dueña ("2026-11-29") es un día de LIMA.
+//
+// Sin zona, JavaScript la lee en la hora del servidor, y en Vercel eso
+// es UTC: "hasta el domingo 29" terminaba el domingo a las 7 de la
+// tarde de Lima, y "desde el viernes" empezaba el jueves a las 7. Una
+// promoción que se apaga cinco horas antes, en plena noche de compras.
+//
+// Acepta también fecha con hora sin zona ("2026-11-29T20:00"), que se
+// entiende igual: hora de Lima. Si ya trae zona, se respeta.
+export function fechaDeLima(
+  valor: string | undefined,
+  finDelDia = false
+): string | undefined {
+  const v = (valor ?? "").trim();
+  if (!v) return undefined;
+  let texto = v;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    texto = `${v}T${finDelDia ? "23:59:59" : "00:00:00"}${DESFASE_LIMA}`;
+  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(v)) {
+    texto = `${v}${DESFASE_LIMA}`;
+  }
+  const d = new Date(texto);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
 // El "hoy" de la tienda: el que ve la dueña.
 export function hoyEnLima(momento: Date = new Date()): string {
   return diaEn(ZONA_TIENDA, momento);

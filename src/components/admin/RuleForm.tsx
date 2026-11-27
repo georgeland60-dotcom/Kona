@@ -14,6 +14,7 @@
 //  forma segura de que nadie entienda ninguno.
 // =============================================================
 
+import { hoyEnLima } from "@/lib/fechas";
 import { useState } from "react";
 import Link from "next/link";
 import type { Category, DiscountRule, DiscountType, Tramo } from "@/lib/types";
@@ -21,8 +22,12 @@ import { saveRuleAction } from "@/app/admin/promos-actions";
 
 type ProductOption = { id: string; name: string; category: string };
 
+// El día de LIMA de esa fecha. Cortar el texto daba el día en UTC: un
+// fin "domingo 23:59 de Lima" se guarda como lunes 04:59 UTC, el
+// formulario mostraba lunes y, al volver a guardar, la promoción se
+// alargaba un día.
 function toDateInput(iso?: string): string {
-  return iso ? iso.slice(0, 10) : "";
+  return iso ? hoyEnLima(new Date(iso)) : "";
 }
 
 const CLASES: { valor: DiscountType; titulo: string; ejemplo: string }[] = [

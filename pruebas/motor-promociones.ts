@@ -42,9 +42,10 @@ const reglaCarrito = (extra: Partial<DiscountRule> = {}): DiscountRule => ({
 let r = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [reglaCarrito()]);
 ok("sin el producto condicionante no aplica", r.total === 189 && !r.descuentoCarrito, r);
 
-// 2. Se cumple: 10% de (115+189)=304 -> 30
+// 2. Se cumple: 10% de (115+189)=304 = 30.4 -> 31. El monto de un
+//    descuento se redondea hacia ARRIBA: nunca menos de lo anunciado.
 r = preciarCarrito([{ productId: "p1", qty: 1 }, { productId: "p2", qty: 1 }], productos, [reglaCarrito()]);
-ok("aplica 10% al total", r.subtotal === 304 && r.descuentoCarrito?.monto === 30 && r.total === 274, r);
+ok("aplica 10% al total", r.subtotal === 304 && r.descuentoCarrito?.monto === 31 && r.total === 273, r);
 ok("ahorro coincide", r.ahorro === r.totalLista - r.total, r);
 
 // 3. El tope recorta: compra grande
@@ -63,13 +64,13 @@ ok("las líneas no cambian de precio", r.lineas[0].subtotal === 115 && r.lineas[
 // 6. Sobre precios YA descontados, no sobre lista.
 const cyber: DiscountRule = { id: "r0", name: "CYBER 50", scope: "all", kind: "percent", value: 50, active: true };
 r = preciarCarrito([{ productId: "p1", qty: 1 }, { productId: "p2", qty: 1 }], productos, [cyber, reglaCarrito()]);
-// 58 (115/2 redondeado) + 95 (189/2=94.5->95) = 153 ; 10% = 15.3 -> 15
-ok("se calcula sobre el subtotal ya descontado", r.subtotal === 153 && r.descuentoCarrito?.monto === 15 && r.total === 138, r);
+// 57 (115/2=57.5, el precio baja) + 94 (189/2=94.5, baja) = 151 ; 10% = 15.1 -> 16 (el descuento sube)
+ok("se calcula sobre el subtotal ya descontado", r.subtotal === 151 && r.descuentoCarrito?.monto === 16 && r.total === 135, r);
 
 // 7. Dos reglas de carrito: aplica solo la mejor.
 const otra = reglaCarrito({ id: "r2", name: "PROMO 5", value: 5, carrito: { condicion: { productos: ["p1"] } } });
 r = preciarCarrito([{ productId: "p1", qty: 1 }, { productId: "p2", qty: 1 }], productos, [reglaCarrito(), otra]);
-ok("solo aplica una regla de carrito, la mejor", r.descuentoCarrito?.nombre === "PROMO BAG" && r.descuentoCarrito?.monto === 30, r.descuentoCarrito);
+ok("solo aplica una regla de carrito, la mejor", r.descuentoCarrito?.nombre === "PROMO BAG" && r.descuentoCarrito?.monto === 31, r.descuentoCarrito);
 
 // 8. Monto fijo, y nunca más que la compra.
 const fija = reglaCarrito({ id: "r3", name: "MENOS 500", kind: "fixed", value: 500, carrito: { condicion: { productos: ["p1"] } } });
@@ -94,8 +95,8 @@ ok("567 sí llega", r.descuentoCarrito?.monto === 57, r.descuentoCarrito);
 const bogo: DiscountRule = { id: "rb", name: "2x1 carteras", scope: "all", kind: "percent", value: 0, active: true,
   tipo: "bogo", bogo: { porCada: 2, regala: 1, descuentoRegalo: 100, recursivo: true }, filtro: { categorias: ["carteras"] } };
 r = preciarCarrito([{ productId: "p1", qty: 2 }, { productId: "p2", qty: 1 }], productos, [bogo, reglaCarrito()]);
-// paga 115 + 0 + 189 = 304 ; 10% = 30.4 -> 30
-ok("2x1 + descuento de carrito", r.subtotal === 304 && r.descuentoCarrito?.monto === 30 && r.total === 274, r);
+// paga 115 + 0 + 189 = 304 ; 10% = 30.4 -> 31
+ok("2x1 + descuento de carrito", r.subtotal === 304 && r.descuentoCarrito?.monto === 31 && r.total === 273, r);
 const finales = r.lineas[0].preciosFinales;
 ok("la unidad regalada sigue en 0", finales.includes(0), finales);
 const suma2 = r.lineas.reduce((s, l) => s + l.preciosFinales.reduce((a, b) => a + b, 0), 0);
@@ -132,7 +133,8 @@ const soloBag: DiscountRule = {
   id: "v1", name: "15% labiales", scope: "all", kind: "percent", value: 15,
   active: true, filtro: { productos: ["p1"] },
 };
-ok("la vitrina respeta el filtro (el elegido baja)", precioVitrina(bag, [soloBag]) === 98, precioVitrina(bag, [soloBag]));
+// 115 x 0.85 = 97.75 -> 97: el precio redondea hacia abajo.
+ok("la vitrina respeta el filtro (el elegido baja)", precioVitrina(bag, [soloBag]) === 97, precioVitrina(bag, [soloBag]));
 ok("la vitrina respeta el filtro (los demás NO)", precioVitrina(jean, [soloBag]) === 189, precioVitrina(jean, [soloBag]));
 ok("y coincide con lo que cobra el carrito", (() => {
   const r = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [soloBag]);
@@ -144,7 +146,7 @@ const todoMenos: DiscountRule = {
   id: "v2", name: "50% menos jeans", scope: "all", kind: "percent", value: 50,
   active: true, filtro: { todos: true, excluirProductos: ["p2"] },
 };
-ok("la exclusión manda en la vitrina", precioVitrina(jean, [todoMenos]) === 189 && precioVitrina(bag, [todoMenos]) === 58, [precioVitrina(jean, [todoMenos]), precioVitrina(bag, [todoMenos])]);
+ok("la exclusión manda en la vitrina", precioVitrina(jean, [todoMenos]) === 189 && precioVitrina(bag, [todoMenos]) === 57, [precioVitrina(jean, [todoMenos]), precioVitrina(bag, [todoMenos])]);
 
 // 18. Un 2x1 y un descuento del total NO se pintan como precio rebajado.
 ok("el 2x1 no cambia el precio de vitrina", precioVitrina(bag, [bogo]) === 115, precioVitrina(bag, [bogo]));
@@ -227,13 +229,13 @@ const mitad: DiscountRule = {
 re = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [envioDesde150, mitad]);
 ok("el mínimo se mira sobre lo que se paga, no sobre el precio de lista", !re.envioGratis, { total: re.total, envio: re.envioGratis });
 
-// Y con el descuento de carrito también: 304 - 30 = 274, sigue pasando.
+// Y con el descuento de carrito también: 304 - 31 = 273, sigue pasando.
 re = preciarCarrito(
   [{ productId: "p1", qty: 1 }, { productId: "p2", qty: 1 }],
   productos,
   [envioDesde150, reglaCarrito()]
 );
-ok("convive con un descuento del total", !!re.envioGratis && re.total === 274, { total: re.total, envio: re.envioGratis });
+ok("convive con un descuento del total", !!re.envioGratis && re.total === 273, { total: re.total, envio: re.envioGratis });
 
 // Por categoría: envío gratis si lleva algo de carteras.
 const envioCarteras: DiscountRule = {
@@ -267,5 +269,14 @@ const envioLima: DiscountRule = {
 };
 re = preciarCarrito([{ productId: "p2", qty: 1 }], productos, [envioLima]);
 ok("los destinos viajan con la promo", re.envioGratis?.destinos?.join(",") === "Miraflores,Surco", re.envioGratis);
+
+// 18. Black Friday: "50% OFF" nunca puede cobrar más de la mitad.
+//     Una blusa de S/ 69 es S/ 34.50; con el redondeo viejo quedaba en
+//     S/ 35, un 49% que contradecía el banner.
+const bf: DiscountRule = { id: "bf", name: "BF 50", scope: "all", kind: "percent", value: 50, active: true, filtro: { todos: true } };
+ok("50% de 69 no pasa de la mitad", precioVitrina(P("p9", "Blusa", 69, "blusas"), [bf]) === 34, precioVitrina(P("p9", "Blusa", 69, "blusas"), [bf]));
+ok("ninguno de 2 a 400 cobra más de la mitad", Array.from({ length: 399 }, (_, i) => i + 2)
+  .every((precio) => precioVitrina(P("x", "x", precio, "x"), [bf]) <= precio / 2));
+ok("y uno de 1 sol no baja de 1", precioVitrina(P("x", "x", 1, "x"), [bf]) === 1);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLAS`);

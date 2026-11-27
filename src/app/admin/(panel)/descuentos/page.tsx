@@ -98,7 +98,9 @@ function describeValue(rule: DiscountRule): string {
 
 function describeWindow(rule: DiscountRule): string {
   const f = (iso?: string) =>
-    iso ? new Date(iso).toLocaleDateString("es-PE") : null;
+    iso
+      ? new Date(iso).toLocaleDateString("es-PE", { timeZone: "America/Lima" })
+      : null;
   const a = f(rule.startsAt);
   const b = f(rule.endsAt);
   if (a && b) return `${a} → ${b}`;

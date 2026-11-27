@@ -113,6 +113,24 @@ function detalle(rule: DiscountRule): string {
 
 // ---- Donde aplica ----------------------------------------------------
 
+// Varias prendas sueltas se nombran por lo que tienen en común: "4
+// prendas" no le dice nada a nadie; "4 prendas de Ropa de baño", sí.
+function describirPrendas(
+  ids: string[],
+  categorias: Category[],
+  products: Product[]
+): string {
+  const prendas = ids
+    .map((id) => products.find((x) => x.id === id))
+    .filter((p): p is Product => p !== undefined);
+  if (ids.length === 1) return prendas[0]?.name ?? "1 prenda";
+  const cats = new Set(prendas.map((p) => p.category));
+  if (prendas.length === ids.length && cats.size === 1) {
+    return `${ids.length} prendas de ${nombresCategorias([...cats], categorias)}`;
+  }
+  return `${ids.length} prendas`;
+}
+
 function nombresCategorias(slugs: string[], categorias: Category[]): string {
   return slugs
     .map((s) => categorias.find((c) => c.slug === s)?.name ?? s)
@@ -139,15 +157,32 @@ function alcance(
 
   const f = rule.filtro;
   if (f) {
-    if (f.todos) return "En toda la tienda";
+    // "Toda la tienda" con exclusiones tiene que decir las exclusiones:
+    // si no, un "50% en toda la tienda" se lee también para la ropa de
+    // baño, que en Black Friday va al 35%. La clienta se entera en el
+    // carrito, que es tarde y es justo lo que esta tienda no hace.
+    if (f.todos) {
+      const fuera = [
+        ...(f.excluirCategorias ?? []).map(
+          (slug) => categorias.find((c) => c.slug === slug)?.name ?? slug
+        ),
+        ...(f.excluirProductos?.length
+          ? [describirPrendas(f.excluirProductos, categorias, products)]
+          : []),
+      ];
+      if (fuera.length === 0) return "En toda la tienda";
+      const lista =
+        fuera.length === 1
+          ? fuera[0]
+          : `${fuera.slice(0, -1).join(", ")} y ${fuera[fuera.length - 1]}`;
+      return `En toda la tienda, menos ${lista}`;
+    }
     if (f.categorias?.length) {
       return `En ${nombresCategorias(f.categorias, categorias)}`;
     }
-    if (f.productos?.length === 1) {
-      const p = products.find((x) => x.id === f.productos?.[0]);
-      if (p) return `En ${p.name}`;
+    if (f.productos?.length) {
+      return `En ${describirPrendas(f.productos, categorias, products)}`;
     }
-    if (f.productos?.length) return `En ${f.productos.length} prendas`;
   }
   if (rule.scope === "all") return "En toda la tienda";
   if (rule.scope === "category") {
