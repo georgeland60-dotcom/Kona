@@ -30,6 +30,7 @@ type StoreData = {
   denimAgregado?: string;
   stockPrueba?: string;
   precioPrueba?: string;
+  blazersAgregados?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -236,6 +237,74 @@ export function conJeansEnDenim(productos: Product[]): Product[] {
   });
 }
 
+// ---- Los blazers de Black Friday ---------------------------------------
+//
+//  La categoría Blazers existía vacía. La dueña pasó tallas y stock el
+//  27 nov 2026, precio regular S/ 159 los tres. Van por aquí (y no por
+//  el panel) porque el panel no carga galerías de varias fotos.
+//  El celeste todavía no tiene fotos: la dueña pidió usar las del azul
+//  mientras tanto. Una sola vez; si ya existe un producto con ese slug
+//  (creado a mano), no se toca.
+export const BLAZERS_AGREGADOS = "2026-11-27";
+
+const DESCRIPCION_BLAZER =
+  "Blazer de corte relajado, con manga 3/4 de vuelta y un solo botón. " +
+  "Va igual de bien con jean que con pantalón de vestir o sobre un vestido.";
+
+const FOTOS_VERDE = [1, 2, 3, 4].map((n) => `/products/blazer-verde-menta-${n}.webp`);
+const FOTOS_AZUL = [1, 2, 3].map((n) => `/products/blazer-azul-${n}.webp`);
+
+const BLAZERS: { slug: string; name: string; fotos: string[]; tallas: [string, number][] }[] = [
+  {
+    slug: "blazer-verde-menta",
+    name: "Blazer Verde Menta",
+    fotos: FOTOS_VERDE,
+    tallas: [["M", 2], ["L", 2], ["XL", 2], ["XXXL", 1]],
+  },
+  {
+    slug: "blazer-azul",
+    name: "Blazer Azul",
+    fotos: FOTOS_AZUL,
+    tallas: [["L", 2], ["XL", 2]],
+  },
+  {
+    slug: "blazer-celeste",
+    name: "Blazer Celeste",
+    fotos: FOTOS_AZUL, // provisional: aún no hay fotos del celeste
+    tallas: [["M", 2], ["L", 2]],
+  },
+];
+
+export function conBlazers(productos: Product[]): Product[] {
+  let max = productos.reduce((m, p) => {
+    const n = parseInt(p.id, 10);
+    return Number.isFinite(n) && n > m ? n : m;
+  }, 0);
+  const nuevos: Product[] = [];
+  for (const b of BLAZERS) {
+    if (productos.some((p) => p.slug === b.slug)) continue;
+    max += 1;
+    nuevos.push({
+      id: String(max),
+      slug: b.slug,
+      name: b.name,
+      price: 159,
+      category: "blazers",
+      image: b.fotos[0],
+      images: b.fotos,
+      description: DESCRIPCION_BLAZER,
+      variants: b.tallas.map(([size, stock]) => ({
+        size,
+        sku: skuFor(b.slug, size),
+        stock,
+      })),
+      collections: ["nuevos-ingresos"],
+      active: true,
+    });
+  }
+  return [...productos, ...nuevos];
+}
+
 export async function readStore(): Promise<StoreData> {
   const leido = await leerDoc<StoreData>("store");
 
@@ -251,13 +320,15 @@ export async function readStore(): Promise<StoreData> {
   const faltaDenim = datos.denimAgregado !== DENIM_AGREGADO;
   const faltaStockPrueba = datos.stockPrueba !== STOCK_PRUEBA;
   const faltaPrecioPrueba = datos.precioPrueba !== PRECIO_PRUEBA;
+  const faltanBlazers = datos.blazersAgregados !== BLAZERS_AGREGADOS;
   if (
     !faltaInventario &&
     !faltaLimpieza &&
     !faltanCarteras &&
     !faltaDenim &&
     !faltaStockPrueba &&
-    !faltaPrecioPrueba
+    !faltaPrecioPrueba &&
+    !faltanBlazers
   ) {
     return datos;
   }
@@ -303,6 +374,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: conPrecioDePrueba(corregidos.products),
       precioPrueba: PRECIO_PRUEBA,
+    };
+  }
+  if (faltanBlazers) {
+    corregidos = {
+      ...corregidos,
+      products: conBlazers(corregidos.products),
+      blazersAgregados: BLAZERS_AGREGADOS,
     };
   }
 

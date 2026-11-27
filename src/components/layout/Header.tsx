@@ -94,12 +94,6 @@ export default function Header({
               </div>
             </div>
 
-            <Link
-              href="/tienda?cat=sale"
-              className="font-bold hover:text-white/70 transition"
-            >
-              Sale
-            </Link>
             <Link href="/nosotros" className="hover:text-white/70 transition">
               Nosotros
             </Link>
@@ -163,9 +157,6 @@ export default function Header({
               </div>
             )}
 
-            <Link href="/tienda?cat=sale" onClick={closeMenu} className="py-1.5 font-bold">
-              Sale
-            </Link>
             <Link href="/nosotros" onClick={closeMenu} className="py-1.5">
               Nosotros
             </Link>

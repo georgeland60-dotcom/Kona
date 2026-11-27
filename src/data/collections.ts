@@ -43,14 +43,9 @@ export const homeCollections: HomeCollection[] = [
     value: "vestidos",
     limit: 4,
   },
-  {
-    slug: "sale",
-    title: "Sale",
-    subtitle: "Ofertas por tiempo limitado",
-    by: "collection",
-    value: "sale",
-    limit: 4,
-  },
+  // "Sale" salió del inicio y del menú (27 nov 2026, pedido de la dueña).
+  // Los enlaces viejos a /tienda?cat=sale siguen filtrando por la
+  // colección; solo dejó de mostrarse como categoría.
 ];
 
 // Devuelve los productos que pertenecen a una colección del inicio.
