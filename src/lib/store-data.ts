@@ -29,6 +29,7 @@ type StoreData = {
   // Fecha en que los jeans de Pantalones pasaron también a Full Denim.
   denimAgregado?: string;
   stockPrueba?: string;
+  precioPrueba?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -214,6 +215,15 @@ export function conStockDePrueba(productos: Product[]): Product[] {
   );
 }
 
+// Y a S/ 5 (27 nov 2026): con S/ 1 Mercado Pago podría estar cortando
+// el cobro por monto mínimo, y es justo lo que se quiere descartar.
+export const PRECIO_PRUEBA = "2026-11-27";
+export function conPrecioDePrueba(productos: Product[]): Product[] {
+  return productos.map((p) =>
+    p.slug === "prueba" && p.name === "Prueba" ? { ...p, price: 5 } : p
+  );
+}
+
 export const DENIM_AGREGADO = "2026-11-22";
 
 export function conJeansEnDenim(productos: Product[]): Product[] {
@@ -240,12 +250,14 @@ export async function readStore(): Promise<StoreData> {
   const faltanCarteras = datos.carterasRetiradas !== CARTERAS_RETIRADAS;
   const faltaDenim = datos.denimAgregado !== DENIM_AGREGADO;
   const faltaStockPrueba = datos.stockPrueba !== STOCK_PRUEBA;
+  const faltaPrecioPrueba = datos.precioPrueba !== PRECIO_PRUEBA;
   if (
     !faltaInventario &&
     !faltaLimpieza &&
     !faltanCarteras &&
     !faltaDenim &&
-    !faltaStockPrueba
+    !faltaStockPrueba &&
+    !faltaPrecioPrueba
   ) {
     return datos;
   }
@@ -284,6 +296,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: conStockDePrueba(corregidos.products),
       stockPrueba: STOCK_PRUEBA,
+    };
+  }
+  if (faltaPrecioPrueba) {
+    corregidos = {
+      ...corregidos,
+      products: conPrecioDePrueba(corregidos.products),
+      precioPrueba: PRECIO_PRUEBA,
     };
   }
 
