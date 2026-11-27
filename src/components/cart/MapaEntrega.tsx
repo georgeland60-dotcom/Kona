@@ -199,7 +199,7 @@ export default function MapaEntrega({
             : precision === "zona"
               ? "Zona aproximada: "
               : precision === "calle"
-                ? "Cuadra de "
+                ? "Tu calle (sin el número): "
                 : ""}
           {!movido && direccion}
         </p>

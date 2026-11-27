@@ -42,6 +42,16 @@ export type DireccionEncontrada = {
   // dirección escrita se lee de mil formas; un punto en el mapa, no.
   lat?: number;
   lon?: number;
+  // ¿El punto es el portal (trae el número) o solo la calle? Nominatim
+  // devuelve la calle entera aunque se le pida "Av. X 1632", y llamar
+  // a eso "exacta" hacía que la clienta confiara en un punto que podía
+  // estar a quince cuadras de su casa.
+  conNumero?: boolean;
+  // Solo los nombres de barrio y distrito, sin la ciudad ni la región:
+  // para comparar con el distrito que eligió la clienta. "Lima" sale
+  // como ciudad en TODA la capital, y compararlo daría por bueno un
+  // punto en Miraflores para quien vive en el Cercado.
+  finos?: string[];
 };
 
 export function geocodificadorEnUso(): "google" | "osm" {
@@ -110,6 +120,20 @@ async function buscarEnOsm(texto: string): Promise<DireccionEncontrada[]> {
       zona: a.city_district || a.town || a.village || a.city || a.county,
       lat: d.lat ? Number(d.lat) : undefined,
       lon: d.lon ? Number(d.lon) : undefined,
+      conNumero: !!a.house_number,
+      finos: [
+        a.neighbourhood,
+        a.quarter,
+        a.residential,
+        a.suburb,
+        a.city_district,
+        a.town,
+        a.village,
+        // En Lima el distrito viene como "city" (Miraflores, Santiago
+        // de Surco...) y el Cercado, como "Lima". La región ("state")
+        // también se llama Lima, y por eso se deja fuera.
+        a.city,
+      ].filter((x): x is string => !!x),
     };
   });
 }
@@ -125,7 +149,11 @@ async function buscarEnGoogle(texto: string): Promise<DireccionEncontrada[]> {
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": api,
-      "X-Goog-FieldMask": "places.formattedAddress,places.addressComponents",
+      // Sin "places.location" Google contesta la dirección pero NO el
+      // punto, y sin punto el mapa no sale nunca: con clave puesta, la
+      // búsqueda habría fallado siempre sin que nadie lo notara.
+      "X-Goog-FieldMask":
+        "places.formattedAddress,places.addressComponents,places.location,places.types",
     },
     cache: "no-store",
     body: JSON.stringify({
@@ -142,6 +170,8 @@ async function buscarEnGoogle(texto: string): Promise<DireccionEncontrada[]> {
     places?: {
       formattedAddress?: string;
       addressComponents?: { longText?: string; types?: string[] }[];
+      location?: { latitude?: number; longitude?: number };
+      types?: string[];
     }[];
   };
 
@@ -163,6 +193,10 @@ async function buscarEnGoogle(texto: string): Promise<DireccionEncontrada[]> {
           ...porTipo("administrative_area_level_1"),
         ]),
       ],
+      lat: p.location?.latitude,
+      lon: p.location?.longitude,
+      conNumero: porTipo("street_number").length > 0,
+      finos: [...porTipo("sublocality_level_1"), ...porTipo("locality")],
     };
   });
 }
@@ -220,11 +254,43 @@ export function soloLaCalle(direccion: string): string {
 // Busca de lo más preciso a lo más general y se queda con lo primero
 // que encuentre. Tres intentos como mucho: la calle con número, la
 // calle sola y, si no, la zona.
+// La tabla de envíos llama a algunos distritos por su nombre de calle
+// ("Surco", "Lima Cercado") y el mapa por el oficial ("Santiago de
+// Surco", "Lima"). Preguntarle al mapa por "Surco" hacía que no
+// encontrara ni Javier Prado. Aquí, cómo los conoce el mapa.
+const NOMBRE_EN_EL_MAPA: Record<string, string> = {
+  "lima cercado": "Lima",
+  "cercado de lima": "Lima",
+  surco: "Santiago de Surco",
+  magdalena: "Magdalena del Mar",
+  "ate vitarte": "Ate",
+  chosica: "Lurigancho",
+};
+
+export function nombreEnElMapa(distrito: string): string {
+  const clave = distrito
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  return NOMBRE_EN_EL_MAPA[clave] ?? distrito;
+}
+
 export async function ubicar(datos: {
   direccion: string;
   distrito?: string;
   ciudad?: string;
+  // Otros nombres del mismo distrito (los alias de la tabla de envíos),
+  // para reconocerlo venga como venga en el mapa.
+  otrosNombres?: string[];
 }): Promise<{ lugar: DireccionEncontrada; precision: Precision } | null> {
+  const nombres = datos.distrito
+    ? [datos.distrito, ...(datos.otrosNombres ?? [])]
+    : [];
+  if (datos.distrito) {
+    datos = { ...datos, distrito: nombreEnElMapa(datos.distrito) };
+    nombres.push(datos.distrito!);
+  }
   const cola = [datos.distrito, datos.ciudad, "Perú"].filter(Boolean).join(", ");
   const calle = soloLaCalle(datos.direccion);
 
@@ -247,12 +313,56 @@ export async function ubicar(datos: {
     intentos.push({ texto: cola, precision: "zona" });
   }
 
+  // Una calle con el mismo nombre en otro distrito es el error más
+  // común: hay "Jr. Los Pinos" en media Lima. Si la clienta dijo su
+  // distrito, se prefiere lo que cae en él; lo de otro distrito se
+  // guarda solo por si no aparece nada mejor.
+  const enSuDistrito = (d: DireccionEncontrada) =>
+    !nombres.length ||
+    (d.finos ?? []).some((c) => nombres.some((n) => mismoNombre(c, n)));
+
+  let deOtroDistrito: { lugar: DireccionEncontrada; precision: Precision } | null =
+    null;
+
   for (const intento of intentos) {
-    const encontradas = await buscarDireccion(intento.texto);
-    const lugar = encontradas.find((d) => d.lat !== undefined && d.lon !== undefined);
-    if (lugar) return { lugar, precision: intento.precision };
+    const encontradas = (await buscarDireccion(intento.texto)).filter(
+      (d) => d.lat !== undefined && d.lon !== undefined
+    );
+    if (!encontradas.length) continue;
+
+    // Solo es "exacta" si de verdad trae el número.
+    const precisionDe = (d: DireccionEncontrada): Precision =>
+      intento.precision === "exacta" && !d.conNumero ? "calle" : intento.precision;
+
+    const lugar = encontradas.find(enSuDistrito);
+    if (lugar) return { lugar, precision: precisionDe(lugar) };
+
+    // La zona (el distrito solo) no se compara: es su propio distrito.
+    if (intento.precision === "zona") {
+      return deOtroDistrito ?? { lugar: encontradas[0], precision: "zona" };
+    }
+    deOtroDistrito ??= {
+      lugar: encontradas[0],
+      precision: precisionDe(encontradas[0]),
+    };
   }
-  return null;
+  return deOtroDistrito;
+}
+
+function sinTildes(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\b(cercado de|distrito de|urbanizacion)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function mismoNombre(a: string, b: string): boolean {
+  const x = sinTildes(a);
+  const y = sinTildes(b);
+  return !!x && x === y;
 }
 
 export async function buscarDireccion(

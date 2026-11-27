@@ -64,10 +64,12 @@ export async function GET(req: Request) {
   // la calle sin número y, si no, la zona. En Perú muchísimas calles
   // están mapeadas pero sus números no, así que buscar solo con el
   // número puesto devolvía nada y parecía que la calle no existía.
+  const elegido = provincia === LIMA_Y_CALLAO ? buscarDestino(distrito) : null;
   const encontrado = await ubicar({
     direccion,
     distrito,
     ciudad: provincia === LIMA_Y_CALLAO ? "Lima" : provincia,
+    otrosNombres: elegido ? [elegido.nombre, ...(elegido.alias ?? [])] : [],
   });
 
   if (!encontrado) {
@@ -98,8 +100,8 @@ export async function GET(req: Request) {
   // mismo que marcar el portal, y callarlo haría que confiara de más.
   const porPrecision: Record<string, string | null> = {
     exacta: null,
-    calle: "Encontré la calle pero no el número: el punto marca la cuadra, no el portal.",
-    zona: "No pude ubicar la calle, así que el mapa muestra tu distrito. Añade una referencia para quien reparte.",
+    calle: "Encontré tu calle pero no el número: el punto puede estar a unas cuadras de tu casa. Arrástralo hasta tu puerta.",
+    zona: "No encontré esa calle en el mapa: el punto está en el centro de tu distrito, no en tu casa. Arrástralo hasta tu puerta o añade una referencia para quien reparte.",
   };
 
   return Response.json({
