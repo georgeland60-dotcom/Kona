@@ -44,7 +44,7 @@ export function direccionDeRecojo(): string {
 // Google Maps quien la busca, no nuestro buscador.
 export function mapaDeRecojo(): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    `${direccionDeRecojo()}, Perú`
+    store.recojo.busqueda
   )}`;
 }
 

@@ -23,7 +23,10 @@ export const store = {
   // ofrece en el carrito como alternativa al envío (27 nov 2026).
   recojo: {
     direccion: "Jr. Los Brigadieres 790",
-    distrito: "Lima",
+    distrito: "Santiago de Surco",
+    // Tal como la encuentra Google Maps (confirmado por la dueña el 27
+    // nov 2026): es lo que se busca al tocar "Ver en Google Maps".
+    busqueda: "Jirón Los Brigadieres 790, Santiago de Surco 15023, Perú",
   },
 
   // Referencia de las modelos de las fotos, para ayudar con la talla.
