@@ -9,6 +9,7 @@
 import { getTopProducts } from "@/lib/orders-data";
 import { VENTAS_HISTORICAS } from "@/data/ventas-historicas";
 import { homeCollections, type HomeCollection } from "@/data/collections";
+import { FAVORITOS } from "@/data/favoritos";
 import type { Product } from "@/lib/types";
 
 export type BestSellers = {
@@ -16,6 +17,8 @@ export type BestSellers = {
   // true = el orden sale de ventas reales (las de esta tienda o las de
   // konamoda.pe); false = no hay ninguna y se muestran los destacados.
   basedOnSales: boolean;
+  // true = la lista la eligió la dueña (data/favoritos.ts).
+  elegidos?: boolean;
 };
 
 // Unidades vendidas por producto (id -> unidades).
@@ -43,20 +46,31 @@ export async function getBestSellers(
 ): Promise<BestSellers> {
   const sold = await soldUnits();
 
+  // Primero los que eligió la dueña (data/favoritos.ts), en su orden.
+  // Uno oculto no llega aquí (products trae solo los visibles) y uno
+  // agotado del todo se salta: no tiene sentido destacar lo que no se
+  // puede comprar.
+  const conStock = (p: Product) => (p.variants ?? []).some((v) => v.stock > 0);
+  const elegidos = FAVORITOS.map((slug) => products.find((p) => p.slug === slug)).filter(
+    (p): p is Product => !!p && conStock(p)
+  );
+  const yaElegido = new Set(elegidos.map((p) => p.id));
+
   const vendidos = products
-    .filter((p) => (sold.get(p.id) ?? 0) > 0)
+    .filter((p) => (sold.get(p.id) ?? 0) > 0 && !yaElegido.has(p.id))
     .sort((a, b) => (sold.get(b.id) ?? 0) - (sold.get(a.id) ?? 0));
 
   // Relleno para completar la grilla: primero los destacados, luego el resto.
-  const yaPuestos = new Set(vendidos.map((p) => p.id));
+  const yaPuestos = new Set([...yaElegido, ...vendidos.map((p) => p.id)]);
   const relleno = [
     ...products.filter((p) => p.featured && !yaPuestos.has(p.id)),
     ...products.filter((p) => !p.featured && !yaPuestos.has(p.id)),
   ];
 
   return {
-    items: [...vendidos, ...relleno].slice(0, limit),
+    items: [...elegidos, ...vendidos, ...relleno].slice(0, limit),
     basedOnSales: vendidos.length > 0,
+    ...(elegidos.length > 0 ? { elegidos: true } : {}),
   };
 }
 

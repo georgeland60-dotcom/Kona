@@ -399,9 +399,11 @@ export default async function Home() {
               Los favoritos
             </h2>
             <p className="text-k-gris-texto text-base md:text-lg max-w-lg mx-auto mt-4 leading-relaxed">
-              {favoritos.basedOnSales
-                ? "Lo que más se está vendiendo ahora mismo. La lista se ordena sola con cada compra."
-                : "Nuestra selección del momento. En cuanto haya ventas, esta lista se ordena sola."}
+              {favoritos.elegidos
+                ? "Las prendas que más nos piden, elegidas por Kona."
+                : favoritos.basedOnSales
+                  ? "Lo que más se está vendiendo ahora mismo. La lista se ordena sola con cada compra."
+                  : "Nuestra selección del momento. En cuanto haya ventas, esta lista se ordena sola."}
             </p>
           </div>
 
