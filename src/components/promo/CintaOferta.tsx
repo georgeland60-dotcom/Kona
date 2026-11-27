@@ -2,10 +2,11 @@ import { Corazon } from "@/components/brand/Garabatos";
 
 // =============================================================
 //  CINTA DE OFERTA
-//  La misma cinta del banner de campaña, puesta sobre cada foto de
-//  producto: una blanca inclinada con el texto en azul de la marca y,
-//  detrás, una fucsia inclinada al revés. Así la tienda entera se ve
-//  de la campaña, no solo la portada.
+//  La cinta del banner de campaña, puesta sobre cada foto de producto:
+//  una sola, inclinada, en el azul del arte del banner (#31385f, sacado
+//  de la imagen; un poco más apagado que el azul de marca) con letras
+//  blancas. La dueña pidió una sola y en ese color (27 nov 2026).
+//  Blanco sobre ese azul: contraste de sobra para letra chica.
 //
 //  Lo que dice sale de la regla que de verdad se aplica a ESA prenda
 //  (50% en casi todo, 35% en blazers y ropa de baño entera), nunca de
@@ -40,27 +41,14 @@ export default function CintaOferta({
         {pct}% de descuento{lema ? `, ${lema}` : ""}
       </p>
 
-      {lema && (
-        <div
-          aria-hidden="true"
-          className="absolute -left-[15%] -right-[15%] top-[1.65rem] -rotate-[2deg] md:-rotate-[3deg] bg-k-fucsia text-white shadow-md py-1 flex items-center justify-center gap-2 whitespace-nowrap overflow-hidden text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.2em]"
-        >
-          {[oferta, lema, oferta, lema, oferta].map((t, i) => (
-            <span key={i} className="flex items-center gap-2">
-              {i > 0 && <Separador className="text-white" />}
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
 
       <div
         aria-hidden="true"
-        className="absolute -left-[15%] -right-[15%] top-1 rotate-[1.5deg] md:rotate-[2.5deg] bg-white text-k-navy shadow-[0_3px_10px_rgba(0,0,0,0.18)] py-1.5 flex items-center justify-center gap-2 whitespace-nowrap overflow-hidden text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.18em]"
+        className="absolute -left-[15%] -right-[15%] top-3 rotate-[1.5deg] md:rotate-[2.5deg] bg-[#31385f] text-white shadow-[0_3px_10px_rgba(0,0,0,0.25)] py-1.5 flex items-center justify-center gap-2 whitespace-nowrap overflow-hidden text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.18em]"
       >
         {piezas.map((t, i) => (
           <span key={i} className="flex items-center gap-2">
-            {i > 0 && <Separador className="text-k-navy" />}
+            {i > 0 && <Separador className="text-white" />}
             <span className={t === oferta ? "font-bold text-[1.15em] tracking-[0.12em]" : ""}>
               {t}
             </span>

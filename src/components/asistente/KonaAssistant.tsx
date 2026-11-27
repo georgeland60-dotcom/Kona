@@ -30,7 +30,6 @@ type Sugerencia = {
 type Tabla = {
   nombre: string;
   nota: string;
-  modelo?: string;
   prendas: {
     nombre?: string;
     campos: string[];
@@ -49,7 +48,7 @@ type Mensaje = {
 const SALUDO: Mensaje = {
   rol: "asistente",
   texto:
-    "¡Hola! Soy Kona Assistant 👋 Estoy para que elijas tranquila: dime para qué ocasión buscas y te muestro opciones. Cuando elijas una prenda, te cuento qué talla está usando la modelo y las medidas, para que pidas segura.",
+    "¡Hola! Soy Kona Assistant 👋 Estoy para que elijas tranquila: dime para qué ocasión buscas y te muestro opciones. Cuando elijas una prenda, te paso sus medidas y te ayudo con la talla, para que pidas segura.",
 };
 
 // Atajos distintos según dónde esté: en una ficha lo que se pregunta es
@@ -78,7 +77,6 @@ function comoTitulo(slug: string): string {
 
 const ATAJOS_PRODUCTO = [
   "¿Qué talla me conviene?",
-  "¿Qué talla usa la modelo?",
   "¿De qué tela es?",
 ];
 
@@ -258,8 +256,7 @@ export default function KonaAssistant() {
               ¿Te ayudamos a sentirte más segura con tu talla? 💛
             </p>
             <p className="text-xs text-muted mt-0.5">
-              Te contamos qué talla está usando la modelo y las medidas de
-              la prenda.
+              Te pasamos las medidas de la prenda y te ayudamos a elegir.
             </p>
           </button>
           <button
@@ -383,11 +380,6 @@ export default function KonaAssistant() {
                       <p className="text-xs font-medium">
                         Guía de tallas · {m.tabla.nombre}
                       </p>
-                      {m.tabla.modelo && (
-                        <p className="text-[11px] text-muted mt-0.5">
-                          {m.tabla.modelo}
-                        </p>
-                      )}
                     </div>
                     {m.tabla.prendas.map((prenda, j) => (
                       <div key={prenda.nombre ?? j}>

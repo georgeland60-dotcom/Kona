@@ -10,8 +10,6 @@ import {
   LIMA_Y_CALLAO,
   RECOJO,
   destinoDelFormulario,
-  direccionDeRecojo,
-  mapaDeRecojo,
   distritosDeLima,
   envioGratisAplica,
   provincias,
@@ -431,7 +429,7 @@ export default function CartDrawer() {
       encabezado +
       lineas.join("\n") +
       (recojo
-        ? `\n\nRecojo en tienda (${direccionDeRecojo()}): gratis`
+        ? `\n\nRecojo en tienda (${store.recojo.referencia.replace(/^Tienda /, "")}): gratis`
         : envio.conocido
           ? `\n\nEnvío a ${envio.destino}: ` +
             (promoEnvio ? `gratis (${promoEnvio.nombre})` : formatPrice(envio.costo))
@@ -794,20 +792,15 @@ export default function CartDrawer() {
               </div>
 
               {recojo ? (
+                // Sin la dirección exacta ni el mapa: se da al culminar la
+                // compra (la confirmación del pedido la muestra).
                 <div className="bg-soft rounded-lg p-3 text-sm space-y-1">
-                  <p className="font-medium">{direccionDeRecojo()}</p>
+                  <p className="font-medium">{store.recojo.referencia}</p>
                   <p className="text-xs text-muted">
-                    Te escribimos por WhatsApp cuando tu pedido esté listo
-                    para recoger.
+                    Te brindamos la dirección al culminar tu compra, y te
+                    escribimos por WhatsApp cuando tu pedido esté listo para
+                    recoger.
                   </p>
-                  <a
-                    href={mapaDeRecojo()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs underline"
-                  >
-                    Ver en Google Maps
-                  </a>
                 </div>
               ) : (
               <>
@@ -977,7 +970,7 @@ export default function CartDrawer() {
             {/* En la pantalla de pago basta con recordar a dónde va. */}
             {paso === "pago" && recojo && (
               <p className="text-xs text-muted">
-                Recojo en tienda · {direccionDeRecojo()}
+                Recojo en tienda · {store.recojo.referencia.replace(/^Tienda /, "")}
               </p>
             )}
             {paso === "pago" && !recojo && envio.conocido && (

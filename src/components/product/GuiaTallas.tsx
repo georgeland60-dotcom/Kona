@@ -4,19 +4,19 @@
 //  Va en la propia ficha, plegada: quien ya sabe su talla no la
 //  necesita, y quien duda la tiene a un clic sin salir del producto.
 //
-//  Lo que más ayuda no es la tabla, es la referencia de la modelo
-//  ("mide 1.68 y usa M"), así que va primero.
+//  La talla que usa la modelo de las fotos NO se muestra (decisión de
+//  la dueña, 27 nov 2026), ni aquí ni en la asistente. El dato puede
+//  seguir cargado en el panel, pero ninguna pantalla pública lo usa.
 //
 //  Y si la pieza no lleva talla (una cartera, un accesorio), se dice y
 //  se acabó: hablar de tallas ahí solo confunde.
 // =============================================================
 
 import type { Product } from "@/lib/types";
-import { esTallaUnica, guiaDeProducto, modeloEnTexto } from "@/lib/tallas";
+import { esTallaUnica, guiaDeProducto } from "@/lib/tallas";
 
 export default function GuiaTallas({ product }: { product: Product }) {
   const guia = guiaDeProducto(product);
-  const modelo = modeloEnTexto(product);
   const unica = esTallaUnica(product);
 
   if (unica && !guia) {
@@ -28,10 +28,10 @@ export default function GuiaTallas({ product }: { product: Product }) {
     );
   }
 
-  // Sin tabla y sin referencia de la modelo no se despliega nada, pero
+  // Sin tabla no se despliega nada, pero
   // tampoco se deja a la clienta sin salida: la tabla real de estas
   // prendas (las que van por número, sobre todo) está en sus fotos.
-  if (!guia && !modelo) {
+  if (!guia) {
     return (
       <p className="mt-4 text-sm text-muted">
         Las medidas de esta prenda están en sus fotos. Si prefieres, te las
@@ -54,10 +54,6 @@ export default function GuiaTallas({ product }: { product: Product }) {
           <p className="text-sm bg-soft rounded-lg px-3 py-2">
             Es de talla única: no tienes que elegir talla.
           </p>
-        )}
-
-        {modelo && (
-          <p className="text-sm bg-soft rounded-lg px-3 py-2">{modelo}</p>
         )}
 
         {!guia && (

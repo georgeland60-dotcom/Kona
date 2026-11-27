@@ -20,7 +20,6 @@ import {
   esTallaUnica,
   guiaDeProducto,
   guiaEnTexto,
-  modeloEnTexto,
 } from "@/lib/tallas";
 import { huellaDe, permitirConsulta } from "@/lib/asistente/limites";
 import { store } from "@/config/store";
@@ -50,7 +49,6 @@ function fichaDe(producto: Product | undefined): string | undefined {
     descripcion: producto.description,
     guia: guia ? guiaEnTexto(guia) : undefined,
     guiaEstimada: guia?.estimada,
-    modelo: modeloEnTexto(producto),
     tallaUnica: esTallaUnica(producto),
   });
 }
@@ -86,7 +84,6 @@ function tablaDe(producto: Product): Tabla | null {
   return {
     nombre: producto.name,
     nota: guia.nota,
-    modelo: modeloEnTexto(producto) ?? undefined,
     prendas: guia.prendas.map((prenda) => ({
       nombre: prenda.nombre,
       campos: [...new Set(prenda.medidas.flatMap((m) => Object.keys(m.medidas)))],

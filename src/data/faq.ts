@@ -28,7 +28,7 @@ export const preguntas: Pregunta[] = [
   },
   {
     q: "¿Qué tallas manejan?",
-    a: "Trabajamos tallas que representan la diversidad del cuerpo de la mujer peruana. En cada prenda verás las tallas disponibles y las medidas de la modelo, para que puedas compararte con ella antes de comprar.",
+    a: "Trabajamos tallas que representan la diversidad del cuerpo de la mujer peruana. En cada prenda verás las tallas disponibles y su guía de medidas, para que elijas tu talla con seguridad antes de comprar.",
   },
   {
     q: "¿Cómo cuido mis prendas para que duren?",

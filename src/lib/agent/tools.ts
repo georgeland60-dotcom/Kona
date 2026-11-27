@@ -1764,11 +1764,8 @@ const agregarProducto: Tool = {
         : esUnica
           ? "Medidas de la pieza: sin cargar (dime alto, ancho, asa)"
           : "Guía de tallas: sin cargar ⚠️ (la tienda mostrará medidas referenciales)",
-      esUnica
-        ? "Talla de la modelo: no aplica, es talla única"
-        : modeloTalla
-          ? `Talla de la modelo: ${modeloTalla}${modeloAltura ? ` · ${(modeloAltura / 100).toFixed(2)} m` : ""} ✅`
-          : "Talla de la modelo: sin cargar ⚠️ (es lo que más ayuda a elegir talla)",
+      // La talla de la modelo ya no se pide ni se marca como pendiente:
+      // la tienda decidió no mostrarla (27 nov 2026).
       producto.description
         ? "Descripción: puesta ✅"
         : "Descripción: sin poner ⚠️",
