@@ -36,6 +36,11 @@ export type ModeloFoto = {
 };
 
 export type Product = {
+  // Solo de pantalla, los pone la vitrina al aplicar descuentos (nunca se
+  // guardan): el % que anuncia la regla ganadora y el lema de la campaña
+  // vigente ("Black Friday"), para la cinta de la tarjeta.
+  descuentoPct?: number;
+  lemaCampana?: string;
   id: string;
   slug: string; // para la URL del producto, ej: "vestido-lino-beige"
   name: string;

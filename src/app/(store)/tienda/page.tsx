@@ -5,6 +5,7 @@ import { homeCollections } from "@/data/collections";
 import { getSeasonBySlug, getLiveRules } from "@/lib/promos-data";
 import { descuentosPorCategoria } from "@/lib/descuentos-por-categoria";
 import { CintaDescuento } from "@/components/promo/Campana";
+import { campana, ordenarPorCampana } from "@/data/campana";
 import ProductGrid from "@/components/product/ProductGrid";
 
 export default async function TiendaPage({
@@ -21,11 +22,15 @@ export default async function TiendaPage({
   ]);
   // el filtro acepta tanto categorías como colecciones transversales
   // (ej. "nuevos-ingresos", "sale"), que viven en el campo collections.
-  const filtrados = cat
+  const elegidos = cat
     ? products.filter(
         (p) => p.category === cat || (p.collections ?? []).includes(cat)
       )
     : products;
+  // En campaña, primero lo que ella eligió (lo de las fotos del banner,
+  // los blazers, la ropa de baño entera...). Solo reordena, no quita nada.
+  const filtrados =
+    campana && campana.vigente(rules) ? ordenarPorCampana(elegidos, campana) : elegidos;
 
   // El título puede venir de una categoría, de una colección fija del
   // inicio o de un bloque de temporada creado desde el agente.

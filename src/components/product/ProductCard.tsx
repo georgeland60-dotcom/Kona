@@ -6,6 +6,7 @@ import { Product } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/components/cart/CartContext";
 import QuickView from "@/components/product/QuickView";
+import CintaOferta from "@/components/promo/CintaOferta";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
@@ -30,10 +31,15 @@ export default function ProductCard({ product }: { product: Product }) {
             </div>
           )}
         </Link>
-        {product.onSale && (
-          <span className="absolute top-3 left-3 bg-accent text-white text-xs px-2 py-1 rounded-full">
-            Sale
-          </span>
+        {product.descuentoPct ? (
+          // Con una regla vigente, la cinta dice el % de verdad.
+          <CintaOferta pct={product.descuentoPct} lema={product.lemaCampana} />
+        ) : (
+          product.onSale && (
+            <span className="absolute top-3 left-3 bg-accent text-white text-xs px-2 py-1 rounded-full">
+              Sale
+            </span>
+          )
         )}
         <button
           onClick={() => setQuickView(true)}
@@ -54,7 +60,13 @@ export default function ProductCard({ product }: { product: Product }) {
           </h3>
         </Link>
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-sm">{formatPrice(product.price)}</span>
+          <span
+            className={
+              product.oldPrice ? "text-sm font-semibold text-k-fucsia" : "text-sm"
+            }
+          >
+            {formatPrice(product.price)}
+          </span>
           {product.oldPrice && (
             <span className="text-xs text-muted line-through">
               {formatPrice(product.oldPrice)}
