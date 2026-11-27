@@ -99,7 +99,11 @@ function tablaHtml(r: ResumenPedido): string {
         <td style="padding:14px 12px;border-bottom:1px solid ${C.linea};vertical-align:top;font-family:${LETRA};font-size:15px;color:${C.texto}">
           <span style="font-weight:500">${escapar(l.nombre)}</span><br>
           <span style="color:${C.gris};font-size:13px">${l.talla ? `Talla ${escapar(l.talla)} · ` : ""}Cantidad ${l.cantidad}</span><br>
-          <span style="color:${C.gris};font-size:13px">${formatPrice(l.precio)} c/u</span>
+          <span style="color:${C.gris};font-size:13px">${
+            l.precioAntes
+              ? `<s style="color:${C.gris}">${formatPrice(l.precioAntes)}</s>&nbsp; <span style="color:${C.fucsia};font-weight:500">${formatPrice(l.precio)}</span>`
+              : formatPrice(l.precio)
+          } c/u</span>
         </td>
         <td style="padding:14px 0;border-bottom:1px solid ${C.linea};text-align:right;vertical-align:top;font-family:${LETRA};font-size:15px;color:${C.texto};white-space:nowrap">
           ${formatPrice(l.subtotal)}
@@ -129,6 +133,14 @@ function tablaHtml(r: ResumenPedido): string {
       <tr><td colspan="3" style="height:8px"></td></tr>
       ${fila("Productos", formatPrice(productos))}
       ${envio}
+      ${
+        r.ahorro > 0
+          ? fila(
+              `<span style="color:#15803d;font-weight:500">Ahorraste</span>`,
+              `<span style="color:#15803d;font-weight:500">${formatPrice(r.ahorro)}</span>`
+            )
+          : ""
+      }
       <tr>
         <td colspan="2" style="padding:14px 0 0;border-top:1px solid ${C.linea};font-family:${LETRA};font-size:17px;color:${C.texto};font-weight:500">Total</td>
         <td style="padding:14px 0 0;border-top:1px solid ${C.linea};text-align:right;font-family:${LETRA};font-size:17px;color:${C.texto};font-weight:500;white-space:nowrap">${formatPrice(r.total)}</td>
@@ -139,7 +151,9 @@ function tablaHtml(r: ResumenPedido): string {
 function tablaTexto(r: ResumenPedido): string {
   const lineas = r.lineas.map(
     (l) =>
-      `- ${l.nombre}${l.talla ? ` (Talla ${l.talla})` : ""} x${l.cantidad}: ${formatPrice(l.subtotal)}`
+      `- ${l.nombre}${l.talla ? ` (Talla ${l.talla})` : ""} x${l.cantidad}: ${formatPrice(l.subtotal)}${
+        l.precioAntes ? ` (antes ${formatPrice(l.precioAntes)} c/u)` : ""
+      }`
   );
   if (r.envio) {
     lineas.push(
@@ -148,6 +162,7 @@ function tablaTexto(r: ResumenPedido): string {
       }${r.envio.direccion ? ` (${r.envio.direccion})` : ""}`
     );
   }
+  if (r.ahorro > 0) lineas.push(`Ahorraste: ${formatPrice(r.ahorro)}`);
   lineas.push(`Total: ${formatPrice(r.total)}`);
   return lineas.join("\n");
 }
