@@ -18,6 +18,9 @@ export type HomeBlock = {
   by: "category" | "collection";
   value: string; // slug de la categoria o de la coleccion
   image: string; // foto de respaldo si la categoria aun no tiene productos
+  // Foto elegida a mano para el cuadro. Si esta, manda sobre la del
+  // primer producto (que cambia cada vez que se reordena la tienda).
+  portada?: string;
   // Clases de color del MANUAL DE MARCA (Tailwind necesita el nombre
   // completo escrito,
   // por eso se guardan asi y no como "bg-" + color).
@@ -33,6 +36,8 @@ export const homeBlocks: HomeBlock[] = [
     by: "category",
     value: "blazers",
     image: "/products/chaleco-yess.webp",
+    // Los tres colores colgados: la eligió la dueña (27 nov 2026).
+    portada: "/categorias/blazers-portada.webp",
     badge: "bg-k-navy",
     bar: "bg-k-navy",
   },
@@ -90,7 +95,7 @@ export function resolveBlock(
   const withPhoto = items.find((p) => p.image);
   return {
     block,
-    image: withPhoto?.image ?? block.image,
+    image: block.portada ?? withPhoto?.image ?? block.image,
     count: items.length,
     // una categoria vacia lleva a la tienda completa, no a una pagina en blanco
     href: items.length > 0 ? `/tienda?cat=${block.value}` : "/tienda",

@@ -32,6 +32,7 @@ type StoreData = {
   precioPrueba?: string;
   blazersAgregados?: string;
   fotosBlazers?: string;
+  fotosCeleste?: string;
 };
 
 // ---- Helpers de SKU --------------------------------------------------
@@ -256,6 +257,9 @@ const DESCRIPCION_BLAZER =
 // en la mesa con el café y la del verde levantando la cartera.
 const FOTOS_VERDE = [4, 1, 2, 3].map((n) => `/products/blazer-verde-menta-${n}.webp`);
 const FOTOS_AZUL = [2, 1, 3].map((n) => `/products/blazer-azul-${n}.webp`);
+// Las del celeste llegaron después (27 nov 2026): de pie riendo como
+// principal y sentada en el sofá como segunda.
+const FOTOS_CELESTE = [1, 2].map((n) => `/products/blazer-celeste-${n}.webp`);
 const FOTOS_VERDE_ANTES = [1, 2, 3, 4].map((n) => `/products/blazer-verde-menta-${n}.webp`);
 const FOTOS_AZUL_ANTES = [1, 2, 3].map((n) => `/products/blazer-azul-${n}.webp`);
 
@@ -275,7 +279,7 @@ const BLAZERS: { slug: string; name: string; fotos: string[]; tallas: [string, n
   {
     slug: "blazer-celeste",
     name: "Blazer Celeste",
-    fotos: FOTOS_AZUL, // provisional: aún no hay fotos del celeste
+    fotos: FOTOS_CELESTE,
     tallas: [["M", 2], ["L", 2]],
   },
 ];
@@ -329,6 +333,19 @@ export function conFotosDeBlazers(productos: Product[]): Product[] {
   });
 }
 
+// El celeste ya creado con las fotos provisionales del azul pasa a las
+// suyas. Solo si sigue con las del azul (en cualquiera de los dos
+// órdenes): si alguien le puso otras a mano, se respetan. Una sola vez.
+export const FOTOS_CELESTE_PUESTAS = "2026-11-27";
+
+export function conFotosDelCeleste(productos: Product[]): Product[] {
+  return productos.map((p) => {
+    if (p.slug !== "blazer-celeste") return p;
+    const provisional = (p.images ?? []).every((i) => i.startsWith("/products/blazer-azul-"));
+    return provisional ? { ...p, images: FOTOS_CELESTE, image: FOTOS_CELESTE[0] } : p;
+  });
+}
+
 export async function readStore(): Promise<StoreData> {
   const leido = await leerDoc<StoreData>("store");
 
@@ -346,6 +363,7 @@ export async function readStore(): Promise<StoreData> {
   const faltaPrecioPrueba = datos.precioPrueba !== PRECIO_PRUEBA;
   const faltanBlazers = datos.blazersAgregados !== BLAZERS_AGREGADOS;
   const faltanFotosBlazers = datos.fotosBlazers !== FOTOS_BLAZERS;
+  const faltanFotosCeleste = datos.fotosCeleste !== FOTOS_CELESTE_PUESTAS;
   if (
     !faltaInventario &&
     !faltaLimpieza &&
@@ -354,7 +372,8 @@ export async function readStore(): Promise<StoreData> {
     !faltaStockPrueba &&
     !faltaPrecioPrueba &&
     !faltanBlazers &&
-    !faltanFotosBlazers
+    !faltanFotosBlazers &&
+    !faltanFotosCeleste
   ) {
     return datos;
   }
@@ -414,6 +433,13 @@ export async function readStore(): Promise<StoreData> {
       ...corregidos,
       products: conFotosDeBlazers(corregidos.products),
       fotosBlazers: FOTOS_BLAZERS,
+    };
+  }
+  if (faltanFotosCeleste) {
+    corregidos = {
+      ...corregidos,
+      products: conFotosDelCeleste(corregidos.products),
+      fotosCeleste: FOTOS_CELESTE_PUESTAS,
     };
   }
 
