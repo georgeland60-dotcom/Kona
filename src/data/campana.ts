@@ -75,12 +75,12 @@ export const campana: Campana | null = {
     },
   ],
   escritorio: {
-    src: "/campanas/black-friday-escritorio.webp",
+    src: "/campanas/black-friday-escritorio-v2.webp",
     ancho: 1920,
     alto: 940,
   },
   celular: {
-    src: "/campanas/black-friday-celular.webp",
+    src: "/campanas/black-friday-celular-v2.webp",
     ancho: 1080,
     alto: 1350,
   },

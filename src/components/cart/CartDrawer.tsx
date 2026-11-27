@@ -623,12 +623,18 @@ export default function CartDrawer() {
           </button>
         </div>
 
+        {/* Un solo desplazamiento para prendas y datos de entrega. Con dos
+            (uno para la lista y otro para el formulario), al elegir "Envío
+            a domicilio" el formulario crecía y dejaba la lista de
+            prendas aplastada a una franja de pocos píxeles: la clienta
+            dejaba de ver lo que estaba comprando. */}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         {items.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-muted text-sm">
             Tu carrito esta vacio
           </div>
         ) : paso === "pago" ? null : (
-          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <div className="p-5 space-y-5">
             {items.map((i) => (
               <div key={i.product.id + (i.size ?? "")} className="flex gap-4">
                 <div className="w-20 h-24 placeholder-box rounded overflow-hidden flex-shrink-0">
@@ -741,8 +747,8 @@ export default function CartDrawer() {
 
         {items.length > 0 && (
           <div
-            className={`border-t border-line p-5 space-y-4 min-h-0 ${
-              paso === "pago" ? "flex-1 overflow-y-auto" : "overflow-y-auto"
+            className={`border-t border-line p-5 space-y-4 ${
+              paso === "pago" ? "flex-1" : ""
             }`}
           >
             {/* Un descuento sobre el total va aparte, como una rebaja al
@@ -1272,6 +1278,7 @@ export default function CartDrawer() {
             )}
           </div>
         )}
+        </div>
       </aside>
     </>
   );
